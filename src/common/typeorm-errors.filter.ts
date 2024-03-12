@@ -1,0 +1,49 @@
+import { ExceptionFilter, Catch, ArgumentsHost } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { EntityNotFoundError, QueryFailedError, TypeORMError } from 'typeorm';
+import { DatabaseError } from 'pg';
+
+@Catch(TypeORMError)
+export class TypeORMErrorsFilter implements ExceptionFilter {
+  catch(exception: TypeORMError, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+
+    let status = 500;
+    let message = 'Internal server error';
+    switch (exception.constructor) {
+      case EntityNotFoundError:
+        status = 404;
+        message = 'Not Found';
+        break;
+      case QueryFailedError: {
+        switch ((exception as QueryFailedError).driverError.constructor) {
+          case DatabaseError:
+            const e = exception as QueryFailedError<DatabaseError>;
+            if (
+              e.message.includes(
+                'duplicate key value violates unique constraint',
+              )
+            ) {
+              const entityName = e.driverError.table ?? 'entity';
+              message = `New ${entityName} conflicts with existing ${entityName}${e.driverError.detail ? `: ${e.driverError.detail}` : '.'}`;
+              status = 409;
+            }
+            break;
+        }
+        break;
+      }
+    }
+
+    if (status === 500) {
+      console.error(exception);
+    }
+
+    response.status(status).json({
+      statusCode: status,
+      timestamp: new Date().toISOString(),
+      message,
+    });
+  }
+}

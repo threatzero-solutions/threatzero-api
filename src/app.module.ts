@@ -1,0 +1,65 @@
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { TrainingModule } from './training/training.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import generalConfig from './config/general.config';
+import databaseConfig from './config/database.config';
+import { validate } from './config/env.validation';
+import awsConfig from './config/aws.config';
+import notificationsConfig from './config/notifications.config';
+import redisConfig from './config/redis.config';
+import keycloakConfig from './config/keycloak.config';
+import vimeoConfig from './config/vimeo.config';
+import mediaConfig from './config/media.config';
+import authConfig from './config/auth.config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
+import { OrganizationsModule } from './organizations/organizations.module';
+import { AuthModule } from './auth/auth.module';
+import { ThreatAssessmentsModule } from './threat-assessments/threat-assessments.module';
+import { FormsModule } from './forms/forms.module';
+import { MediaModule } from './media/media.module';
+import { TipsModule } from './tips/tips.module';
+import { UsersModule } from './users/users.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [
+        authConfig,
+        generalConfig,
+        databaseConfig,
+        awsConfig,
+        notificationsConfig,
+        redisConfig,
+        keycloakConfig,
+        vimeoConfig,
+        mediaConfig,
+      ],
+      validate,
+    }),
+    AuthModule,
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
+        return {
+          ...configService.getOrThrow<PostgresConnectionOptions>('database'),
+          autoLoadEntities: true,
+        };
+      },
+      inject: [ConfigService],
+    }),
+    TrainingModule,
+    OrganizationsModule,
+    ThreatAssessmentsModule,
+    FormsModule,
+    MediaModule,
+    TipsModule,
+    UsersModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
