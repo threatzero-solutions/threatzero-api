@@ -23,13 +23,14 @@ import { MediaModule } from './media/media.module';
 import { TipsModule } from './tips/tips.module';
 import { UsersModule } from './users/users.module';
 import { AwsModule } from './aws/aws.module';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import Redis from 'ioredis';
 import { BullModule } from '@nestjs/bullmq';
 import { ConnectionOptions as BullMQConnectionOptions } from 'bullmq';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ResourcesModule } from './resources/resources.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -83,6 +84,12 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
       inject: [ConfigService],
     }),
     EventEmitterModule.forRoot(),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 5 * 60 * 1000, // 5 minutes
+        limit: 1000,
+      },
+    ]),
     AuthModule,
     ResourcesModule,
     MediaModule,
@@ -101,6 +108,10 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     {
       provide: APP_INTERCEPTOR,
       useClass: ClassSerializerInterceptor,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

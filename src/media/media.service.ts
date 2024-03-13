@@ -1,7 +1,7 @@
 import { getSignedUrl } from '@aws-sdk/cloudfront-signer';
 import { HttpService } from '@nestjs/axios';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
 import dayjs from 'dayjs';
@@ -13,16 +13,23 @@ import {
   GetVimeoThumbnailUrlOptions,
   VimeoThumbnailResponse,
 } from './interfaces/vimeo';
+import { InjectRepository } from '@nestjs/typeorm';
+import { VideoEvent } from './entities/video-event.entity';
+import { DeepPartial, Repository } from 'typeorm';
+import { Request } from 'express';
 
 const DEFAULT_WIDTH = 640;
 
 @Injectable()
 export class MediaService {
   constructor(
+    @InjectRepository(VideoEvent)
+    private videoEventsRepository: Repository<VideoEvent>,
     @Inject(CACHE_MANAGER) private cache: Cache,
     private config: ConfigService,
     private readonly http: HttpService,
   ) {}
+
   getCloudFrontUrlSigner(prefix = '') {
     const options = this.config.getOrThrow<CloudFrontDistributionConfig>(
       'aws.cloudfront.distributions.appfiles',
@@ -151,4 +158,16 @@ export class MediaService {
 
     return bestUrlBySize;
   };
+
+  async receiveVideoEvent(event: DeepPartial<VideoEvent>, request: Request) {
+    if (!request.user) {
+      throw new UnauthorizedException('No user information found.');
+    }
+    return this.videoEventsRepository.create({
+      ...event,
+      userId: request.user.id,
+      unitSlug: request.user.unitSlug,
+      audienceSlugs: request.user.audiences,
+    });
+  }
 }
