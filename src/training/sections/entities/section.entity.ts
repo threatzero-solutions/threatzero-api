@@ -13,6 +13,7 @@ import {
   BeforeInsert,
 } from 'typeorm';
 import { SectionItem } from './section-item.entity';
+import { VideoItem } from 'src/training/items/entities/video-item.entity';
 
 export enum TrainingRepeats {
   YEARLY = 'yearly',
@@ -62,5 +63,17 @@ export class Section extends Base {
         this.expiresOn = expiresOn.add(1, 'year').toDate();
       }
     }
+  }
+
+  async loadVideoThumbnails(
+    getVimeoThumbnail: (url: string) => Promise<string | null>,
+  ) {
+    await Promise.all(
+      this.items?.map(async (item) => {
+        if (item.item instanceof VideoItem) {
+          await item.item.loadThumbnailUrl(getVimeoThumbnail);
+        }
+      }) ?? [],
+    );
   }
 }

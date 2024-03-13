@@ -26,7 +26,7 @@ class KeycloakAdminClientAuthConfig implements Credentials {
   clientSecret: string;
 }
 
-class KeycloakAdminClientConfig {
+export class KeycloakAdminClientConfig {
   @ValidateNested()
   @Type(() => KeycloakAdminClientConnectionConfig)
   config: KeycloakAdminClientConnectionConfig;

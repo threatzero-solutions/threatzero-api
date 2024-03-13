@@ -33,7 +33,8 @@ export class Tip extends Base {
   unit: Relation<Unit>;
 
   @OneToOne(() => FormSubmission, {
-    eager: true,
+    // Use forms service to validate and save submissions.
+    eager: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn()

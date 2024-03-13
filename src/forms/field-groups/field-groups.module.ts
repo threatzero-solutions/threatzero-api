@@ -8,5 +8,6 @@ import { FieldGroup } from './entities/field-group.entity';
   imports: [TypeOrmModule.forFeature([FieldGroup])],
   controllers: [FieldGroupsController],
   providers: [FieldGroupsService],
+  exports: [FieldGroupsService],
 })
 export class FieldGroupsModule {}

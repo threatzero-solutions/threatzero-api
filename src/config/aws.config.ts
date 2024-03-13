@@ -1,7 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import { Type } from 'class-transformer';
 import { IsFQDN, IsPositive, IsString, ValidateNested } from 'class-validator';
-import fs from 'fs';
+import { readFileToString } from './utils';
 
 export class CloudFrontDistributionConfig {
   @IsFQDN()
@@ -20,11 +20,7 @@ export class CloudFrontDistributionConfig {
 export class CloudFrontDistrubtions {
   @ValidateNested()
   @Type(() => CloudFrontDistributionConfig)
-  trainingContent: CloudFrontDistributionConfig;
-
-  @ValidateNested()
-  @Type(() => CloudFrontDistributionConfig)
-  uploadedMedia: CloudFrontDistributionConfig;
+  appfiles: CloudFrontDistributionConfig;
 }
 
 export class CloudFrontConfig {
@@ -71,46 +67,24 @@ export class AWSConfig {
   s3: S3Config;
 }
 
-const readFileToString = (path: string | null | undefined) =>
-  path ? fs.readFileSync(path, 'utf-8') : '';
-
 export default registerAs('aws', () => ({
   region: process.env.AWS_REGION || 'us-west-2',
   cloudfront: {
     distributions: {
-      trainingContent: {
+      appfiles: {
         domain:
-          process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_TRAINING_DOMAIN ??
+          process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_APPFILES_DOMAIN ??
           'd1wnq16r468u3y.cloudfront.net',
         privateKey:
-          process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_TRAINING_PRIVATEKEY ??
+          process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_APPFILES_PRIVATEKEY ??
           readFileToString(
-            process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_TRAINING_PRIVATEKEYPATH,
+            process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_APPFILES_PRIVATEKEYPATH,
           ),
-        keyPairId: process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_TRAINING_KEYPAIRID,
+        keyPairId: process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_APPFILES_KEYPAIRID,
         defaultPolicyExpirationSeconds:
           parseInt(
             process.env
-              .AWS_CLOUDFRONT_DISTRIBUTIONS_TRAINING_DEFAULTPOLICYEXPIRATIONSECONDS ??
-              '3600',
-          ) ?? 3600,
-      },
-      uploadedMedia: {
-        domain:
-          process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_UPLOADED_MEDIA_DOMAIN ??
-          'd1wnq16r468u3y.cloudfront.net',
-        privateKey:
-          process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_UPLOADED_MEDIA_PRIVATEKEY ??
-          readFileToString(
-            process.env
-              .AWS_CLOUDFRONT_DISTRIBUTIONS_UPLOADED_MEDIA_PRIVATEKEYPATH,
-          ),
-        keyPairId:
-          process.env.AWS_CLOUDFRONT_DISTRIBUTIONS_UPLOADED_MEDIA_KEYPAIRID,
-        defaultPolicyExpirationSeconds:
-          parseInt(
-            process.env
-              .AWS_CLOUDFRONT_DISTRIBUTIONS_UPLOADED_MEDIA_DEFAULTPOLICYEXPIRATIONSECONDS ??
+              .AWS_CLOUDFRONT_DISTRIBUTIONS_APPFILES_DEFAULTPOLICYEXPIRATIONSECONDS ??
               '3600',
           ) ?? 3600,
       },

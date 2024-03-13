@@ -23,16 +23,11 @@ export class VideoItem extends Item {
   @Column({ type: 'boolean', default: false })
   abrEnabled: boolean;
 
-  //   @AfterLoad()
-  //   async afterLoadItem() {
-  //     if (this.embeddedHtml) {
-  //       this.thumbnailUrl = await getThumbnailUrlForVimeoEmbedding(
-  //         this.embeddedHtml,
-  //       );
-  //     } else if (this.vimeoUrl) {
-  //       this.thumbnailUrl = await getThumbnailUrlForVimeoVideoURL(this.vimeoUrl);
-  //     } else {
-  //       super.afterLoadItem();
-  //     }
-  //   }
+  async loadThumbnailUrl(
+    getVimeoThumbnail: (url: string) => Promise<string | null>,
+  ) {
+    if (this.vimeoUrl) {
+      this.thumbnailUrl = await getVimeoThumbnail(this.vimeoUrl);
+    }
+  }
 }

@@ -16,7 +16,7 @@ import { Item } from './entities/item.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
-@Controller('items')
+@Controller('training/items')
 @CheckPolicies(new EntityAbilityChecker(Item))
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) {}

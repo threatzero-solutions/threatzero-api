@@ -20,15 +20,15 @@ export class BaseEntityService<E extends ObjectLiteral> {
     throw new Error('Not implemented');
   }
 
-  mapResult(entity: E) {
+  async mapResult(entity: E) {
     return entity;
   }
 
-  mapResults(entities: E[]) {
-    return entities.map((e) => this.mapResult(e));
+  async mapResults(entities: E[]) {
+    return Promise.all(entities.map((e) => this.mapResult(e)));
   }
 
-  getQb(query?: BaseQueryDto): SelectQueryBuilder<E> {
+  getQb(query?: BaseQueryDto, ...args: unknown[]): SelectQueryBuilder<E> {
     let qb = this.getRepository().createQueryBuilder(this.alias);
 
     if (query) {
@@ -38,20 +38,23 @@ export class BaseEntityService<E extends ObjectLiteral> {
     return qb;
   }
 
-  getQbSingle(id: NonNullable<E['id']>): SelectQueryBuilder<E> {
-    return this.getQb().andWhere({ id });
+  getQbSingle(
+    id: NonNullable<E['id']>,
+    ...args: unknown[]
+  ): SelectQueryBuilder<E> {
+    return this.getQb(undefined, ...args).andWhere({ id });
   }
 
-  async create(createEntityDto: DeepPartial<E>) {
+  async create(createEntityDto: DeepPartial<E>, ...args: unknown[]) {
     return this.getRepository().save(createEntityDto);
   }
 
-  async findAll(): Promise<E[]>;
-  async findAll(query: BaseQueryDto): Promise<Page<E>>;
-  async findAll(query?: BaseQueryDto) {
-    let [results, count] = await this.getQb(query).getManyAndCount();
+  async findAll(...args: unknown[]): Promise<E[]>;
+  async findAll(query: BaseQueryDto, ...args: unknown[]): Promise<Page<E>>;
+  async findAll(query?: BaseQueryDto, ...args: unknown[]) {
+    let [results, count] = await this.getQb(query, ...args).getManyAndCount();
 
-    results = this.mapResults(results);
+    results = await this.mapResults(results);
 
     if (query) {
       return {
@@ -65,13 +68,17 @@ export class BaseEntityService<E extends ObjectLiteral> {
     return results;
   }
 
-  async findOne(id: NonNullable<E['id']>) {
-    const r = await this.getQbSingle(id).getOneOrFail();
+  async findOne(id: NonNullable<E['id']>, ...args: unknown[]) {
+    const r = await this.getQbSingle(id, ...args).getOneOrFail();
 
-    return this.mapResult(r);
+    return await this.mapResult(r);
   }
 
-  async update(id: NonNullable<E['id']>, updateEntityDto: DeepPartial<E>) {
+  async update(
+    id: NonNullable<E['id']>,
+    updateEntityDto: DeepPartial<E>,
+    ...args: unknown[]
+  ) {
     const updatedEntity = await this.getRepository().preload({
       id,
       ...updateEntityDto,
@@ -82,7 +89,7 @@ export class BaseEntityService<E extends ObjectLiteral> {
     return await this.getRepository().save(updatedEntity);
   }
 
-  async remove(id: NonNullable<E['id']>) {
+  async remove(id: NonNullable<E['id']>, ...args: unknown[]) {
     return this.getRepository().delete({ id });
   }
 }

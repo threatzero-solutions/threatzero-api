@@ -5,5 +5,6 @@ import { FieldsModule } from './fields/fields.module';
 
 @Module({
   imports: [FormsEntityModule, FieldGroupsModule, FieldsModule],
+  exports: [FormsEntityModule],
 })
 export class FormsModule {}

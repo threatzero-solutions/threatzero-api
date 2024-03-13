@@ -3,10 +3,21 @@ import { TipsService } from './tips.service';
 import { TipsController } from './tips.controller';
 import { Tip } from './entities/tip.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { FormsModule } from 'src/forms/forms.module';
+import { SubmitTipListener } from './listeners/submit-tip.listener';
+import { BullModule } from '@nestjs/bullmq';
+import { NOTIFICATIONS_QUEUE_NAME } from 'src/common/constants/queue.constants';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Tip])],
+  imports: [
+    TypeOrmModule.forFeature([Tip]),
+    BullModule.registerQueue({
+      name: NOTIFICATIONS_QUEUE_NAME,
+    }),
+    FormsModule,
+  ],
   controllers: [TipsController],
-  providers: [TipsService],
+  providers: [TipsService, SubmitTipListener],
+  exports: [TypeOrmModule],
 })
 export class TipsModule {}

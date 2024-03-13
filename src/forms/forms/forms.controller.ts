@@ -12,8 +12,12 @@ import { FormsService } from './forms.service';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { CheckPolicies } from 'src/auth/casl/policies.guard';
+import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
+import { Form } from './entities/form.entity';
 
-@Controller('forms')
+@Controller('forms/forms')
+@CheckPolicies(new EntityAbilityChecker(Form))
 export class FormsController {
   constructor(private readonly formsService: FormsService) {}
 

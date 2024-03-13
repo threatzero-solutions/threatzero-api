@@ -3,11 +3,11 @@ import { ResourcesService } from './resources.service';
 import { ResourcesController } from './resources.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Resource } from './entities/resource.entity';
-import { MediaService } from '../media.service';
+import { MediaModule } from 'src/media/media.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Resource])],
+  imports: [TypeOrmModule.forFeature([Resource]), MediaModule],
   controllers: [ResourcesController],
-  providers: [ResourcesService, MediaService],
+  providers: [ResourcesService],
 })
 export class ResourcesModule {}

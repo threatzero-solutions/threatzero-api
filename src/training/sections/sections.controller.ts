@@ -16,24 +16,27 @@ import { Section } from './entities/section.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
-@Controller('sections')
+@Controller('training/courses/:courseId/sections')
 @CheckPolicies(new EntityAbilityChecker(Section))
 export class SectionsController {
   constructor(private readonly sectionsService: SectionsService) {}
 
   @Post()
-  create(@Body() createSectionDto: CreateSectionDto) {
-    return this.sectionsService.create(createSectionDto);
+  create(
+    @Param('courseId') courseId: string,
+    @Body() createSectionDto: CreateSectionDto,
+  ) {
+    return this.sectionsService.create(createSectionDto, courseId);
   }
 
   @Get()
-  findAll(@Query() query: BaseQueryDto) {
-    return this.sectionsService.findAll(query);
+  findAll(@Param('courseId') courseId: string, @Query() query: BaseQueryDto) {
+    return this.sectionsService.findAll(query, courseId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.sectionsService.findOne(id);
+  findOne(@Param('courseId') courseId: string, @Param('id') id: string) {
+    return this.sectionsService.findOne(id, courseId);
   }
 
   @Patch(':id')

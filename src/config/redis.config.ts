@@ -2,14 +2,18 @@ import { registerAs } from '@nestjs/config';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { ClusterOptions } from 'ioredis';
+import { DNSLookupFunction, RedisOptions } from 'ioredis';
+import { ConnectionOptions as TlsConnectionOptions } from 'tls';
+import { readFileToString } from './utils';
+import { ClusterOptions } from 'bullmq';
 
-class ClusterNodeConfig {
+class ConnectionOptions {
   @IsString()
   @IsOptional()
   host?: string;
@@ -19,35 +23,76 @@ class ClusterNodeConfig {
   port?: number;
 }
 
-class ClusterOptionsConfig implements ClusterOptions {}
+class RedisTlsOptions implements TlsConnectionOptions {
+  @IsString()
+  @IsNotEmpty()
+  ca: string;
+}
+
+class ClusterOptionsConfig implements ClusterOptions {
+  @IsNotEmpty()
+  dnsLookup: DNSLookupFunction;
+
+  @IsNotEmpty()
+  @IsNumber()
+  slotsRefreshTimeout: number;
+}
+
+class RedisOptionsConfig implements RedisOptions {
+  @IsOptional()
+  @Type(() => RedisTlsOptions)
+  @ValidateNested()
+  tls: RedisTlsOptions;
+
+  @IsBoolean()
+  @IsNotEmpty()
+  enableAutoPipelining: boolean;
+}
 
 export class RedisConfig {
   @IsBoolean()
   clusterMode: boolean;
 
   @ValidateNested()
-  @Type(() => ClusterNodeConfig)
-  cluster: ClusterNodeConfig;
+  @Type(() => ConnectionOptions)
+  connectionOptions: ConnectionOptions;
 
   @ValidateNested()
   @Type(() => ClusterOptionsConfig)
-  options: ClusterOptionsConfig;
+  clusterOptions: ClusterOptionsConfig;
 
-  @IsBoolean()
-  tls: boolean;
-
-  @IsString()
-  tlsCaPath: string;
+  @ValidateNested()
+  @Type(() => RedisOptionsConfig)
+  redisOptions: RedisOptionsConfig;
 }
 
-export default registerAs('redis', () => ({
-  clusterMode: process.env.REDIS_CLUSTER_MODE === 'true',
-  cluster: {
-    host: process.env.REDIS_HOST ?? 'localhost',
-    port: parseInt(process.env.REDIS_PORT ?? '6379') ?? 6379,
-  },
-  options: {},
-  tls: process.env.REDIS_TLS !== 'false',
-  tlsCaPath:
-    process.env.REDIS_TLS_CA_PATH ?? '/etc/ssl/certs/ca-certificates.crt',
-}));
+export default registerAs('redis', () => {
+  const tlsEnabled = process.env.REDIS_TLS !== 'false';
+  let tls: RedisTlsOptions | undefined = undefined;
+  if (tlsEnabled) {
+    tls = {
+      ca: readFileToString(
+        process.env.REDIS_TLS_CA ?? '/etc/ssl/certs/ca-certificates.crt',
+      ),
+    };
+  }
+
+  const redisOptions = {
+    tls,
+    enableAutoPipelining: true,
+  };
+
+  return {
+    clusterMode: process.env.REDIS_CLUSTER_MODE === 'true',
+    connectionOptions: {
+      host: process.env.REDIS_HOST ?? 'localhost',
+      port: parseInt(process.env.REDIS_PORT ?? '6379') ?? 6379,
+    },
+    clusterOptions: {
+      dnsLookup: (address, callback) => callback(null, address),
+      slotsRefreshTimeout: 5000,
+      redisOptions,
+    },
+    redisOptions,
+  } as RedisConfig;
+});

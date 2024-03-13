@@ -37,4 +37,18 @@ export class FormSubmission extends Base {
 
   @Column({ default: FormSubmissionState.NOT_COMPLETE })
   status: FormSubmissionState;
+
+  sign(signer: (key: string) => string) {
+    this.fieldResponses.forEach((fieldResponse) => {
+      fieldResponse.sign(signer);
+    });
+  }
+
+  async persistUploads(onPersist: (key: string) => Promise<string>) {
+    await Promise.all(
+      this.fieldResponses.map((fieldResponse) => {
+        fieldResponse.persistUploads(onPersist);
+      }),
+    );
+  }
 }

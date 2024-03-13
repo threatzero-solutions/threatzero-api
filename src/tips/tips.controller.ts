@@ -11,19 +11,25 @@ import {
 import { TipsService } from './tips.service';
 import { CreateTipDto } from './dto/create-tip.dto';
 import { UpdateTipDto } from './dto/update-tip.dto';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { Public } from 'src/auth/auth.guard';
+import { TipQueryDto } from './dto/tip-query.dto';
+import { CheckPolicies } from 'src/auth/casl/policies.guard';
+import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
+import { Tip } from './entities/tip.entity';
 
 @Controller('tips')
+@CheckPolicies(new EntityAbilityChecker(Tip))
 export class TipsController {
   constructor(private readonly tipsService: TipsService) {}
 
+  @Public()
   @Post()
   create(@Body() createTipDto: CreateTipDto) {
     return this.tipsService.create(createTipDto);
   }
 
   @Get()
-  findAll(@Query() query: BaseQueryDto) {
+  findAll(@Query() query: TipQueryDto) {
     return this.tipsService.findAll(query);
   }
 

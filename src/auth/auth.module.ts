@@ -9,6 +9,12 @@ import {
   CaslAbilityFactory,
 } from './casl/casl-ability.factory';
 import { UserFactory } from './user.factory';
+import {
+  KEYCLOAK_ADMIN_CLIENT,
+  KeycloakAdminClientService,
+  keycloakAdminClientFactory,
+} from './keycloak-admin-client/keycloak-admin-client.service';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [JwtModule.register({}), CaslModule],
@@ -25,7 +31,14 @@ import { UserFactory } from './user.factory';
       provide: APP_GUARD,
       useClass: PoliciesGuard,
     },
+    {
+      provide: KEYCLOAK_ADMIN_CLIENT,
+      useFactory: (config: ConfigService) => keycloakAdminClientFactory(config),
+      inject: [ConfigService],
+    },
     UserFactory,
+    KeycloakAdminClientService,
   ],
+  exports: [KeycloakAdminClientService],
 })
 export class AuthModule {}

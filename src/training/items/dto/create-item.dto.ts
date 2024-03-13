@@ -1,5 +1,14 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, Length, ValidateNested } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Length,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 import { IPostgresInterval } from 'postgres-interval';
 import { CreateTrainingMetadataDto } from 'src/training/common/dto/create-training-metadata.dto';
 
@@ -49,6 +58,10 @@ export class CreateTrainingEstimatedCompletionTimeDto
 }
 
 export class CreateItemDto {
+  @IsNotEmpty()
+  @IsIn(['video'])
+  type: string;
+
   @ValidateNested()
   @Type(() => CreateTrainingMetadataDto)
   metadata: CreateTrainingMetadataDto;
@@ -61,5 +74,11 @@ export class CreateItemDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => CreateTrainingEstimatedCompletionTimeDto)
-  estCompletionTime: CreateTrainingEstimatedCompletionTimeDto | null;
+  estCompletionTime?: CreateTrainingEstimatedCompletionTimeDto;
+
+  // Video item properties
+  @ValidateIf((item) => item.type === 'video')
+  @IsNotEmpty()
+  @IsString()
+  vimeoUrl: string;
 }

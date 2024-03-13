@@ -12,10 +12,12 @@ import { FieldGroupsService } from './field-groups.service';
 import { CreateFieldGroupDto } from './dto/create-field-group.dto';
 import { UpdateFieldGroupDto } from './dto/update-field-group.dto';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { BaseEntityService } from 'src/common/base-entity.service';
 import { FieldGroup } from './entities/field-group.entity';
+import { CheckPolicies } from 'src/auth/casl/policies.guard';
+import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 
-@Controller('field-groups')
+@Controller('forms/field-groups')
+@CheckPolicies(new EntityAbilityChecker(FieldGroup))
 export class FieldGroupsController {
   constructor(private readonly fieldGroupsService: FieldGroupsService) {}
 

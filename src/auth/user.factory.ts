@@ -7,6 +7,7 @@ class TokenPayload {
   name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
+  picture?: string | null;
   resource_access?: {
     [key: string]:
       | {
@@ -25,6 +26,7 @@ export class StatelessUser {
   public readonly name?: string | null;
   public readonly firstName?: string | null;
   public readonly lastName?: string | null;
+  public readonly picture?: string | null;
   public readonly permissions: string[];
   public readonly audiences: string[];
   public readonly organizationSlug?: string | null;
@@ -36,6 +38,7 @@ export class StatelessUser {
     name: string | null | undefined,
     firstName: string | null | undefined,
     lastName: string | null | undefined,
+    picture: string | null | undefined,
     permissions: string[],
     audiences: string[],
     organizationSlug?: string | null,
@@ -46,6 +49,7 @@ export class StatelessUser {
     this.name = name;
     this.firstName = firstName;
     this.lastName = lastName;
+    this.picture = picture;
     this.permissions = permissions;
     this.audiences = audiences;
     this.organizationSlug = organizationSlug;
@@ -70,6 +74,7 @@ export class UserFactory {
       tokenPayload.name,
       tokenPayload.first_name,
       tokenPayload.last_name,
+      tokenPayload.picture,
       tokenPayload.resource_access?.['threatzero-api']?.roles ?? [],
       tokenPayload.audiences ?? [],
       tokenPayload.organization,

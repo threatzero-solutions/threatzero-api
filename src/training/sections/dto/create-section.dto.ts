@@ -32,9 +32,7 @@ export class CreateSectionDto {
   @IsOptional()
   repeats: TrainingRepeats;
 
-  @IsOptional()
-  courseId: string | null;
-
+  @ValidateNested()
   @Type(() => CreateTrainingSectionItemDto)
   items: CreateTrainingSectionItemDto[];
 }

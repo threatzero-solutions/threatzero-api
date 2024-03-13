@@ -1,3 +1,4 @@
+import { Exclude } from 'class-transformer';
 import { Base } from 'src/common/base.entity';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Audience } from 'src/training/audiences/entities/audience.entity';
@@ -51,4 +52,14 @@ export class Course extends Base {
   })
   @JoinTable()
   organizations: Relation<Organization>[];
+
+  async loadVideoThumbnails(
+    getVimeoThumbnail: (url: string) => Promise<string | null>,
+  ) {
+    await Promise.all(
+      this.sections?.map((section) => {
+        section.loadVideoThumbnails(getVimeoThumbnail);
+      }) ?? [],
+    );
+  }
 }

@@ -4,8 +4,10 @@ import { Item } from './entities/item.entity';
 import { REQUEST } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { filterTraining } from '../common/utils';
+import { filterTraining } from '../common/training.utils';
 import { BaseEntityService } from 'src/common/base-entity.service';
+import { VideoItem } from './entities/video-item.entity';
+import { MediaService } from 'src/media/media.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class ItemsService extends BaseEntityService<Item> {
@@ -15,6 +17,7 @@ export class ItemsService extends BaseEntityService<Item> {
     @Inject(REQUEST) private request: Request,
     @InjectRepository(Item)
     private itemsRepository: Repository<Item>,
+    private mediaService: MediaService,
   ) {
     super();
   }
@@ -33,5 +36,12 @@ export class ItemsService extends BaseEntityService<Item> {
     qb = filterTraining(this.request, qb);
 
     return qb;
+  }
+
+  async mapResult(item: Item) {
+    if (item instanceof VideoItem) {
+      await item.loadThumbnailUrl(this.mediaService.getThumbnailUrlForVimeoUrl);
+    }
+    return item;
   }
 }

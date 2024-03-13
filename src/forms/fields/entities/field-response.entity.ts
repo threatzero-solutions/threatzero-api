@@ -24,53 +24,44 @@ class FieldResponse extends Base {
 
   loadedValue?: any;
 
-  // @AfterLoad()
-  // afterLoad() {
-  // 	this.loadedValue = this.value;
+  sign(signer: (key: string) => string) {
+    this.loadedValue = this.value;
 
-  // 	if (
-  // 		typeof this.value === "object" &&
-  // 		this.value.dataType === "file-uploads" &&
-  // 		this.value.keys
-  // 	) {
-  // 		this.loadedValue = (this.value.keys as string[]).map((fileKey) => ({
-  // 			key: fileKey,
-  // 			token: getSignedTokenForKey(fileKey),
-  // 		}));
-  // 	}
-  // }
+    if (
+      typeof this.value === 'object' &&
+      this.value.dataType === 'file-uploads' &&
+      this.value.keys
+    ) {
+      this.loadedValue = (this.value.keys as string[]).map((fileKey) => ({
+        key: fileKey,
+        token: signer(fileKey),
+      }));
+    }
+  }
 
-  // @BeforeInsert()
-  // @BeforeUpdate()
-  // async beforeSave() {
-  // 	if (
-  // 		typeof this.value === "object" &&
-  // 		this.value.dataType === "file-uploads" &&
-  // 		this.value.keys
-  // 	) {
-  // 		this.value.keys = (this.value.keys as unknown[]).map((fileKey) =>
-  // 			`${fileKey}`.replace(/^\//, ""),
-  // 		);
+  async persistUploads(onPersist: (key: string) => Promise<string>) {
+    if (
+      typeof this.value === 'object' &&
+      this.value.dataType === 'file-uploads' &&
+      this.value.keys
+    ) {
+      this.value.keys = (this.value.keys as unknown[]).map((fileKey) =>
+        `${fileKey}`.replace(/^\//, ''),
+      );
 
-  // 		for (let idx = 0; idx < this.value.keys.length; idx++) {
-  // 			const fileKeyToPersist = this.value.keys[idx];
-  // 			try {
-  // 				// Will ignore non-temp files as they are considered already persisted.
-  // 				this.value.keys[idx] = await persistFileUpload(fileKeyToPersist);
-  // 			} catch (e) {
-  // 				logger.error({
-  // 					error: e,
-  // 					message:
-  // 						"Failed to persist file upload for key: " + fileKeyToPersist,
-  // 				});
-
-  // 				throw Error(
-  // 					"Failed to persist file upload for key: " + fileKeyToPersist,
-  // 				);
-  // 			}
-  // 		}
-  // 	}
-  // }
+      for (let idx = 0; idx < this.value.keys.length; idx++) {
+        const fileKeyToPersist = this.value.keys[idx];
+        try {
+          // Will ignore non-temp files as they are considered already persisted.
+          this.value.keys[idx] = await onPersist(fileKeyToPersist);
+        } catch (e) {
+          throw Error(
+            'Failed to persist file upload for key: ' + fileKeyToPersist,
+          );
+        }
+      }
+    }
+  }
 }
 
 export default FieldResponse;

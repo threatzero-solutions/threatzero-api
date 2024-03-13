@@ -1,13 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { CreateThreatAssessmentDto } from './dto/create-threat-assessment.dto';
-import { UpdateThreatAssessmentDto } from './dto/update-threat-assessment.dto';
-import { BaseEntityService } from 'src/common/base-entity.service';
+import { Injectable, Scope } from '@nestjs/common';
 import { ThreatAssessment } from './entities/threat-assessment.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { THREAT_ASSESSMENT_FORM_SLUG } from 'src/common/constants/form.constants';
+import { BaseFormsSubmissionsService } from 'src/forms/forms/common/base-form-submissions.service';
 
-@Injectable()
-export class ThreatAssessmentsService extends BaseEntityService<ThreatAssessment> {
+@Injectable({ scope: Scope.REQUEST })
+export class ThreatAssessmentsService extends BaseFormsSubmissionsService<ThreatAssessment> {
+  formSlug = THREAT_ASSESSMENT_FORM_SLUG;
+  noteEntityFieldName = 'assessmentId';
+
   constructor(
     @InjectRepository(ThreatAssessment)
     private assessmentsRepository: Repository<ThreatAssessment>,

@@ -40,7 +40,8 @@ export class ThreatAssessment extends Base {
   status: AssessmentStatus;
 
   @OneToOne(() => FormSubmission, {
-    eager: true,
+    // Use forms service to validate and save submissions.
+    eager: false,
     cascade: true,
   })
   @JoinColumn()
