@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  Res,
 } from '@nestjs/common';
 import { TipsService } from './tips.service';
 import { CreateTipDto } from './dto/create-tip.dto';
@@ -17,24 +18,29 @@ import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { Tip, TipStatus } from './entities/tip.entity';
 import { GetSubmissionCountsQueryDto } from 'src/forms/forms/dto/get-submission-counts-query.dto';
+import { CreateNoteDto } from 'src/users/dto/create-note.dto';
+import { Response } from 'express';
+import { GetPresignedUploadUrlsDto } from 'src/forms/forms/dto/get-presigned-upload-urls.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('tips')
 @CheckPolicies(new EntityAbilityChecker(Tip))
 export class TipsController {
   constructor(private readonly tipsService: TipsService) {}
 
+  @Throttle({ default: { limit: 3, ttl: 3 * 60 * 1000 } })
   @Public()
-  @Post()
+  @Post('submit')
   create(@Body() createTipDto: CreateTipDto) {
     return this.tipsService.create(createTipDto);
   }
 
-  @Get()
+  @Get('submissions')
   findAll(@Query() query: TipQueryDto) {
     return this.tipsService.findAll(query);
   }
 
-  @Get(':id')
+  @Get('submissions/:id')
   findOne(@Param('id') id: string) {
     return this.tipsService.findOne(id);
   }
@@ -45,14 +51,53 @@ export class TipsController {
     return this.tipsService.getForm();
   }
 
-  @Patch(':id')
+  @Get('submissions/:id/pdf')
+  async generateFormPDF(@Param('id') id: string, @Res() response: Response) {
+    const pdf = await this.tipsService.generateSubmissionPDF(id);
+    response.setHeader('Content-Type', 'application/pdf');
+    pdf.pipe(response);
+    pdf.end();
+  }
+
+  @Patch('submissions/:id')
   update(@Param('id') id: string, @Body() updateTipDto: UpdateTipDto) {
     return this.tipsService.update(id, updateTipDto);
   }
 
-  @Delete(':id')
+  @Delete('submissions/:id')
   remove(@Param('id') id: string) {
     return this.tipsService.remove(id);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 30 * 1000 } })
+  @Public()
+  @Post('submissions/presigned-upload-urls')
+  getPresignedUploadUrls(@Body() body: GetPresignedUploadUrlsDto) {
+    return this.tipsService.getPresignedUploadUrls(body);
+  }
+
+  @Post('notes')
+  addNote(@Param('tipId') tipId: string, @Body() createNoteDto: CreateNoteDto) {
+    return this.tipsService.addNote(tipId, createNoteDto);
+  }
+
+  @Get('notes')
+  getNotes(@Param('tipId') tipId: string) {
+    return this.tipsService.getNotes(tipId);
+  }
+
+  @Patch('notes/:noteId')
+  editNote(
+    @Param('tipId') tipId: string,
+    @Param('noteId') noteId: string,
+    @Body() createNoteDto: CreateNoteDto,
+  ) {
+    return this.tipsService.editNote(tipId, noteId, createNoteDto);
+  }
+
+  @Delete('notes/:tipId')
+  removeNote(@Param('tipId') tipId: string, @Param('noteId') noteId: string) {
+    return this.tipsService.removeNote(tipId, noteId);
   }
 
   @Get('stats')

@@ -1,6 +1,13 @@
 import { registerAs } from '@nestjs/config';
 import { envToJson } from './utils';
-import { IsArray, IsIn, IsPort, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsPort,
+  IsString,
+  IsUrl,
+} from 'class-validator';
 
 export class GeneralConfig {
   @IsArray({
@@ -35,6 +42,10 @@ export class GeneralConfig {
 
   @IsPort()
   port: number | string;
+
+  @IsUrl()
+  @IsOptional()
+  threatzeroLogoUrl?: string;
 }
 
 export default registerAs('general', () => {
@@ -83,5 +94,6 @@ export default registerAs('general', () => {
     referrerPolicy: process.env.REFERRER_POLICY ?? 'no-referrer',
     host: process.env.HOST || 'localhost',
     port: parseInt(process.env.PORT ?? '3000') || 3000,
+    threatzeroLogoUrl: process.env.THREATZERO_LOGO_URL,
   };
 });

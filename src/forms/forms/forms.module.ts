@@ -8,6 +8,7 @@ import { FieldGroupsService } from '../field-groups/field-groups.service';
 import { S3Service } from 'src/aws/s3/s3.service';
 import { UsersModule } from 'src/users/users.module';
 import { MediaModule } from 'src/media/media.module';
+import { FormsPdfService } from './forms-pdf.service';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { MediaModule } from 'src/media/media.module';
     MediaModule,
   ],
   controllers: [FormsController],
-  providers: [FormsService, FieldGroupsService, S3Service],
+  providers: [FormsService, FieldGroupsService, S3Service, FormsPdfService],
   exports: [FormsService, UsersModule],
 })
 export class FormsModule {}

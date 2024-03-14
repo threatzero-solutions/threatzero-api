@@ -10,11 +10,16 @@ import { Form, FormState } from './entities/form.entity';
 import { FormSubmission } from './entities/form-submission.entity';
 import { ConfigService } from '@nestjs/config';
 import { S3Config } from 'src/config/aws.config';
-import { CopyObjectCommand } from '@aws-sdk/client-s3';
+import { CopyObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { S3Service } from 'src/aws/s3/s3.service';
 import { MediaService } from 'src/media/media.service';
 import { FieldGroupsService } from '../field-groups/field-groups.service';
 import { Request } from 'express';
+import { FormsPdfService } from './forms-pdf.service';
+import { GetPresignedUploadUrlsDto } from './dto/get-presigned-upload-urls.dto';
+import { v4 as uuidv4 } from 'uuid';
+import mime from 'mime';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
 export class FormsService extends BaseEntityService<Form> {
@@ -29,6 +34,7 @@ export class FormsService extends BaseEntityService<Form> {
     private config: ConfigService,
     private s3: S3Service,
     private mediaService: MediaService,
+    private formsPdfService: FormsPdfService,
   ) {
     super();
   }
@@ -36,8 +42,6 @@ export class FormsService extends BaseEntityService<Form> {
   getRepository() {
     return this.formsRepository;
   }
-
-  // TODO: Add file preload function to add to various form controllers.
 
   async findOne(id: Form['id']) {
     return this.getFormBy({ id });
@@ -139,6 +143,20 @@ export class FormsService extends BaseEntityService<Form> {
     return form.validateSubmission(formSubmissionDto, request);
   }
 
+  async generateFormPDF(formId: Form['id']) {
+    const form = await this.findOne(formId);
+    return this.formsPdfService.formSubmissionToPDF(form);
+  }
+
+  async generateSubmissionPDF(submissionId: FormSubmission['id']) {
+    const submission = await this.formSubmissionsRepository.findOneOrFail({
+      where: { id: submissionId },
+      relations: ['fieldResponses', 'form'],
+    });
+    const form = await this.findOne(submission.form.id);
+    return this.formsPdfService.formSubmissionToPDF(form, submission);
+  }
+
   async getFormBy(where?: FindOptionsWhere<Form>) {
     const form = await this.formsRepository.findOne({
       where,
@@ -163,6 +181,37 @@ export class FormsService extends BaseEntityService<Form> {
       ...form,
       groups,
     } as Form;
+  }
+
+  async getPresignedUploadUrls(
+    getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
+  ) {
+    return await Promise.all(
+      getPresignedUploadUrlsDto.files.map(async (f) => {
+        let ext: string | undefined;
+        if (f.filename.includes('.')) {
+          ext = f.filename.split('.').pop();
+        } else if (f.mimetype) {
+          ext = mime.extension(f.mimetype);
+        }
+        let key = uuidv4().replace(/-/g, '') + (ext ? `.${ext}` : '');
+        key = `tmp/user-files/${key}`;
+
+        const cmd = new PutObjectCommand({
+          Bucket:
+            this.config.getOrThrow<S3Config>('aws.s3').buckets.uploadedMedia
+              .name,
+          Key: key,
+        });
+
+        return {
+          url: await getSignedUrl(this.s3.client, cmd, { expiresIn: 5 * 60 }), // 5 minutes
+          key,
+          filename: f.filename,
+          fileId: f.fileId,
+        };
+      }),
+    );
   }
 
   private async persistUpload(key: string) {

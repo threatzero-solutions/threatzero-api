@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  Res,
 } from '@nestjs/common';
 import { ThreatAssessmentsService } from './threat-assessments.service';
 import { CreateThreatAssessmentDto } from './dto/create-threat-assessment.dto';
@@ -20,6 +21,8 @@ import {
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { ThreatAssessmentQueryDto } from './dto/threat-assessment-query.dto';
 import { GetSubmissionCountsQueryDto } from 'src/forms/forms/dto/get-submission-counts-query.dto';
+import { Response } from 'express';
+import { GetPresignedUploadUrlsDto } from 'src/forms/forms/dto/get-presigned-upload-urls.dto';
 
 @Controller('threat-assessments')
 @CheckPolicies(new EntityAbilityChecker(ThreatAssessment))
@@ -28,17 +31,17 @@ export class ThreatAssessmentsController {
     private readonly threatAssessmentsService: ThreatAssessmentsService,
   ) {}
 
-  @Post()
+  @Post('submissions')
   create(@Body() createThreatAssessmentDto: CreateThreatAssessmentDto) {
     return this.threatAssessmentsService.create(createThreatAssessmentDto);
   }
 
-  @Get()
+  @Get('submissions')
   findAll(@Query() query: ThreatAssessmentQueryDto) {
     return this.threatAssessmentsService.findAll(query);
   }
 
-  @Get(':id')
+  @Get('submissions/:id')
   findOne(@Param('id') id: string) {
     return this.threatAssessmentsService.findOne(id);
   }
@@ -48,7 +51,15 @@ export class ThreatAssessmentsController {
     return this.threatAssessmentsService.getForm();
   }
 
-  @Patch(':id')
+  @Get('submissions/:id/pdf')
+  async generateFormPDF(@Param('id') id: string, @Res() response: Response) {
+    const pdf = await this.threatAssessmentsService.generateSubmissionPDF(id);
+    response.setHeader('Content-Type', 'application/pdf');
+    pdf.pipe(response);
+    pdf.end();
+  }
+
+  @Patch('submissions/:id')
   update(
     @Param('id') id: string,
     @Body() updateThreatAssessmentDto: UpdateThreatAssessmentDto,
@@ -56,9 +67,14 @@ export class ThreatAssessmentsController {
     return this.threatAssessmentsService.update(id, updateThreatAssessmentDto);
   }
 
-  @Delete(':id')
+  @Delete('submissions/:id')
   remove(@Param('id') id: string) {
     return this.threatAssessmentsService.remove(id);
+  }
+
+  @Post('submissions/presigned-upload-urls')
+  getPresignedUploadUrls(@Body() body: GetPresignedUploadUrlsDto) {
+    return this.threatAssessmentsService.getPresignedUploadUrls(body);
   }
 
   @Post('notes')

@@ -36,6 +36,4 @@ export class ThreatAssessmentsService extends BaseFormsSubmissionsService<Threat
       unitSlug: this.request.user.unitSlug,
     });
   }
-
-  // TODO: Build PDF generator
 }

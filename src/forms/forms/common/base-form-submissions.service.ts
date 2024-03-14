@@ -14,10 +14,12 @@ import { Base } from 'src/common/base.entity';
 import { CreateFormSubmissionDto } from '../dto/create-form-submission.dto';
 import { GetSubmissionCountsQueryDto } from '../dto/get-submission-counts-query.dto';
 import dayjs from 'dayjs';
+import { FormSubmission } from '../entities/form-submission.entity';
+import { GetPresignedUploadUrlsDto } from '../dto/get-presigned-upload-urls.dto';
 
 export type FormSubmissionEntity = ObjectLiteral & {
   id: Base['id'];
-  submission: CreateFormSubmissionDto;
+  submission: FormSubmission;
   unit: Unit;
   notes: Note[];
 };
@@ -50,7 +52,10 @@ export class BaseFormsSubmissionsService<
   }
 
   getQb(query?: BaseQueryDto | undefined) {
-    return scopeToOrganizationLevel(this.request, super.getQb(query));
+    return scopeToOrganizationLevel(
+      this.request,
+      super.getQb(query),
+    ).leftJoinAndSelect(`${this.alias}.submission`, 'submission');
   }
 
   async getForm() {
@@ -70,7 +75,7 @@ export class BaseFormsSubmissionsService<
     return super.create(createSubmissionEntityDto);
   }
 
-  async update(id: string, updateEntityDto: DeepPartial<E>) {
+  async update(id: E['id'], updateEntityDto: DeepPartial<E>) {
     if (updateEntityDto.submission) {
       await this.formsService.updateSubmission(
         this.formSlug,
@@ -79,6 +84,11 @@ export class BaseFormsSubmissionsService<
       );
     }
     return super.update(id, updateEntityDto);
+  }
+
+  async generateSubmissionPDF(id: E['id']) {
+    const entity = await this.findOne(id);
+    return await this.formsService.generateSubmissionPDF(entity.submission.id);
   }
 
   async getSubmissionCounts(
@@ -126,6 +136,12 @@ export class BaseFormsSubmissionsService<
         ),
       },
     };
+  }
+
+  async getPresignedUploadUrls(
+    getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
+  ) {
+    return this.formsService.getPresignedUploadUrls(getPresignedUploadUrlsDto);
   }
 
   async addNote(entityId: E['id'], createNoteDto: CreateNoteDto) {
