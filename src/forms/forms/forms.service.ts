@@ -1,13 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateFormDto } from './dto/create-form.dto';
-import { UpdateFormDto } from './dto/update-form.dto';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { DataSource, DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Form } from './entities/form.entity';
+import { Form, FormState } from './entities/form.entity';
 import { FormSubmission } from './entities/form-submission.entity';
 import { ConfigService } from '@nestjs/config';
-import { CloudFrontDistributionConfig, S3Config } from 'src/config/aws.config';
+import { S3Config } from 'src/config/aws.config';
 import { CopyObjectCommand } from '@aws-sdk/client-s3';
 import { S3Service } from 'src/aws/s3/s3.service';
 import { MediaService } from 'src/media/media.service';
@@ -16,6 +18,8 @@ import { Request } from 'express';
 
 @Injectable()
 export class FormsService extends BaseEntityService<Form> {
+  alias = 'form';
+
   constructor(
     @InjectRepository(Form) private formsRepository: Repository<Form>,
     @InjectRepository(FormSubmission)
@@ -33,11 +37,57 @@ export class FormsService extends BaseEntityService<Form> {
     return this.formsRepository;
   }
 
-  // TODO: Add additional form validation.
-  // TODO: Add "basic" form finder that returns all latest versions
-  // of each form, grouped by slug.
   // TODO: Add file preload function to add to various form controllers.
-  // TODO: Add create new draft function.
+
+  async findOne(id: Form['id']) {
+    return this.getFormBy({ id });
+  }
+
+  async findAllGroupedBySlug() {
+    return this.getQb()
+      .where((qb) => {
+        const q = qb
+          .subQuery()
+          .from(Form, 'f')
+          .select('f.slug')
+          .addSelect('MAX(f.version)')
+          .groupBy('f.slug')
+          .getQuery();
+        return `(form.slug, form.version) IN ${q}`;
+      })
+      .getMany();
+  }
+
+  async createNewDraft(id: Form['id']) {
+    const form = await this.findOne(id);
+
+    const newDraft = await this.dataSource.transaction(async (manager) => {
+      return await form.asNewDraft(manager);
+    });
+
+    return await this.findOne(newDraft.id);
+  }
+
+  async update(id: Form['id'], updateFormDto: DeepPartial<Form>) {
+    const form = await this.getQbSingle(id).getOneOrFail();
+
+    // Validate changes.
+    updateFormDto = await form.validateChanges(updateFormDto, this.getQb());
+
+    // Save changes if validation passes.
+    const entity = await this.getRepository().save({
+      id,
+      ...updateFormDto,
+    });
+    return await this.mapResult(entity);
+  }
+
+  protected async beforeRemove(id: Form['id']) {
+    const form = await this.findOne(id);
+    if (form.state === FormState.PUBLISHED) {
+      throw new BadRequestException('Cannot delete published form.');
+    }
+  }
 
   async createSubmission(
     formSlug: string,
@@ -51,7 +101,8 @@ export class FormsService extends BaseEntityService<Form> {
     );
     const submission =
       this.formSubmissionsRepository.create(validatedSubmission);
-    this.dataSource.transaction(async (manager) => {
+
+    await this.dataSource.transaction(async (manager) => {
       await manager.save(submission);
       await submission.persistUploads(this.persistUpload);
     });

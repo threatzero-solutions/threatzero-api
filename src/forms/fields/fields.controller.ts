@@ -12,7 +12,7 @@ import { FieldsService } from './fields.service';
 import { CreateFieldDto } from './dto/create-field.dto';
 import { UpdateFieldDto } from './dto/update-field.dto';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import Field from './entities/field.entity';
+import { Field } from './entities/field.entity';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 

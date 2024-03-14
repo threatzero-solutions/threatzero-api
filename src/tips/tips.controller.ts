@@ -15,7 +15,8 @@ import { Public } from 'src/auth/auth.guard';
 import { TipQueryDto } from './dto/tip-query.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
-import { Tip } from './entities/tip.entity';
+import { Tip, TipStatus } from './entities/tip.entity';
+import { GetSubmissionCountsQueryDto } from 'src/forms/forms/dto/get-submission-counts-query.dto';
 
 @Controller('tips')
 @CheckPolicies(new EntityAbilityChecker(Tip))
@@ -38,6 +39,12 @@ export class TipsController {
     return this.tipsService.findOne(id);
   }
 
+  @Public()
+  @Get('form')
+  getForm() {
+    return this.tipsService.getForm();
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateTipDto: UpdateTipDto) {
     return this.tipsService.update(id, updateTipDto);
@@ -46,5 +53,13 @@ export class TipsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.tipsService.remove(id);
+  }
+
+  @Get('stats')
+  getCountStats(@Query() query: GetSubmissionCountsQueryDto) {
+    return this.tipsService.getSubmissionCounts(
+      query,
+      Object.values(TipStatus),
+    );
   }
 }

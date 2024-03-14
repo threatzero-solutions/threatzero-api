@@ -18,9 +18,10 @@ import { Action } from './actions';
 import { ThreatAssessment } from 'src/threat-assessments/entities/threat-assessment.entity';
 import { Form } from 'src/forms/forms/entities/form.entity';
 import { FieldGroup } from 'src/forms/field-groups/entities/field-group.entity';
-import Field from 'src/forms/fields/entities/field.entity';
+import { Field } from 'src/forms/fields/entities/field.entity';
 import { Tip } from 'src/tips/entities/tip.entity';
 import { Resource } from 'src/resources/entities/resource.entity';
+import { VideoEvent } from 'src/media/entities/video-event.entity';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 
@@ -46,13 +47,16 @@ type TipSubjectTypes = InferSubjects<(typeof TipSubjects)[number]>;
 const ResourceSubjects = [Resource];
 type ResourceSubjectTypes = InferSubjects<(typeof ResourceSubjects)[number]>;
 
+type MediaSubjects = InferSubjects<typeof VideoEvent>;
+
 type AllSubjectTypes =
   | TrainingSubjectTypes
   | OrganizationsSubjectTypes
   | ThreatAssessmentSubjectTypes
   | FormsSubjectTypes
   | TipSubjectTypes
-  | ResourceSubjectTypes;
+  | ResourceSubjectTypes
+  | MediaSubjects;
 
 @Injectable()
 export class CaslAbilityFactory {
@@ -129,6 +133,11 @@ export class CaslAbilityFactory {
 
     // Anyone can read resources.
     can(Action.Read, ResourceSubjects);
+
+    // --------- MEDIA ---------
+
+    // Anyone can create video events.
+    can(Action.Create, VideoEvent);
 
     return build({
       detectSubjectType: (item) =>

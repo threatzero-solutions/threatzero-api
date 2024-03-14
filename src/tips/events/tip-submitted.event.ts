@@ -1,7 +1,7 @@
 import { Tip } from '../entities/tip.entity';
 
 export class TipSubmittedEvent {
-  tipId: string;
+  tipId: Tip['id'];
 
   static forTip(tip: Tip) {
     const event = new TipSubmittedEvent();

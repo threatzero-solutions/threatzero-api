@@ -12,6 +12,8 @@ import { scopeToOrganizationLevel } from 'src/organizations/common/organizations
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { Base } from 'src/common/base.entity';
 import { CreateFormSubmissionDto } from '../dto/create-form-submission.dto';
+import { GetSubmissionCountsQueryDto } from '../dto/get-submission-counts-query.dto';
+import dayjs from 'dayjs';
 
 export type FormSubmissionEntity = ObjectLiteral & {
   id: Base['id'];
@@ -77,6 +79,53 @@ export class BaseFormsSubmissionsService<
       );
     }
     return super.update(id, updateEntityDto);
+  }
+
+  async getSubmissionCounts(
+    query: GetSubmissionCountsQueryDto,
+    statuses: E['status'][],
+  ) {
+    let qb = this.getQb().select('COUNT(*)', 'total');
+    const alias = this.alias ?? qb.alias;
+
+    query.thresholds.forEach((threshold) => {
+      qb = qb.addSelect(
+        `COUNT(*) FILTER(WHERE ${alias}.createdOn > '${dayjs()
+          .subtract(threshold, 'day')
+          .toISOString()}')`,
+        `days${threshold}`,
+      );
+    });
+
+    statuses.forEach((status) => {
+      qb = qb.addSelect(
+        `COUNT(*) FILTER(WHERE ${alias}.status = '${status}')`,
+        status,
+      );
+    });
+
+    const data = await qb.getRawOne();
+
+    return {
+      total: +(data?.total ?? '0'),
+      subtotals: {
+        newSince: Object.keys(query.thresholds).reduce(
+          (acc, threshold) => {
+            const key = `days${threshold}`;
+            acc[key] = +(data?.[key] ?? '0');
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
+        statuses: Object.values(statuses).reduce(
+          (acc, key) => {
+            acc[key] = +(data?.[key] ?? '0');
+            return acc;
+          },
+          {} as Record<E['status'], number>,
+        ),
+      },
+    };
   }
 
   async addNote(entityId: E['id'], createNoteDto: CreateNoteDto) {

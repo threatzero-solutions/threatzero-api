@@ -10,6 +10,10 @@ import {
   OneToMany,
   Relation,
   DeepPartial,
+  EntityManager,
+  SelectQueryBuilder,
+  Not,
+  Equal,
 } from 'typeorm';
 import { FormSubmission } from './form-submission.entity';
 import { Request } from 'express';
@@ -56,6 +60,56 @@ export class Form extends Base {
 
   @Column({ default: FormState.DRAFT })
   state: FormState;
+
+  async validateChanges(
+    changes: DeepPartial<Form>,
+    qb: SelectQueryBuilder<Form>,
+  ) {
+    if (this.state === FormState.PUBLISHED) {
+      if (changes.state === FormState.DRAFT) {
+        throw new BadRequestException(
+          'Form cannot be changed from published to draft.',
+        );
+      }
+
+      changes.version = this.version;
+    } else if (changes.slug && changes.state === FormState.PUBLISHED) {
+      const previousForm = await qb
+        .select('form.version')
+        .where({ slug: changes.slug, version: Not(Equal(0)) })
+        .orderBy({ version: 'DESC' })
+        .getOne();
+
+      if (previousForm?.version) {
+        changes.version = previousForm.version + 1;
+      } else {
+        changes.version = 1;
+      }
+    }
+
+    return changes;
+  }
+
+  async asNewDraft(manager: EntityManager) {
+    let newDraft = manager.create(Form, {
+      ...this,
+      id: undefined,
+      version: 0,
+      state: FormState.DRAFT,
+    });
+
+    newDraft = await manager.save(newDraft);
+
+    if (this.fields) {
+      await Promise.all(this.fields.map((f) => f.clone(manager, newDraft)));
+    }
+
+    if (this.groups) {
+      await Promise.all(this.groups.map((g) => g.clone(manager, newDraft)));
+    }
+
+    return newDraft;
+  }
 
   getAllFields() {
     const allFields = [...this.fields];

@@ -1,5 +1,5 @@
 import { SaveByIdDto } from 'src/common/dto.utils';
-import Field from '../entities/field.entity';
+import { Field } from '../entities/field.entity';
 import { IsOptional, IsNotEmpty, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 

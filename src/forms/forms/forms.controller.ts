@@ -26,9 +26,19 @@ export class FormsController {
     return this.formsService.create(createFormDto);
   }
 
+  @Post(':id/new-draft')
+  createNewDraft(@Param('id') id: string) {
+    return this.formsService.createNewDraft(id);
+  }
+
   @Get()
   findAll(@Query() query: BaseQueryDto) {
     return this.formsService.findAll(query);
+  }
+
+  @Get('grouped-by-slug')
+  findAllGroupedBySlug() {
+    return this.formsService.findAllGroupedBySlug();
   }
 
   @Get(':id')

@@ -10,6 +10,7 @@ import {
   TreeChildren,
   TreeParent,
   type Relation,
+  EntityManager,
 } from 'typeorm';
 
 @Entity()
@@ -44,4 +45,21 @@ export class FieldGroup extends Base {
 
   @TreeChildren()
   childGroups: Relation<FieldGroup>[];
+
+  async clone(manager: EntityManager, form?: Form, parentGroup?: FieldGroup) {
+    let newDraft = manager.create(FieldGroup, {
+      ...this,
+      id: undefined,
+      form,
+      parentGroup,
+    });
+    newDraft = await manager.save(newDraft);
+
+    await Promise.all(
+      this.fields.map((f) => f.clone(manager, undefined, newDraft)),
+    );
+    await Promise.all(
+      this.childGroups.map((g) => g.clone(manager, undefined, newDraft)),
+    );
+  }
 }

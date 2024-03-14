@@ -10,12 +10,11 @@ import { TipSubmittedEvent } from './events/tip-submitted.event';
 import { TIP_SUBMITTED_EVENT } from './listeners/submit-tip.listener';
 import { LocationsService } from 'src/organizations/locations/locations.service';
 
-// TODO: Build tips stats.
-
 @Injectable({ scope: Scope.REQUEST })
 export class TipsService extends BaseFormsSubmissionsService<Tip> {
   formSlug = TIP_SUBMISSION_FORM_SLUG;
   noteEntityFieldName = 'tipId';
+  alias = 'tip';
 
   constructor(
     @InjectRepository(Tip) private tipsRepository: Repository<Tip>,

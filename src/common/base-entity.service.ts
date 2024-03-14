@@ -46,7 +46,10 @@ export class BaseEntityService<E extends ObjectLiteral> {
   }
 
   async create(createEntityDto: DeepPartial<E>, ...args: unknown[]) {
-    return this.getRepository().save(createEntityDto);
+    await this.beforeCreate(createEntityDto, ...args);
+    const entity = await this.getRepository().save(createEntityDto);
+    await this.afterCreate(entity, ...args);
+    return await this.mapResult(entity);
   }
 
   async findAll(...args: unknown[]): Promise<E[]>;
@@ -86,10 +89,26 @@ export class BaseEntityService<E extends ObjectLiteral> {
     if (!updatedEntity) {
       throw new NotFoundException();
     }
-    return await this.getRepository().save(updatedEntity);
+    await this.beforeUpdate(updatedEntity, ...args);
+    const entity = await this.getRepository().save(updatedEntity);
+    await this.afterUpdate(entity, ...args);
+    return await this.mapResult(entity);
   }
 
   async remove(id: NonNullable<E['id']>, ...args: unknown[]) {
-    return this.getRepository().delete({ id });
+    await this.beforeRemove(id, ...args);
+    const res = await this.getRepository().delete({ id });
+    await this.afterRemove(id, ...args);
+    return res;
   }
+
+  protected async beforeCreate(
+    createEntityDto: DeepPartial<E>,
+    ...args: unknown[]
+  ) {}
+  protected async afterCreate(entity: E, ...args: unknown[]) {}
+  protected async beforeUpdate(entity: E, ...args: unknown[]) {}
+  protected async afterUpdate(entity: E, ...args: unknown[]) {}
+  protected async beforeRemove(id: E['id'], ...args: unknown[]) {}
+  protected async afterRemove(id: E['id'], ...args: unknown[]) {}
 }

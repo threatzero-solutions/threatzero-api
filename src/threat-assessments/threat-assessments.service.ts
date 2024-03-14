@@ -10,6 +10,7 @@ import { CreateFormSubmissionDto } from 'src/forms/forms/dto/create-form-submiss
 export class ThreatAssessmentsService extends BaseFormsSubmissionsService<ThreatAssessment> {
   formSlug = THREAT_ASSESSMENT_FORM_SLUG;
   noteEntityFieldName = 'assessmentId';
+  alias = 'assessment';
 
   constructor(
     @InjectRepository(ThreatAssessment)
@@ -36,6 +37,5 @@ export class ThreatAssessmentsService extends BaseFormsSubmissionsService<Threat
     });
   }
 
-  // TODO: Build assessment stats
   // TODO: Build PDF generator
 }

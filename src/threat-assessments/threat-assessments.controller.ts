@@ -13,9 +13,13 @@ import { CreateThreatAssessmentDto } from './dto/create-threat-assessment.dto';
 import { UpdateThreatAssessmentDto } from './dto/update-threat-assessment.dto';
 import { CreateNoteDto } from 'src/users/dto/create-note.dto';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
-import { ThreatAssessment } from './entities/threat-assessment.entity';
+import {
+  AssessmentStatus,
+  ThreatAssessment,
+} from './entities/threat-assessment.entity';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { ThreatAssessmentQueryDto } from './dto/threat-assessment-query.dto';
+import { GetSubmissionCountsQueryDto } from 'src/forms/forms/dto/get-submission-counts-query.dto';
 
 @Controller('threat-assessments')
 @CheckPolicies(new EntityAbilityChecker(ThreatAssessment))
@@ -37,6 +41,11 @@ export class ThreatAssessmentsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.threatAssessmentsService.findOne(id);
+  }
+
+  @Get('form')
+  getForm() {
+    return this.threatAssessmentsService.getForm();
   }
 
   @Patch(':id')
@@ -84,5 +93,13 @@ export class ThreatAssessmentsController {
     @Param('noteId') noteId: string,
   ) {
     return this.threatAssessmentsService.removeNote(assessmentId, noteId);
+  }
+
+  @Get('stats')
+  getCountStats(@Query() query: GetSubmissionCountsQueryDto) {
+    return this.threatAssessmentsService.getSubmissionCounts(
+      query,
+      Object.values(AssessmentStatus),
+    );
   }
 }

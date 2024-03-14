@@ -47,17 +47,6 @@ export class BaseQueryDto {
     return retQb;
   }
 
-  private toDbValue(fieldName: string, alias?: string): string {
-    const fields = [fieldName];
-    if (alias) {
-      fields.unshift(alias);
-    }
-    return fields
-      .map((c) => `"${c}"`)
-      .join('.')
-      .replace(/""/g, '"');
-  }
-
   private applyJoins<T extends ObjectLiteral>(
     qb: SelectQueryBuilder<T>,
     fieldKey: string,
