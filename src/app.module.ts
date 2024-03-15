@@ -5,7 +5,6 @@ import { TrainingModule } from './training/training.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import generalConfig from './config/general.config';
 import databaseConfig from './config/database.config';
-import { validate } from './config/env.validation';
 import awsConfig from './config/aws.config';
 import notificationsConfig from './config/notifications.config';
 import redisConfig, { RedisConfig } from './config/redis.config';
@@ -23,7 +22,7 @@ import { MediaModule } from './media/media.module';
 import { TipsModule } from './tips/tips.module';
 import { UsersModule } from './users/users.module';
 import { AwsModule } from './aws/aws.module';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, RouterModule } from '@nestjs/core';
 import Redis from 'ioredis';
 import { BullModule } from '@nestjs/bullmq';
 import { ConnectionOptions as BullMQConnectionOptions } from 'bullmq';
@@ -31,6 +30,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ResourcesModule } from './resources/resources.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -48,7 +48,6 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
         vimeoConfig,
         mediaConfig,
       ],
-      validate,
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -101,6 +100,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     UsersModule,
     AwsModule,
     NotificationsModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

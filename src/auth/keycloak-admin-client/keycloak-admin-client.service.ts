@@ -50,6 +50,8 @@ export const keycloakAdminClientFactory = async (config: ConfigService) => {
     () => refreshAuth(keycloakClient, adminClientConfig),
     adminClientConfig.refreshIntervalSeconds * 1000,
   );
+
+  return keycloakClient;
 };
 
 @Injectable()

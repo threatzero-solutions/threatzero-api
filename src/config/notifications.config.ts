@@ -1,42 +1,59 @@
 import { registerAs } from '@nestjs/config';
 import { Type } from 'class-transformer';
-import { ValidateNested } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { validate } from './env.validation';
 
-class EmailTemplatesConfig {
-  newTip: string;
+export class EmailTemplatesConfig {
+  @IsOptional()
+  @IsString()
+  newTip: string = 'tz-new-tip-notification';
 }
 
-class EmailNotificationsConfig {
-  defaultFrom: string;
+export class EmailNotificationsConfig {
+  @IsOptional()
+  @IsString()
+  defaultFrom: string = 'ThreatZero <tech@threatzero.org>';
 
   @ValidateNested()
   @Type(() => EmailTemplatesConfig)
+  @IsNotEmpty()
   templates: EmailTemplatesConfig;
 }
 
-class SmsNotificationsConfig {
+export class SmsNotificationsConfig {
+  @IsNotEmpty()
+  @IsString()
   originationPhoneNumber: string;
 }
 
 export class NotificationsConfig {
   @ValidateNested()
   @Type(() => EmailNotificationsConfig)
+  @IsNotEmpty()
   email: EmailNotificationsConfig;
 
   @ValidateNested()
   @Type(() => SmsNotificationsConfig)
+  @IsNotEmpty()
   sms: SmsNotificationsConfig;
 }
 
-export default registerAs('notifications', () => ({
-  email: {
-    defaultFrom: process.env.NOTIFICATIONS_EMAIL_DEFAULT_FROM,
-    templates: {
-      newTip: process.env.NOTIFICATIONS_EMAIL_TEMPLATES_NEW_TIP,
+export default registerAs('notifications', () =>
+  validate(NotificationsConfig, {
+    email: {
+      defaultFrom: process.env.NOTIFICATIONS_EMAIL_DEFAULT_FROM,
+      templates: {
+        newTip: process.env.NOTIFICATIONS_EMAIL_TEMPLATES_NEW_TIP,
+      },
     },
-  },
-  sms: {
-    originationPhoneNumber:
-      process.env.NOTIFICATIONS_SMS_ORIGINATION_PHONE_NUMBER,
-  },
-}));
+    sms: {
+      originationPhoneNumber:
+        process.env.NOTIFICATIONS_SMS_ORIGINATION_PHONE_NUMBER,
+    },
+  }),
+);

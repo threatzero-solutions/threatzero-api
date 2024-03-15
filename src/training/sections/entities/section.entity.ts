@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { Base } from 'src/common/base.entity';
-import { Course } from 'src/training/courses/entities/course.entity';
+import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { TrainingMetadata } from 'src/training/common/entities/training-metadata.entity';
 import {
   Entity,
@@ -21,7 +21,7 @@ export enum TrainingRepeats {
 }
 
 @Entity()
-export class Section extends Base {
+export class TrainingSection extends Base {
   @Column(() => TrainingMetadata)
   metadata: TrainingMetadata;
 
@@ -40,10 +40,10 @@ export class Section extends Base {
   @Column({ nullable: true })
   courseId: string | null;
 
-  @ManyToOne(() => Course, (course) => course.sections, {
+  @ManyToOne(() => TrainingCourse, (course) => course.sections, {
     onDelete: 'CASCADE',
   })
-  course: Relation<Course>;
+  course: Relation<TrainingCourse>;
 
   @OneToMany(() => SectionItem, (sectionItem) => sectionItem.section, {
     eager: true,

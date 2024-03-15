@@ -12,12 +12,12 @@ import { SectionsService } from './sections.service';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
-import { Section } from './entities/section.entity';
+import { TrainingSection } from './entities/section.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
 @Controller('training/courses/:courseId/sections')
-@CheckPolicies(new EntityAbilityChecker(Section))
+@CheckPolicies(new EntityAbilityChecker(TrainingSection))
 export class SectionsController {
   constructor(private readonly sectionsService: SectionsService) {}
 

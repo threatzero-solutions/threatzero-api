@@ -1,6 +1,6 @@
 import { OrganizationBase } from 'src/organizations/common/entities/organizations-base.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
-import { Course } from 'src/training/courses/entities/course.entity';
+import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { Entity, Column, OneToMany, Relation, ManyToMany } from 'typeorm';
 
 @Entity()
@@ -11,6 +11,6 @@ export class Organization extends OrganizationBase {
   @OneToMany(() => Unit, (unit) => unit.organization)
   units: Relation<Unit>[];
 
-  @ManyToMany(() => Course, (course) => course.organizations)
-  courses: Relation<Course>[];
+  @ManyToMany(() => TrainingCourse, (course) => course.organizations)
+  courses: Relation<TrainingCourse>[];
 }

@@ -23,8 +23,9 @@ import { ThreatAssessmentQueryDto } from './dto/threat-assessment-query.dto';
 import { GetSubmissionCountsQueryDto } from 'src/forms/forms/dto/get-submission-counts-query.dto';
 import { Response } from 'express';
 import { GetPresignedUploadUrlsDto } from 'src/forms/forms/dto/get-presigned-upload-urls.dto';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
-@Controller('threat-assessments')
+@Controller('assessments')
 @CheckPolicies(new EntityAbilityChecker(ThreatAssessment))
 export class ThreatAssessmentsController {
   constructor(
@@ -86,8 +87,11 @@ export class ThreatAssessmentsController {
   }
 
   @Get('notes')
-  getNotes(@Param('assessmentId') assessmentId: string) {
-    return this.threatAssessmentsService.getNotes(assessmentId);
+  getNotes(
+    @Param('assessmentId') assessmentId: string,
+    @Query() query: BaseQueryDto,
+  ) {
+    return this.threatAssessmentsService.getNotes(query, assessmentId);
   }
 
   @Patch('notes/:noteId')

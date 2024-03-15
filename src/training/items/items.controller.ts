@@ -12,12 +12,12 @@ import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
-import { Item } from './entities/item.entity';
+import { TrainingItem } from './entities/item.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
 @Controller('training/items')
-@CheckPolicies(new EntityAbilityChecker(Item))
+@CheckPolicies(new EntityAbilityChecker(TrainingItem))
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) {}
 

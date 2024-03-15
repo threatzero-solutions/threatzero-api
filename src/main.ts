@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { type StatelessUser } from './auth/user.factory';
 import { TypeORMErrorsFilter } from './common/typeorm-errors.filter';
+import helmet from 'helmet';
+import helmetConfig from './config/helmet.config';
 
 declare global {
   namespace Express {
@@ -14,6 +16,14 @@ declare global {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Cors.
+  app.enableCors();
+
+  // Configure Helmet, for CSP and other headers.
+  app.use(helmet(helmetConfig));
+
+  // Validate all data and queries from incoming requests.
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -23,7 +33,16 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Filter and translate TypeORM errors.
   app.useGlobalFilters(new TypeORMErrorsFilter());
-  await app.listen(3000);
+
+  // Starts listening for shutdown hooks.
+  app.enableShutdownHooks();
+
+  // Set global prefix.
+  app.setGlobalPrefix('api');
+
+  await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

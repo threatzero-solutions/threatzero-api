@@ -3,7 +3,7 @@ import { Base } from 'src/common/base.entity';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Audience } from 'src/training/audiences/entities/audience.entity';
 import { TrainingMetadata } from 'src/training/common/entities/training-metadata.entity';
-import { Section } from 'src/training/sections/entities/section.entity';
+import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import {
   Entity,
   Column,
@@ -19,7 +19,7 @@ export enum TrainingVisibility {
 }
 
 @Entity()
-export class Course extends Base {
+export class TrainingCourse extends Base {
   @Column(() => TrainingMetadata)
   metadata: Relation<TrainingMetadata>;
 
@@ -30,10 +30,10 @@ export class Course extends Base {
   })
   visibility: TrainingVisibility;
 
-  @OneToMany(() => Section, (section) => section.course, {
+  @OneToMany(() => TrainingSection, (section) => section.course, {
     eager: true,
   })
-  sections: Relation<Section>[];
+  sections: Relation<TrainingSection>[];
 
   @ManyToMany(() => Audience, (audience) => audience.trainingCourses, {
     eager: true,

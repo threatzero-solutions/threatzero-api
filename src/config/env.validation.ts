@@ -1,57 +1,16 @@
-import { Type, plainToInstance } from 'class-transformer';
-import { ValidateNested, validateSync } from 'class-validator';
-import { GeneralConfig } from './general.config';
-import { AWSConfig } from './aws.config';
-import { NotificationsConfig } from './notifications.config';
-import { DatabaseConfig } from './database.config';
-import { RedisConfig } from './redis.config';
+import { ClassConstructor, plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
 import { KeycloakConfig } from './keycloak.config';
-import { VimeoConfig } from './vimeo.config';
-import { MediaConfig } from './media.config';
-import { AuthConfig } from './auth.config';
 
-class Config {
-  @ValidateNested()
-  @Type(() => AuthConfig)
-  auth: AuthConfig;
-
-  @ValidateNested()
-  @Type(() => GeneralConfig)
-  general: GeneralConfig;
-
-  @ValidateNested()
-  @Type(() => DatabaseConfig)
-  database: DatabaseConfig;
-
-  @ValidateNested()
-  @Type(() => AWSConfig)
-  aws: AWSConfig;
-
-  @ValidateNested()
-  @Type(() => NotificationsConfig)
-  notifications: NotificationsConfig;
-
-  @ValidateNested()
-  @Type(() => RedisConfig)
-  redis: RedisConfig;
-
-  @ValidateNested()
-  @Type(() => KeycloakConfig)
-  keycloak: KeycloakConfig;
-
-  @ValidateNested()
-  @Type(() => VimeoConfig)
-  vimeo: VimeoConfig;
-
-  @ValidateNested()
-  @Type(() => MediaConfig)
-  media: MediaConfig;
-}
-
-export function validate(config: Record<string, unknown>) {
-  const validatedConfig = plainToInstance(Config, config, {
+export function validate(
+  ConfigClass: ClassConstructor<object>,
+  config: Record<string, unknown>,
+) {
+  const validatedConfig = plainToInstance(ConfigClass, config, {
     enableImplicitConversion: true,
+    exposeUnsetFields: false,
   });
+
   const errors = validateSync(validatedConfig, {
     skipMissingProperties: false,
   });

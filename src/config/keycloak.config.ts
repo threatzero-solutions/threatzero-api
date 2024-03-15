@@ -1,75 +1,89 @@
 import { type ConnectionConfig } from '@keycloak/keycloak-admin-client/lib/client';
-import {
-  type Credentials,
-  type GrantTypes,
-} from '@keycloak/keycloak-admin-client/lib/utils/auth';
+import { type Credentials } from '@keycloak/keycloak-admin-client/lib/utils/auth';
 import { registerAs } from '@nestjs/config';
 import { Type } from 'class-transformer';
-import { IsIn, IsNumber, IsString, ValidateNested } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { validate } from './env.validation';
 
 class KeycloakAdminClientConnectionConfig implements ConnectionConfig {
   @IsString()
-  realmName: string;
+  @IsOptional()
+  realmName: string = 'master';
 
   @IsString()
-  baseUrl: string;
+  @IsOptional()
+  baseUrl: string = 'https://auth.staging.threatzero.org';
 }
 
 class KeycloakAdminClientAuthConfig implements Credentials {
   @IsIn(['client_credentials'])
-  grantType: 'client_credentials';
+  @IsOptional()
+  grantType: 'client_credentials' = 'client_credentials';
 
   @IsString()
+  @IsNotEmpty()
   clientId: string;
 
   @IsString()
+  @IsNotEmpty()
   clientSecret: string;
 }
 
 export class KeycloakAdminClientConfig {
   @ValidateNested()
   @Type(() => KeycloakAdminClientConnectionConfig)
+  @IsNotEmpty()
   config: KeycloakAdminClientConnectionConfig;
 
   @ValidateNested()
   @Type(() => KeycloakAdminClientAuthConfig)
+  @IsNotEmpty()
   auth: KeycloakAdminClientAuthConfig;
 
   @IsString()
-  defaultRealm: string;
+  @IsOptional()
+  defaultRealm: string = 'threatzero';
 
   @IsNumber()
-  refreshIntervalSeconds: number;
+  @IsOptional()
+  refreshIntervalSeconds: number = 58;
 }
 
 export class KeycloakConfig {
   @ValidateNested()
   @Type(() => KeycloakAdminClientConfig)
+  @IsNotEmpty()
   adminClient: KeycloakAdminClientConfig;
 
-  parentOrganizationsGroupId?: string;
+  @IsString()
+  @IsNotEmpty()
+  parentOrganizationsGroupId: string;
 }
 
-export default registerAs('keycloak', () => ({
-  adminClient: {
-    config: {
-      realmName: process.env.KEYCLOAK_ADMIN_CLIENT_REALM ?? 'master',
-      baseUrl:
-        process.env.KEYCLOAK_ADMIN_CLIENT_BASE_URL ??
-        'https://auth.staging.threatzero.org',
+export default registerAs('keycloak', () =>
+  validate(KeycloakConfig, {
+    adminClient: {
+      config: {
+        realmName: process.env.KEYCLOAK_ADMIN_CLIENT_REALM,
+        baseUrl: process.env.KEYCLOAK_ADMIN_CLIENT_BASE_URL,
+      },
+      auth: {
+        grantType: 'client_credentials',
+        clientId: process.env.KEYCLOAK_ADMIN_CLIENT_CLIENT_ID,
+        clientSecret: process.env.KEYCLOAK_ADMIN_CLIENT_CLIENT_SECRET,
+      },
+      defaultRealm: process.env.KEYCLOAK_ADMIN_CLIENT_DEFAULT_REALM,
+      refreshIntervalSeconds:
+        process.env.KEYCLOAK_ADMIN_CLIENT_REFRESH_INTERVAL_SECONDS,
     },
-    auth: {
-      grantType: 'client_credentials',
-      clientId: process.env.KEYCLOAK_ADMIN_CLIENT_CLIENT_ID,
-      clientSecret: process.env.KEYCLOAK_ADMIN_CLIENT_CLIENT_SECRET,
-    },
-    defaultRealm:
-      process.env.KEYCLOAK_ADMIN_CLIENT_DEFAULT_REALM ?? 'threatzero',
-    refreshIntervalSeconds:
-      parseInt(
-        process.env.KEYCLOAK_ADMIN_CLIENT_REFRESH_INTERVAL_SECONDS ?? '58',
-      ) ?? 58,
-  },
-  parentOrganizationsGroupId:
-    process.env.KEYCLOAK_PARENT_ORGANIZATIONS_GROUP_ID,
-}));
+    parentOrganizationsGroupId:
+      process.env.KEYCLOAK_PARENT_ORGANIZATIONS_GROUP_ID,
+  }),
+);

@@ -1,5 +1,5 @@
 import { Inject, Injectable, Scope } from '@nestjs/common';
-import { Section } from './entities/section.entity';
+import { TrainingSection } from './entities/section.entity';
 import { REQUEST } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,13 +11,13 @@ import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { CreateSectionDto } from './dto/create-section.dto';
 
 @Injectable({ scope: Scope.REQUEST })
-export class SectionsService extends BaseEntityService<Section> {
+export class SectionsService extends BaseEntityService<TrainingSection> {
   alias = 'section';
 
   constructor(
     @Inject(REQUEST) private request: Request,
-    @InjectRepository(Section)
-    private sectionsRepository: Repository<Section>,
+    @InjectRepository(TrainingSection)
+    private sectionsRepository: Repository<TrainingSection>,
     private mediaService: MediaService,
   ) {
     super();
@@ -40,7 +40,7 @@ export class SectionsService extends BaseEntityService<Section> {
     return qb;
   }
 
-  async mapResult(section: Section) {
+  async mapResult(section: TrainingSection) {
     await section.loadVideoThumbnails(
       this.mediaService.getThumbnailUrlForVimeoUrl,
     );

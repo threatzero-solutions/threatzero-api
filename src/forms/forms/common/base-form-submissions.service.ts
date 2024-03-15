@@ -41,14 +41,6 @@ export class BaseFormsSubmissionsService<
     if (this.constructor === BaseFormsSubmissionsService) {
       throw new Error('Cannot construct abstract class');
     }
-
-    if (!this.formSlug) {
-      throw new Error('Form slug is required');
-    }
-
-    if (!this.noteEntityFieldName) {
-      throw new Error('Note entity field name is required');
-    }
   }
 
   getQb(query?: BaseQueryDto | undefined) {
@@ -150,8 +142,10 @@ export class BaseFormsSubmissionsService<
     await this.getQb().relation(Note, 'notes').of(entityId).add(note);
   }
 
-  async getNotes(entityId: E['id']) {
-    return this.getQb().relation(Note, 'notes').of(entityId).select().getMany();
+  async getNotes(query: BaseQueryDto, entityId: E['id']) {
+    let qb = this.getQb().relation(Note, 'notes').of(entityId).select();
+    qb = query.applyToQb(qb);
+    return qb;
   }
 
   async editNote(

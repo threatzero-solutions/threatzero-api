@@ -10,6 +10,7 @@ import { Page } from './types/page';
 
 export class BaseEntityService<E extends ObjectLiteral> {
   alias?: string;
+
   constructor() {
     if (this.constructor === BaseEntityService) {
       throw new Error('Cannot construct abstract class');
@@ -47,7 +48,10 @@ export class BaseEntityService<E extends ObjectLiteral> {
 
   async create(createEntityDto: DeepPartial<E>, ...args: unknown[]) {
     await this.beforeCreate(createEntityDto, ...args);
-    const entity = await this.getRepository().save(createEntityDto);
+    const { id } = await this.getRepository().save(createEntityDto);
+    const entity = await this.getRepository().findOneByOrFail({
+      id,
+    });
     await this.afterCreate(entity, ...args);
     return await this.mapResult(entity);
   }

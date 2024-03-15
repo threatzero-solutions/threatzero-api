@@ -1,8 +1,8 @@
 import { ChildEntity, Column } from 'typeorm';
-import { Item } from './item.entity';
+import { TrainingItem } from './item.entity';
 
 @ChildEntity()
-export class VideoItem extends Item {
+export class VideoItem extends TrainingItem {
   // TODO: This exists for backwards compatibility. Remove it in a future release.
   @Column({ type: 'varchar', length: 128 })
   mediaKey: string | null;

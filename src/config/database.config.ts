@@ -1,6 +1,14 @@
 import { registerAs } from '@nestjs/config';
-import { IsBoolean, IsIn, IsOptional, IsPort, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsPort,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
+import { validate } from './env.validation';
 
 export class DatabaseConfig implements PostgresConnectionOptions {
   @IsIn(['postgres'])
@@ -9,7 +17,7 @@ export class DatabaseConfig implements PostgresConnectionOptions {
   @IsString()
   host: string;
 
-  @IsPort()
+  @IsPositive()
   port: number;
 
   @IsString()
@@ -37,7 +45,7 @@ export class DatabaseConfig implements PostgresConnectionOptions {
 export default registerAs(
   'database',
   () =>
-    ({
+    validate(DatabaseConfig, {
       type: 'postgres',
       host: process.env.DB_HOST ?? 'localhost',
       port: parseInt(process.env.DB_PORT ?? '5432') || 5432,

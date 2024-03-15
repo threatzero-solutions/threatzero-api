@@ -1,7 +1,7 @@
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Course } from './entities/course.entity';
-import { Repository } from 'typeorm';
+import { TrainingCourse } from './entities/course.entity';
+import { DeepPartial, Repository } from 'typeorm';
 import { filterTraining } from '../common/training.utils';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
@@ -10,13 +10,13 @@ import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { MediaService } from 'src/media/media.service';
 
 @Injectable({ scope: Scope.REQUEST })
-export class CoursesService extends BaseEntityService<Course> {
+export class CoursesService extends BaseEntityService<TrainingCourse> {
   alias = 'course';
 
   constructor(
     @Inject(REQUEST) private request: Request,
-    @InjectRepository(Course)
-    private coursesRepository: Repository<Course>,
+    @InjectRepository(TrainingCourse)
+    private coursesRepository: Repository<TrainingCourse>,
     private mediaService: MediaService,
   ) {
     super();
@@ -46,7 +46,7 @@ export class CoursesService extends BaseEntityService<Course> {
       .leftJoinAndSelect('section_items.item', 'item');
   }
 
-  async mapResult(course: Course) {
+  async mapResult(course: TrainingCourse) {
     await course.loadVideoThumbnails(
       this.mediaService.getThumbnailUrlForVimeoUrl,
     );

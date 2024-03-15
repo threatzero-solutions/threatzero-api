@@ -14,7 +14,7 @@ import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { Organization } from './entities/organization.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { BaseQueryOrganizationsDto } from '../common/dto/base-query-organizations';
 
 @Controller('organizations/organizations')
 @CheckPolicies(new EntityAbilityChecker(Organization))
@@ -27,7 +27,7 @@ export class OrganizationsController {
   }
 
   @Get()
-  findAll(@Query() query: BaseQueryDto) {
+  findAll(@Query() query: BaseQueryOrganizationsDto) {
     return this.organizationsService.findAll(query);
   }
 

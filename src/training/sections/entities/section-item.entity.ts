@@ -1,7 +1,7 @@
 import { Base } from 'src/common/base.entity';
 import { Entity, Column, ManyToOne, Relation } from 'typeorm';
-import { Section } from './section.entity';
-import { Item } from 'src/training/items/entities/item.entity';
+import { TrainingSection } from './section.entity';
+import { TrainingItem } from 'src/training/items/entities/item.entity';
 
 @Entity()
 export class SectionItem extends Base {
@@ -11,14 +11,14 @@ export class SectionItem extends Base {
   @Column({ nullable: true })
   sectionId: string | null;
 
-  @ManyToOne(() => Section, (section) => section.items, {
+  @ManyToOne(() => TrainingSection, (section) => section.items, {
     onDelete: 'CASCADE',
   })
-  section: Relation<Section>;
+  section: Relation<TrainingSection>;
 
-  @ManyToOne(() => Item, (item) => item.sectionItems, {
+  @ManyToOne(() => TrainingItem, (item) => item.sectionItems, {
     eager: true,
     onDelete: 'CASCADE',
   })
-  item: Relation<Item>;
+  item: Relation<TrainingItem>;
 }

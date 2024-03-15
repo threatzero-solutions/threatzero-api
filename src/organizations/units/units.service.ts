@@ -46,7 +46,7 @@ export class UnitsService extends BaseEntityService<Unit> {
     );
   }
 
-  async afterRemove(id: Unit['id']) {
+  async beforeRemove(id: Unit['id']) {
     this.eventEmitter.emit(
       UNIT_REMOVED_EVENT,
       new BaseOrganizationChangeEvent(id),

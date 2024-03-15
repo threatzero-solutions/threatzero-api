@@ -15,9 +15,9 @@ import { UpdateLocationDto } from './dto/update-location.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { Location } from './entities/location.entity';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { Response } from 'express';
 import { GenerateQrCodeQueryDto } from './dto/generate-qr-code-query.dto';
+import { QueryLocationsDto } from './dto/query-locations.dto';
 
 @Controller('organizations/locations')
 @CheckPolicies(new EntityAbilityChecker(Location))
@@ -30,7 +30,7 @@ export class LocationsController {
   }
 
   @Get()
-  findAll(@Query() query: BaseQueryDto) {
+  findAll(@Query() query: QueryLocationsDto) {
     return this.locationsService.findAll(query);
   }
 

@@ -18,7 +18,7 @@ import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { Form } from './entities/form.entity';
 import { Response } from 'express';
 
-@Controller('forms/forms')
+@Controller('forms')
 @CheckPolicies(new EntityAbilityChecker(Form))
 export class FormsController {
   constructor(private readonly formsService: FormsService) {}

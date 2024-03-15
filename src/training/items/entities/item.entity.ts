@@ -15,7 +15,7 @@ import {
 
 @Entity()
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
-export class Item extends Base {
+export class TrainingItem extends Base {
   @Column(() => TrainingMetadata)
   metadata: TrainingMetadata;
 
@@ -26,12 +26,12 @@ export class Item extends Base {
   @OneToMany(() => SectionItem, (sectionItem) => sectionItem.item)
   sectionItems: Promise<SectionItem[]>;
 
-  @ManyToMany(() => Item, (item) => item.prerequiredByItems)
+  @ManyToMany(() => TrainingItem, (item) => item.prerequiredByItems)
   @JoinTable()
-  prerequisiteItems: Relation<Item>[];
+  prerequisiteItems: Relation<TrainingItem>[];
 
-  @ManyToMany(() => Item, (item) => item.prerequisiteItems)
-  prerequiredByItems: Relation<Item>[];
+  @ManyToMany(() => TrainingItem, (item) => item.prerequisiteItems)
+  prerequiredByItems: Relation<TrainingItem>[];
 
   @Column({ insert: false, select: false, nullable: true, update: false })
   prerequisitesFulfilled: boolean;

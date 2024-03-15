@@ -12,6 +12,7 @@ import { DNSLookupFunction, RedisOptions } from 'ioredis';
 import { ConnectionOptions as TlsConnectionOptions } from 'tls';
 import { readFileToString } from './utils';
 import { ClusterOptions } from 'bullmq';
+import { validate } from './env.validation';
 
 class ConnectionOptions {
   @IsString()
@@ -51,18 +52,22 @@ class RedisOptionsConfig implements RedisOptions {
 
 export class RedisConfig {
   @IsBoolean()
+  @IsNotEmpty()
   clusterMode: boolean;
 
   @ValidateNested()
   @Type(() => ConnectionOptions)
+  @IsNotEmpty()
   connectionOptions: ConnectionOptions;
 
   @ValidateNested()
   @Type(() => ClusterOptionsConfig)
+  @IsNotEmpty()
   clusterOptions: ClusterOptionsConfig;
 
   @ValidateNested()
   @Type(() => RedisOptionsConfig)
+  @IsNotEmpty()
   redisOptions: RedisOptionsConfig;
 }
 
@@ -82,17 +87,17 @@ export default registerAs('redis', () => {
     enableAutoPipelining: true,
   };
 
-  return {
+  return validate(RedisConfig, {
     clusterMode: process.env.REDIS_CLUSTER_MODE === 'true',
     connectionOptions: {
       host: process.env.REDIS_HOST ?? 'localhost',
       port: parseInt(process.env.REDIS_PORT ?? '6379') ?? 6379,
     },
     clusterOptions: {
-      dnsLookup: (address, callback) => callback(null, address),
+      dnsLookup: (address: string, callback: any) => callback(null, address),
       slotsRefreshTimeout: 5000,
       redisOptions,
     },
     redisOptions,
-  } as RedisConfig;
+  });
 });

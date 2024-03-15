@@ -22,6 +22,7 @@ import { CreateNoteDto } from 'src/users/dto/create-note.dto';
 import { Response } from 'express';
 import { GetPresignedUploadUrlsDto } from 'src/forms/forms/dto/get-presigned-upload-urls.dto';
 import { Throttle } from '@nestjs/throttler';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
 @Controller('tips')
 @CheckPolicies(new EntityAbilityChecker(Tip))
@@ -82,8 +83,8 @@ export class TipsController {
   }
 
   @Get('notes')
-  getNotes(@Param('tipId') tipId: string) {
-    return this.tipsService.getNotes(tipId);
+  getNotes(@Param('tipId') tipId: string, @Query() query: BaseQueryDto) {
+    return this.tipsService.getNotes(query, tipId);
   }
 
   @Patch('notes/:noteId')

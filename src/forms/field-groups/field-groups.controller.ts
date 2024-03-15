@@ -16,7 +16,7 @@ import { FieldGroup } from './entities/field-group.entity';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 
-@Controller('forms/field-groups')
+@Controller('field-groups')
 @CheckPolicies(new EntityAbilityChecker(FieldGroup))
 export class FieldGroupsController {
   constructor(private readonly fieldGroupsService: FieldGroupsService) {}

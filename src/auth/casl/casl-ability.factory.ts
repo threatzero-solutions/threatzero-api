@@ -10,9 +10,9 @@ import { Location } from 'src/organizations/locations/entities/location.entity';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { Audience } from 'src/training/audiences/entities/audience.entity';
-import { Course } from 'src/training/courses/entities/course.entity';
-import { Item } from 'src/training/items/entities/item.entity';
-import { Section } from 'src/training/sections/entities/section.entity';
+import { TrainingCourse } from 'src/training/courses/entities/course.entity';
+import { TrainingItem } from 'src/training/items/entities/item.entity';
+import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { LEVEL, WRITE, READ } from '../permissions';
 import { Action } from './actions';
 import { ThreatAssessment } from 'src/threat-assessments/entities/threat-assessment.entity';
@@ -28,7 +28,12 @@ export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 const FormsSubjects = [Form, FieldGroup, Field];
 type FormsSubjectTypes = InferSubjects<(typeof FormsSubjects)[number]>;
 
-const TrainingSubjects = [Course, Section, Audience, Item];
+const TrainingSubjects = [
+  TrainingCourse,
+  TrainingSection,
+  Audience,
+  TrainingItem,
+];
 type TrainingSubjectTypes = InferSubjects<(typeof TrainingSubjects)[number]>;
 
 const OrganizationsSubjects = [Organization, Unit, Location];

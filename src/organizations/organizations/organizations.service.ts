@@ -38,7 +38,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     );
   }
 
-  async afterRemove(id: Organization['id']) {
+  async beforeRemove(id: Organization['id']) {
     this.eventEmitter.emit(
       ORGANIZATION_REMOVED_EVENT,
       new BaseOrganizationChangeEvent(id),

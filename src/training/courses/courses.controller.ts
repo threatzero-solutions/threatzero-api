@@ -12,12 +12,12 @@ import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
-import { Course } from './entities/course.entity';
+import { TrainingCourse } from './entities/course.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { CourseQueryDto } from './dto/course-query.dto';
 
 @Controller('training/courses')
-@CheckPolicies(new EntityAbilityChecker(Course))
+@CheckPolicies(new EntityAbilityChecker(TrainingCourse))
 export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}
 
