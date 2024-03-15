@@ -8,7 +8,6 @@ import { Request } from 'express';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { MediaService } from 'src/media/media.service';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { CreateSectionDto } from './dto/create-section.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class SectionsService extends BaseEntityService<TrainingSection> {
@@ -27,13 +26,12 @@ export class SectionsService extends BaseEntityService<TrainingSection> {
     return this.sectionsRepository;
   }
 
-  getQb(query?: BaseQueryDto, courseId?: string) {
+  getQb(query?: BaseQueryDto) {
     let qb = super
       .getQb(query)
       .leftJoin('section.course', 'course')
       .leftJoinAndSelect('section.items', 'sectionItems')
-      .leftJoinAndSelect('sectionItems.item', 'item')
-      .where('course.id = :courseId', { courseId: courseId || '' });
+      .leftJoinAndSelect('sectionItems.item', 'item');
 
     qb = filterTraining(this.request, qb);
 
@@ -41,13 +39,9 @@ export class SectionsService extends BaseEntityService<TrainingSection> {
   }
 
   async mapResult(section: TrainingSection) {
-    await section.loadVideoThumbnails(
-      this.mediaService.getThumbnailUrlForVimeoUrl,
+    await section.loadVideoThumbnails((url) =>
+      this.mediaService.getThumbnailUrlForVimeoUrl(url),
     );
     return section;
-  }
-
-  async create(createSectionDto: CreateSectionDto, courseId: string) {
-    return super.create({ ...createSectionDto, course: { id: courseId } });
   }
 }

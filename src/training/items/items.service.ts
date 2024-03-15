@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { filterTraining } from '../common/training.utils';
 import { BaseEntityService } from 'src/common/base-entity.service';
-import { VideoItem } from './entities/video-item.entity';
+import { Video } from './entities/video-item.entity';
 import { MediaService } from 'src/media/media.service';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -39,8 +39,10 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
   }
 
   async mapResult(item: TrainingItem) {
-    if (item instanceof VideoItem) {
-      await item.loadThumbnailUrl(this.mediaService.getThumbnailUrlForVimeoUrl);
+    if (item instanceof Video) {
+      await item.loadThumbnailUrl((url) =>
+        this.mediaService.getThumbnailUrlForVimeoUrl(url),
+      );
     }
     return item;
   }

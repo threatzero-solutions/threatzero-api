@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Resource } from './entities/resource.entity';
+import { ResourceItem } from './entities/resource.entity';
 import { Repository } from 'typeorm';
 import { MediaService } from '../media/media.service';
 
 @Injectable()
-export class ResourcesService extends BaseEntityService<Resource> {
+export class ResourcesService extends BaseEntityService<ResourceItem> {
   constructor(
-    @InjectRepository(Resource)
-    private resourceRepository: Repository<Resource>,
+    @InjectRepository(ResourceItem)
+    private resourceRepository: Repository<ResourceItem>,
     private media: MediaService,
   ) {
     super();
@@ -19,7 +19,7 @@ export class ResourcesService extends BaseEntityService<Resource> {
     return this.resourceRepository;
   }
 
-  async mapResult(r: Resource) {
+  async mapResult(r: ResourceItem) {
     return r.sign(this.getCloudFrontUrlSigner());
   }
 

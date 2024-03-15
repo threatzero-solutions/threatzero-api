@@ -39,16 +39,18 @@ export class FormSubmission extends Base {
   status: FormSubmissionState;
 
   sign(signer: (key: string) => string) {
-    this.fieldResponses.forEach((fieldResponse) => {
-      fieldResponse.sign(signer);
-    });
+    this.fieldResponses &&= this.fieldResponses.map((fieldResponse) =>
+      fieldResponse.sign(signer),
+    );
   }
 
   async persistUploads(onPersist: (key: string) => Promise<string>) {
-    await Promise.all(
-      this.fieldResponses.map((fieldResponse) => {
-        fieldResponse.persistUploads(onPersist);
-      }),
+    this.fieldResponses &&= await Promise.all(
+      this.fieldResponses.map((fieldResponse) =>
+        fieldResponse.persistUploads(onPersist),
+      ),
     );
+
+    return this;
   }
 }

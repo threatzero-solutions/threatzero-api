@@ -91,14 +91,18 @@ export class Form extends Base {
   }
 
   async asNewDraft(manager: EntityManager) {
-    let newDraft = manager.create(Form, {
+    let newDraft: Form = {
       ...this,
-      id: undefined,
       version: 0,
       state: FormState.DRAFT,
-    });
+    };
 
-    newDraft = await manager.save(newDraft);
+    Reflect.deleteProperty(newDraft, 'id');
+    Reflect.deleteProperty(newDraft, 'groups');
+    Reflect.deleteProperty(newDraft, 'fields');
+    Reflect.deleteProperty(newDraft, 'formSubmissions');
+
+    newDraft = await manager.save(Form, newDraft);
 
     if (this.fields) {
       await Promise.all(this.fields.map((f) => f.clone(manager, newDraft)));

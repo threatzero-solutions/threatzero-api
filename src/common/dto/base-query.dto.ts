@@ -87,6 +87,7 @@ export class BaseQueryDto {
 
     const query = this.search
       .split(' ')
+      .filter((w) => !!w)
       .map((w) => `${w}:*`)
       .join(' & ');
 

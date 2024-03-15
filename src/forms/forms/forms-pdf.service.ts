@@ -13,6 +13,8 @@ import {
 } from 'pdfmake/interfaces';
 import { FieldGroup } from '../field-groups/entities/field-group.entity';
 import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom, map } from 'rxjs';
 
 const PDF_TABLE_LAYOUTS: { [key: string]: CustomTableLayout } = {
   valueBox: {
@@ -34,7 +36,10 @@ export interface FormPDFGenerateOptions {
 
 @Injectable()
 export class FormsPdfService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly http: HttpService,
+  ) {}
 
   async formSubmissionToPDF(
     form: Form,
@@ -79,8 +84,16 @@ export class FormsPdfService {
     const tzLogoUrl =
       options.logoUrl || this.config.get<string>('general.threatzeroLogoUrl');
     if (!options.excludeLogo && tzLogoUrl) {
+      const encodedImg = await firstValueFrom(
+        this.http.get(tzLogoUrl, { responseType: 'arraybuffer' }).pipe(
+          map((res) => res.data),
+          map((d) => d.toString('base64')),
+        ),
+      );
+      const dataUrl = `data:image/png;base64,${encodedImg}`;
+
       pdfContent.push({
-        image: tzLogoUrl,
+        image: dataUrl,
         width: 200,
         margin: [0, 0, 0, 20],
         alignment: 'center',

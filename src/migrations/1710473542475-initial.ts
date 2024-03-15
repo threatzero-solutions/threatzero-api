@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Initial1710471685446 implements MigrationInterface {
-    name = 'Initial1710471685446'
+export class Initial1710473542475 implements MigrationInterface {
+    name = 'Initial1710473542475'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "field" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "name" character varying(128) NOT NULL, "label" text NOT NULL, "placeholder" text, "helpText" text, "type" character varying NOT NULL DEFAULT 'text', "elementProperties" jsonb, "typeParams" jsonb, "required" boolean NOT NULL DEFAULT false, "order" integer NOT NULL DEFAULT '0', "hidden" boolean NOT NULL DEFAULT false, "formId" uuid, "groupId" uuid, CONSTRAINT "PK_39379bba786d7a75226b358f81e" PRIMARY KEY ("id"))`);
@@ -14,7 +14,7 @@ export class Initial1710471685446 implements MigrationInterface {
         await queryRunner.query(`CREATE INDEX "IDX_aa11413ee8274d8c9347595f66" ON "organization_base" ("slug") `);
         await queryRunner.query(`CREATE TABLE "audience" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "slug" character varying(32) NOT NULL, CONSTRAINT "UQ_75afb3ad5decb42d1af3294e2c7" UNIQUE ("slug"), CONSTRAINT "PK_2ecf18dc010ddf7e956afd9866b" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "training_item" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "thumbnailKey" character varying(128), "prerequisitesFulfilled" boolean, "estCompletionTime" interval, "mediaKey" character varying(128), "mediaKeys" jsonb, "embeddedHtml" text, "vimeoUrl" character varying(1024), "encodingJobId" character varying(32), "abrEnabled" boolean DEFAULT false, "type" character varying NOT NULL, "metadataTitle" character varying(100), "metadataDescription" text, CONSTRAINT "PK_2377c2fd8a09809ca8cc4fbbd2f" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "section_item" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "order" integer NOT NULL DEFAULT '0', "sectionId" uuid, "itemId" uuid, CONSTRAINT "PK_bbefe1d886c71d8e16b6d36001a" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "training_section_item" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "order" integer NOT NULL DEFAULT '0', "sectionId" uuid, "itemId" uuid, CONSTRAINT "PK_179ad85a96a80d167798923286f" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "training_section" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "order" integer NOT NULL DEFAULT '0', "availableOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), "expiresOn" TIMESTAMP WITH TIME ZONE, "repeats" character varying NOT NULL DEFAULT 'once', "courseId" uuid, "metadataTitle" character varying(100), "metadataDescription" text, CONSTRAINT "PK_d25fc63fc836aef1b0c1dfa3331" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."training_course_visibility_enum" AS ENUM('visible', 'hidden')`);
         await queryRunner.query(`CREATE TABLE "training_course" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "visibility" "public"."training_course_visibility_enum" NOT NULL DEFAULT 'hidden', "metadataTitle" character varying(100), "metadataDescription" text, CONSTRAINT "PK_56adcccf0f40e261ee7cac6c6b1" PRIMARY KEY ("id"))`);
@@ -28,9 +28,9 @@ export class Initial1710471685446 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "note" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "value" text NOT NULL, "userExternalId" character varying(100) NOT NULL, "tipId" uuid, "assessmentId" uuid, CONSTRAINT "PK_96d0c172a4fba276b1bbed43058" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."video_event_type_enum" AS ENUM('play', 'end', 'error', 'pause', 'progress', 'ready', 'buffer', 'duration', 'start', 'seek', 'buffer_end', 'click_preview', 'enable_pip', 'disable_pip')`);
         await queryRunner.query(`CREATE TABLE "video_event" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "userId" character varying(64) NOT NULL, "audienceSlugs" jsonb, "unitSlug" character varying(64), "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "type" "public"."video_event_type_enum" NOT NULL, "itemId" character varying(50), "sectionId" character varying(50), "videoId" character varying(50), "eventData" jsonb NOT NULL, "url" character varying NOT NULL, CONSTRAINT "PK_8a0b5645052a244198171549240" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TYPE "public"."resource_type_enum" AS ENUM('document', 'video')`);
-        await queryRunner.query(`CREATE TABLE "resource" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "fileKey" character varying NOT NULL, "thumbnailKey" text, "title" text NOT NULL, "description" text, "type" "public"."resource_type_enum" NOT NULL, "category" character varying(64) NOT NULL, CONSTRAINT "PK_e2894a5867e06ae2e8889f1173f" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_550fbf8fa7eb206e8c18061546" ON "resource" ("category") `);
+        await queryRunner.query(`CREATE TYPE "public"."resource_item_type_enum" AS ENUM('document', 'video')`);
+        await queryRunner.query(`CREATE TABLE "resource_item" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "fileKey" character varying NOT NULL, "thumbnailKey" text, "title" text NOT NULL, "description" text, "type" "public"."resource_item_type_enum" NOT NULL, "category" character varying(64) NOT NULL, CONSTRAINT "PK_be398545e041798823ec4e2e6de" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_d7a2e4dba099577e1f1fcaa038" ON "resource_item" ("category") `);
         await queryRunner.query(`CREATE TABLE "location" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "name" character varying(100), "locationId" character varying(15) NOT NULL, "unitId" uuid, CONSTRAINT "UQ_8b51e14a3447c3df460c1907acb" UNIQUE ("locationId"), CONSTRAINT "PK_876d7bdba03c72251ec4c2dc827" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_8b51e14a3447c3df460c1907ac" ON "location" ("locationId") `);
         await queryRunner.query(`CREATE TABLE "training_item_prerequisite_items_training_item" ("trainingItemId_1" uuid NOT NULL, "trainingItemId_2" uuid NOT NULL, CONSTRAINT "PK_013cf2db0c05fab6a0767c8139f" PRIMARY KEY ("trainingItemId_1", "trainingItemId_2"))`);
@@ -55,8 +55,8 @@ export class Initial1710471685446 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "field_response" ADD CONSTRAINT "FK_02db534955c2d19ec0f32c3219e" FOREIGN KEY ("fieldId") REFERENCES "field"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "field_response" ADD CONSTRAINT "FK_0dc68dff3073955452f3c427a2c" FOREIGN KEY ("formResponseId") REFERENCES "form_submission"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "form_submission" ADD CONSTRAINT "FK_0c044839ddb8d7bef1c8762a3ce" FOREIGN KEY ("formId") REFERENCES "form"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "section_item" ADD CONSTRAINT "FK_694e5217d8959fdb0f4fbe690d5" FOREIGN KEY ("sectionId") REFERENCES "training_section"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "section_item" ADD CONSTRAINT "FK_396d4691e455117cf98ed6366b8" FOREIGN KEY ("itemId") REFERENCES "training_item"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "training_section_item" ADD CONSTRAINT "FK_bf8d676087716baeb38b8c059df" FOREIGN KEY ("sectionId") REFERENCES "training_section"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "training_section_item" ADD CONSTRAINT "FK_02729bb1e1a5abf9609b125a485" FOREIGN KEY ("itemId") REFERENCES "training_item"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "training_section" ADD CONSTRAINT "FK_89c5194422f5aa5db5d659fcf09" FOREIGN KEY ("courseId") REFERENCES "training_course"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "unit" ADD CONSTRAINT "FK_f00221965f05e328934b31233f1" FOREIGN KEY ("organizationId") REFERENCES "organization"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "threat_assessment" ADD CONSTRAINT "FK_023b78260cc26961c673e55fc43" FOREIGN KEY ("unitSlug") REFERENCES "unit"("slug") ON DELETE NO ACTION ON UPDATE NO ACTION`);
@@ -102,8 +102,8 @@ export class Initial1710471685446 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "threat_assessment" DROP CONSTRAINT "FK_023b78260cc26961c673e55fc43"`);
         await queryRunner.query(`ALTER TABLE "unit" DROP CONSTRAINT "FK_f00221965f05e328934b31233f1"`);
         await queryRunner.query(`ALTER TABLE "training_section" DROP CONSTRAINT "FK_89c5194422f5aa5db5d659fcf09"`);
-        await queryRunner.query(`ALTER TABLE "section_item" DROP CONSTRAINT "FK_396d4691e455117cf98ed6366b8"`);
-        await queryRunner.query(`ALTER TABLE "section_item" DROP CONSTRAINT "FK_694e5217d8959fdb0f4fbe690d5"`);
+        await queryRunner.query(`ALTER TABLE "training_section_item" DROP CONSTRAINT "FK_02729bb1e1a5abf9609b125a485"`);
+        await queryRunner.query(`ALTER TABLE "training_section_item" DROP CONSTRAINT "FK_bf8d676087716baeb38b8c059df"`);
         await queryRunner.query(`ALTER TABLE "form_submission" DROP CONSTRAINT "FK_0c044839ddb8d7bef1c8762a3ce"`);
         await queryRunner.query(`ALTER TABLE "field_response" DROP CONSTRAINT "FK_0dc68dff3073955452f3c427a2c"`);
         await queryRunner.query(`ALTER TABLE "field_response" DROP CONSTRAINT "FK_02db534955c2d19ec0f32c3219e"`);
@@ -128,9 +128,9 @@ export class Initial1710471685446 implements MigrationInterface {
         await queryRunner.query(`DROP TABLE "training_item_prerequisite_items_training_item"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_8b51e14a3447c3df460c1907ac"`);
         await queryRunner.query(`DROP TABLE "location"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_550fbf8fa7eb206e8c18061546"`);
-        await queryRunner.query(`DROP TABLE "resource"`);
-        await queryRunner.query(`DROP TYPE "public"."resource_type_enum"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_d7a2e4dba099577e1f1fcaa038"`);
+        await queryRunner.query(`DROP TABLE "resource_item"`);
+        await queryRunner.query(`DROP TYPE "public"."resource_item_type_enum"`);
         await queryRunner.query(`DROP TABLE "video_event"`);
         await queryRunner.query(`DROP TYPE "public"."video_event_type_enum"`);
         await queryRunner.query(`DROP TABLE "note"`);
@@ -144,7 +144,7 @@ export class Initial1710471685446 implements MigrationInterface {
         await queryRunner.query(`DROP TABLE "training_course"`);
         await queryRunner.query(`DROP TYPE "public"."training_course_visibility_enum"`);
         await queryRunner.query(`DROP TABLE "training_section"`);
-        await queryRunner.query(`DROP TABLE "section_item"`);
+        await queryRunner.query(`DROP TABLE "training_section_item"`);
         await queryRunner.query(`DROP TABLE "training_item"`);
         await queryRunner.query(`DROP TABLE "audience"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_aa11413ee8274d8c9347595f66"`);

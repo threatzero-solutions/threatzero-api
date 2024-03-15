@@ -28,4 +28,4 @@ COPY --from=builder /usr/src/app/entrypoint.sh .
 
 # Set entrypoint to run migrations and start app.
 ENTRYPOINT ["sh", "entrypoint.sh"]
-EXPOSE 80
+EXPOSE 3000

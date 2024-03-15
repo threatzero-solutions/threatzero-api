@@ -1,31 +1,26 @@
 import { registerAs } from '@nestjs/config';
-import {
-  IsOptional,
-  IsPort,
-  IsPositive,
-  IsString,
-  IsUrl,
-} from 'class-validator';
+import { IsOptional, IsPositive, IsString, IsUrl } from 'class-validator';
 import { validate } from './env.validation';
 
 export class GeneralConfig {
   @IsOptional()
   @IsString()
-  host?: string;
+  host: string = 'localhost';
 
   @IsOptional()
   @IsPositive()
-  port?: number;
+  port: number = 3000;
 
   @IsUrl()
   @IsOptional()
-  threatzeroLogoUrl?: string;
+  threatzeroLogoUrl: string =
+    'https://content.threatzero.org/TZ_logo_final.png';
 }
 
 export default registerAs('general', () =>
   validate(GeneralConfig, {
-    host: process.env.HOST || 'localhost',
-    port: parseInt(process.env.PORT ?? '3000') || 3000,
+    host: process.env.HOST,
+    port: process.env.PORT,
     threatzeroLogoUrl: process.env.THREATZERO_LOGO_URL,
   }),
 );

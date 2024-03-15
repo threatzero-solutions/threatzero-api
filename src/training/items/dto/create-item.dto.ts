@@ -59,7 +59,7 @@ export class CreateTrainingEstimatedCompletionTimeDto
 
 export class CreateItemDto {
   @IsNotEmpty()
-  @IsIn(['video'])
+  @IsIn(['Video'])
   type: string;
 
   @ValidateNested()

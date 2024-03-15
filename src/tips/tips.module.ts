@@ -8,6 +8,7 @@ import { SubmitTipListener } from './listeners/submit-tip.listener';
 import { BullModule } from '@nestjs/bullmq';
 import { NOTIFICATIONS_QUEUE_NAME } from 'src/common/constants/queue.constants';
 import { LocationsModule } from 'src/organizations/locations/locations.module';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { LocationsModule } from 'src/organizations/locations/locations.module';
     }),
     FormsModule,
     LocationsModule,
+    UsersModule,
   ],
   controllers: [TipsController],
   providers: [TipsService, SubmitTipListener],

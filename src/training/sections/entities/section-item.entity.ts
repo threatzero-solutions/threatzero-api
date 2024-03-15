@@ -4,7 +4,7 @@ import { TrainingSection } from './section.entity';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
 
 @Entity()
-export class SectionItem extends Base {
+export class TrainingSectionItem extends Base {
   @Column({ default: 0 })
   order: number;
 

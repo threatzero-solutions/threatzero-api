@@ -12,34 +12,44 @@ import { validate } from './env.validation';
 
 export class DatabaseConfig implements PostgresConnectionOptions {
   @IsIn(['postgres'])
-  type: 'postgres';
+  @IsOptional()
+  type: 'postgres' = 'postgres';
 
   @IsString()
-  host: string;
+  @IsOptional()
+  host: string = 'localhost';
 
   @IsPositive()
-  port: number;
+  @IsOptional()
+  port: number = 5432;
 
   @IsString()
-  username: string;
+  @IsOptional()
+  username: string = 'root';
 
   @IsString()
-  password: string;
+  @IsOptional()
+  password: string = 'asdf';
 
   @IsString()
-  database: string;
+  @IsOptional()
+  database: string = 'threatzero_app';
 
   @IsBoolean()
-  synchronize: boolean;
+  @IsOptional()
+  synchronize: boolean = false;
 
   @IsBoolean()
-  logging: boolean;
+  @IsOptional()
+  logging: boolean = true;
 
   @IsBoolean()
-  cache: boolean;
+  @IsOptional()
+  cache: boolean = true;
 
   @IsOptional()
-  ssl: boolean;
+  @IsOptional()
+  ssl: boolean = false;
 }
 
 export default registerAs(
@@ -47,11 +57,11 @@ export default registerAs(
   () =>
     validate(DatabaseConfig, {
       type: 'postgres',
-      host: process.env.DB_HOST ?? 'localhost',
-      port: parseInt(process.env.DB_PORT ?? '5432') || 5432,
-      username: process.env.DB_USERNAME ?? 'root',
-      password: process.env.DB_PASSWORD ?? 'asdf',
-      database: process.env.DB_DATABASE ?? 'threatzero',
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
       synchronize: process.env.DB_SYNCHRONIZE === 'true',
       logging: process.env.DB_LOGGING !== 'false',
       cache: process.env.DB_CACHE !== 'false',

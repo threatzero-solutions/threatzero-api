@@ -106,13 +106,10 @@ export class BaseEntityService<E extends ObjectLiteral> {
     return res;
   }
 
-  protected async beforeCreate(
-    createEntityDto: DeepPartial<E>,
-    ...args: unknown[]
-  ) {}
-  protected async afterCreate(entity: E, ...args: unknown[]) {}
-  protected async beforeUpdate(entity: E, ...args: unknown[]) {}
-  protected async afterUpdate(entity: E, ...args: unknown[]) {}
-  protected async beforeRemove(id: E['id'], ...args: unknown[]) {}
-  protected async afterRemove(id: E['id'], ...args: unknown[]) {}
+  async beforeCreate(createEntityDto: DeepPartial<E>, ...args: unknown[]) {}
+  async afterCreate(entity: E, ...args: unknown[]) {}
+  async beforeUpdate(entity: E, ...args: unknown[]) {}
+  async afterUpdate(entity: E, ...args: unknown[]) {}
+  async beforeRemove(id: E['id'], ...args: unknown[]) {}
+  async afterRemove(id: E['id'], ...args: unknown[]) {}
 }

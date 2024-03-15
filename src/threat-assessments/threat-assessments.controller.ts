@@ -78,7 +78,7 @@ export class ThreatAssessmentsController {
     return this.threatAssessmentsService.getPresignedUploadUrls(body);
   }
 
-  @Post('notes')
+  @Post('submissions/:assessmentId/notes')
   addNote(
     @Param('assessmentId') assessmentId: string,
     @Body() createNoteDto: CreateNoteDto,
@@ -86,15 +86,15 @@ export class ThreatAssessmentsController {
     return this.threatAssessmentsService.addNote(assessmentId, createNoteDto);
   }
 
-  @Get('notes')
+  @Get('submissions/:assessmentId/notes')
   getNotes(
     @Param('assessmentId') assessmentId: string,
     @Query() query: BaseQueryDto,
   ) {
-    return this.threatAssessmentsService.getNotes(query, assessmentId);
+    return this.threatAssessmentsService.getNotes(assessmentId, query);
   }
 
-  @Patch('notes/:noteId')
+  @Patch('submissions/:assessmentId/notes/:noteId')
   editNote(
     @Param('assessmentId') assessmentId: string,
     @Param('noteId') noteId: string,
@@ -107,7 +107,7 @@ export class ThreatAssessmentsController {
     );
   }
 
-  @Delete('notes/:noteId')
+  @Delete('submissions/:assessmentId/notes/:noteId')
   removeNote(
     @Param('assessmentId') assessmentId: string,
     @Param('noteId') noteId: string,

@@ -41,8 +41,14 @@ export class MediaService {
         'seconds',
       );
 
+      let url = path.join(options.domain, prefix, key);
+
+      if (!url.startsWith('http')) {
+        url = `https://${url.replace(/^\/+/, '')}`;
+      }
+
       return getSignedUrl({
-        url: path.join(options.domain, prefix, key),
+        url,
         keyPairId: options.keyPairId,
         privateKey: options.privateKey,
         dateLessThan: expires.toISOString(),

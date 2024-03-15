@@ -1,25 +1,39 @@
-import { Injectable, Scope, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Scope } from '@nestjs/common';
 import { Tip } from './entities/tip.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
-import { BaseFormsSubmissionsService } from 'src/forms/forms/common/base-form-submissions.service';
 import { TIP_SUBMISSION_FORM_SLUG } from 'src/common/constants/form.constants';
 import { CreateFormSubmissionDto } from 'src/forms/forms/dto/create-form-submission.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TipSubmittedEvent } from './events/tip-submitted.event';
 import { TIP_SUBMITTED_EVENT } from './listeners/submit-tip.listener';
 import { LocationsService } from 'src/organizations/locations/locations.service';
+import { BaseEntityService } from 'src/common/base-entity.service';
+import { FormSubmissionsServiceMixin } from 'src/forms/forms/mixins/form-submission.service.mixin';
+import { NotesServiceMixin } from 'src/users/mixins/notes.service.mixin';
+import { REQUEST } from '@nestjs/core';
+import { FormsService } from 'src/forms/forms/forms.service';
+import { UsersService } from 'src/users/users.service';
+import { Request } from 'express';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { scopeToOrganizationLevel } from 'src/organizations/common/organizations.utils';
 
 @Injectable({ scope: Scope.REQUEST })
-export class TipsService extends BaseFormsSubmissionsService<Tip> {
+export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
+  NotesServiceMixin<Tip>()(BaseEntityService<Tip>),
+) {
   formSlug = TIP_SUBMISSION_FORM_SLUG;
-  noteEntityFieldName = 'tipId';
+  foreignKeyColumn = 'tipId';
   alias = 'tip';
+  entity = Tip;
 
   constructor(
     @InjectRepository(Tip) private tipsRepository: Repository<Tip>,
     private locationsService: LocationsService,
     private eventEmitter: EventEmitter2,
+    readonly usersService: UsersService,
+    @Inject(REQUEST) readonly request: Request,
+    readonly formsService: FormsService,
   ) {
     super();
   }
@@ -28,12 +42,19 @@ export class TipsService extends BaseFormsSubmissionsService<Tip> {
     return this.tipsRepository;
   }
 
+  getQb(query?: BaseQueryDto) {
+    return scopeToOrganizationLevel(
+      this.request,
+      super.getQb(query),
+    ).leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit');
+  }
+
   async create(
     createSubmissionEntityDto: DeepPartial<Tip> & {
       submission: CreateFormSubmissionDto;
     },
     locationId?: string,
-  ): Promise<DeepPartial<Tip> & Tip> {
+  ) {
     const submittedTip = await super.create({
       ...createSubmissionEntityDto,
       // Add user unit slug to tip.
@@ -70,6 +91,6 @@ export class TipsService extends BaseFormsSubmissionsService<Tip> {
       }
     }
 
-    throw new UnauthorizedException('No location information found.');
+    throw new BadRequestException('No location information found.');
   }
 }

@@ -47,8 +47,8 @@ export class CoursesService extends BaseEntityService<TrainingCourse> {
   }
 
   async mapResult(course: TrainingCourse) {
-    await course.loadVideoThumbnails(
-      this.mediaService.getThumbnailUrlForVimeoUrl,
+    await course.loadVideoThumbnails((url) =>
+      this.mediaService.getThumbnailUrlForVimeoUrl(url),
     );
     return course;
   }

@@ -5,7 +5,7 @@ import { LEVEL } from 'src/auth/permissions';
 
 export const getOrganizationLevel = (req: Request) => {
   if (req.user?.hasPermission(LEVEL.ADMIN)) {
-    return [LEVEL.ADMIN, null];
+    return LEVEL.ADMIN;
   } else if (
     req.user?.hasPermission(LEVEL.ORGANIZATION) &&
     req.user?.organizationSlug

@@ -6,18 +6,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FormSubmission } from './entities/form-submission.entity';
 import { FieldGroupsService } from '../field-groups/field-groups.service';
 import { S3Service } from 'src/aws/s3/s3.service';
-import { UsersModule } from 'src/users/users.module';
 import { MediaModule } from 'src/media/media.module';
 import { FormsPdfService } from './forms-pdf.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Form, FormSubmission]),
-    UsersModule,
     MediaModule,
+    HttpModule,
   ],
   controllers: [FormsController],
   providers: [FormsService, FieldGroupsService, S3Service, FormsPdfService],
-  exports: [FormsService, UsersModule],
+  exports: [FormsService],
 })
 export class FormsModule {}

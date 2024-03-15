@@ -12,8 +12,8 @@ import {
   BeforeUpdate,
   BeforeInsert,
 } from 'typeorm';
-import { SectionItem } from './section-item.entity';
-import { VideoItem } from 'src/training/items/entities/video-item.entity';
+import { TrainingSectionItem } from './section-item.entity';
+import { Video } from 'src/training/items/entities/video-item.entity';
 
 export enum TrainingRepeats {
   YEARLY = 'yearly',
@@ -45,11 +45,11 @@ export class TrainingSection extends Base {
   })
   course: Relation<TrainingCourse>;
 
-  @OneToMany(() => SectionItem, (sectionItem) => sectionItem.section, {
+  @OneToMany(() => TrainingSectionItem, (sectionItem) => sectionItem.section, {
     eager: true,
     cascade: true,
   })
-  items: Relation<SectionItem>[];
+  items: Relation<TrainingSectionItem>[];
 
   @AfterLoad()
   @BeforeUpdate()
@@ -68,12 +68,14 @@ export class TrainingSection extends Base {
   async loadVideoThumbnails(
     getVimeoThumbnail: (url: string) => Promise<string | null>,
   ) {
-    await Promise.all(
-      this.items?.map(async (item) => {
-        if (item.item instanceof VideoItem) {
-          await item.item.loadThumbnailUrl(getVimeoThumbnail);
+    this.items &&= await Promise.all(
+      this.items.map(async (item) => {
+        if (item.item instanceof Video) {
+          item.item = await item.item.loadThumbnailUrl(getVimeoThumbnail);
         }
-      }) ?? [],
+        return item;
+      }),
     );
+    return this;
   }
 }

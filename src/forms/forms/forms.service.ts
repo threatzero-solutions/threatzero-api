@@ -86,7 +86,7 @@ export class FormsService extends BaseEntityService<Form> {
     return await this.mapResult(entity);
   }
 
-  protected async beforeRemove(id: Form['id']) {
+  async beforeRemove(id: Form['id']) {
     const form = await this.findOne(id);
     if (form.state === FormState.PUBLISHED) {
       throw new BadRequestException('Cannot delete published form.');
@@ -103,12 +103,18 @@ export class FormsService extends BaseEntityService<Form> {
       formSubmissionDto,
       request,
     );
-    const submission =
-      this.formSubmissionsRepository.create(validatedSubmission);
 
-    await this.dataSource.transaction(async (manager) => {
-      await manager.save(submission);
-      await submission.persistUploads(this.persistUpload);
+    return await this.dataSource.transaction(async (manager) => {
+      // Save once to ensure submission gets saved, even if persist uploads fails.
+      let savedSubmission = await manager.save(validatedSubmission);
+
+      // Then persist uploads.
+      savedSubmission = await savedSubmission.persistUploads((key) =>
+        this.persistUpload(key),
+      );
+
+      // Then save again.
+      return await manager.save(savedSubmission);
     });
   }
 
@@ -130,7 +136,7 @@ export class FormsService extends BaseEntityService<Form> {
       where: { id },
       relations: ['fieldResponses'],
     });
-    submission.sign(this.getCloudfrontUrlSigner());
+    submission.sign((key) => this.getCloudfrontUrlSigner()(key));
     return submission;
   }
 
@@ -140,7 +146,11 @@ export class FormsService extends BaseEntityService<Form> {
     request: Request,
   ) {
     const form = await this.getFormBy({ slug: formSlug });
-    return form.validateSubmission(formSubmissionDto, request);
+    const validatedSubmission = form.validateSubmission(
+      formSubmissionDto,
+      request,
+    );
+    return this.formSubmissionsRepository.create(validatedSubmission);
   }
 
   async generateFormPDF(formId: Form['id']) {
@@ -177,14 +187,13 @@ export class FormsService extends BaseEntityService<Form> {
 
     const groups = await this.groupsService.getDescendantGroupsForForm(form);
 
-    return {
-      ...form,
-      groups,
-    } as Form;
+    form.groups = groups;
+    return form;
   }
 
   async getPresignedUploadUrls(
     getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
+    prefix = 'user-uploads',
   ) {
     return await Promise.all(
       getPresignedUploadUrlsDto.files.map(async (f) => {
@@ -195,7 +204,7 @@ export class FormsService extends BaseEntityService<Form> {
           ext = mime.extension(f.mimetype);
         }
         let key = uuidv4().replace(/-/g, '') + (ext ? `.${ext}` : '');
-        key = `tmp/user-files/${key}`;
+        key = `${prefix.replace(/\//g, '/')}/tmp/${key}`;
 
         const cmd = new PutObjectCommand({
           Bucket:
@@ -205,7 +214,10 @@ export class FormsService extends BaseEntityService<Form> {
         });
 
         return {
-          url: await getSignedUrl(this.s3.client, cmd, { expiresIn: 5 * 60 }), // 5 minutes
+          putUrl: await getSignedUrl(this.s3.client, cmd, {
+            expiresIn: 5 * 60,
+          }), // 5 minutes
+          getUrl: this.getCloudfrontUrlSigner()(key),
           key,
           filename: f.filename,
           fileId: f.fileId,
@@ -215,7 +227,7 @@ export class FormsService extends BaseEntityService<Form> {
   }
 
   private async persistUpload(key: string) {
-    if (!key.startsWith('tmp/')) {
+    if (!key.startsWith('user-uploads/tmp/')) {
       return key;
     }
 
@@ -223,7 +235,7 @@ export class FormsService extends BaseEntityService<Form> {
       this.config.getOrThrow<S3Config>('aws.s3').buckets.uploadedMedia.name;
 
     const fromSource = `${bucketName}/${key}`;
-    const newKey = key.replace(/^tmp\//, '');
+    const newKey = key.replace(/\/tmp\//, '/');
 
     const cmd = new CopyObjectCommand({
       Bucket: bucketName,
@@ -237,6 +249,6 @@ export class FormsService extends BaseEntityService<Form> {
   }
 
   private getCloudfrontUrlSigner() {
-    return this.mediaService.getCloudFrontUrlSigner('user-uploads');
+    return this.mediaService.getCloudFrontUrlSigner();
   }
 }

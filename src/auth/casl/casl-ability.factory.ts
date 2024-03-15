@@ -20,7 +20,7 @@ import { Form } from 'src/forms/forms/entities/form.entity';
 import { FieldGroup } from 'src/forms/field-groups/entities/field-group.entity';
 import { Field } from 'src/forms/fields/entities/field.entity';
 import { Tip } from 'src/tips/entities/tip.entity';
-import { Resource } from 'src/resources/entities/resource.entity';
+import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { VideoEvent } from 'src/media/entities/video-event.entity';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
@@ -49,7 +49,7 @@ type ThreatAssessmentSubjectTypes = InferSubjects<
 const TipSubjects = [Tip];
 type TipSubjectTypes = InferSubjects<(typeof TipSubjects)[number]>;
 
-const ResourceSubjects = [Resource];
+const ResourceSubjects = [ResourceItem];
 type ResourceSubjectTypes = InferSubjects<(typeof ResourceSubjects)[number]>;
 
 type MediaSubjects = InferSubjects<typeof VideoEvent>;

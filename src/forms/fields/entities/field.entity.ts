@@ -74,12 +74,16 @@ export class Field extends Base {
   group: Relation<FieldGroup> | null;
 
   async clone(manager: EntityManager, form?: Form, group?: FieldGroup) {
-    await manager.insert(Field, {
+    let clone: Field = {
       ...this,
-      id: undefined,
       form,
       group,
-    });
+    };
+
+    Reflect.deleteProperty(clone, 'id');
+
+    clone = manager.create(Field, clone);
+    await manager.save(Field, clone);
   }
 
   validateChanges(form: Form, changes: DeepPartial<Field>) {

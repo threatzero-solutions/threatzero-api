@@ -7,14 +7,14 @@ export enum ResourceType {
 }
 
 @Entity()
-export class Resource extends Base {
+export class ResourceItem extends Base {
   @Column()
   fileKey: string;
-  fileKeyToken?: string | null;
+  resourceUrl?: string | null;
 
   @Column({ type: 'text', nullable: true })
   thumbnailKey: string | null;
-  thumbnailKeyToken?: string | null;
+  thumbnailUrl?: string | null;
 
   @Column({ type: 'text' })
   title: string;
@@ -30,10 +30,10 @@ export class Resource extends Base {
   category: string;
 
   sign(signer: (k: string) => string) {
-    this.fileKeyToken = signer(this.fileKey);
+    this.resourceUrl = signer(this.fileKey);
 
     if (this.thumbnailKey) {
-      this.thumbnailKeyToken = signer(this.thumbnailKey);
+      this.thumbnailUrl = signer(this.thumbnailKey);
     }
 
     return this;

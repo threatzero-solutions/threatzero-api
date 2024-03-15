@@ -56,10 +56,10 @@ export class TrainingCourse extends Base {
   async loadVideoThumbnails(
     getVimeoThumbnail: (url: string) => Promise<string | null>,
   ) {
-    await Promise.all(
-      this.sections?.map((section) => {
-        section.loadVideoThumbnails(getVimeoThumbnail);
-      }) ?? [],
+    this.sections &&= await Promise.all(
+      this.sections.map((section) =>
+        section.loadVideoThumbnails(getVimeoThumbnail),
+      ),
     );
   }
 }

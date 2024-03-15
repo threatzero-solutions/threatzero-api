@@ -3,7 +3,7 @@ import {
   IsNotEmpty,
   IsObject,
   IsOptional,
-  IsUrl,
+  IsString,
   MaxLength,
 } from 'class-validator';
 import { VideoEventType } from '../entities/video-event.entity';
@@ -30,6 +30,6 @@ export class CreateVideoEventDto {
   eventData?: unknown;
 
   @IsNotEmpty()
-  @IsUrl()
+  @IsString()
   url: string;
 }

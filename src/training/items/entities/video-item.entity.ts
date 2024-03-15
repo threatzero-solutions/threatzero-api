@@ -2,7 +2,7 @@ import { ChildEntity, Column } from 'typeorm';
 import { TrainingItem } from './item.entity';
 
 @ChildEntity()
-export class VideoItem extends TrainingItem {
+export class Video extends TrainingItem {
   // TODO: This exists for backwards compatibility. Remove it in a future release.
   @Column({ type: 'varchar', length: 128 })
   mediaKey: string | null;
@@ -29,5 +29,6 @@ export class VideoItem extends TrainingItem {
     if (this.vimeoUrl) {
       this.thumbnailUrl = await getVimeoThumbnail(this.vimeoUrl);
     }
+    return this;
   }
 }

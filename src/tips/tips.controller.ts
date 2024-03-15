@@ -32,8 +32,12 @@ export class TipsController {
   @Throttle({ default: { limit: 3, ttl: 3 * 60 * 1000 } })
   @Public()
   @Post('submit')
-  create(@Body() createTipDto: CreateTipDto) {
-    return this.tipsService.create(createTipDto);
+  async create(
+    @Body() createTipDto: CreateTipDto,
+    @Query('locationId') locationId?: string,
+  ) {
+    // Don't return the created tip.
+    await this.tipsService.create(createTipDto, locationId);
   }
 
   @Get('submissions')
@@ -77,17 +81,17 @@ export class TipsController {
     return this.tipsService.getPresignedUploadUrls(body);
   }
 
-  @Post('notes')
+  @Post('submissions/:tipId/notes')
   addNote(@Param('tipId') tipId: string, @Body() createNoteDto: CreateNoteDto) {
     return this.tipsService.addNote(tipId, createNoteDto);
   }
 
-  @Get('notes')
+  @Get('submissions/:tipId/notes')
   getNotes(@Param('tipId') tipId: string, @Query() query: BaseQueryDto) {
-    return this.tipsService.getNotes(query, tipId);
+    return this.tipsService.getNotes(tipId, query);
   }
 
-  @Patch('notes/:noteId')
+  @Patch('submissions/:tipId/notes/:noteId')
   editNote(
     @Param('tipId') tipId: string,
     @Param('noteId') noteId: string,
@@ -96,7 +100,7 @@ export class TipsController {
     return this.tipsService.editNote(tipId, noteId, createNoteDto);
   }
 
-  @Delete('notes/:tipId')
+  @Delete('submissions/:tipId/notes/:tipId')
   removeNote(@Param('tipId') tipId: string, @Param('noteId') noteId: string) {
     return this.tipsService.removeNote(tipId, noteId);
   }

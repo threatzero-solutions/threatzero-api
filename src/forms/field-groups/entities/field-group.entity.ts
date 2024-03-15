@@ -47,19 +47,26 @@ export class FieldGroup extends Base {
   childGroups: Relation<FieldGroup>[];
 
   async clone(manager: EntityManager, form?: Form, parentGroup?: FieldGroup) {
-    let newDraft = manager.create(FieldGroup, {
+    let clone: FieldGroup = {
       ...this,
-      id: undefined,
       form,
       parentGroup,
-    });
-    newDraft = await manager.save(newDraft);
+    };
+
+    Reflect.deleteProperty(clone, 'id');
+    Reflect.deleteProperty(clone, 'childGroups');
+    Reflect.deleteProperty(clone, 'fields');
+
+    clone = await manager.save(FieldGroup, clone);
+
+    Reflect.deleteProperty(clone, 'parentGroup');
 
     await Promise.all(
-      this.fields.map((f) => f.clone(manager, undefined, newDraft)),
+      this.fields.map((f) => f.clone(manager, undefined, clone)),
     );
+
     await Promise.all(
-      this.childGroups.map((g) => g.clone(manager, undefined, newDraft)),
+      this.childGroups.map((g) => g.clone(manager, undefined, clone)),
     );
   }
 }

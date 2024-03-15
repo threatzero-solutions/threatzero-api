@@ -34,9 +34,11 @@ class FieldResponse extends Base {
     ) {
       this.loadedValue = (this.value.keys as string[]).map((fileKey) => ({
         key: fileKey,
-        token: signer(fileKey),
+        url: signer(fileKey),
       }));
     }
+
+    return this;
   }
 
   async persistUploads(onPersist: (key: string) => Promise<string>) {
@@ -56,11 +58,14 @@ class FieldResponse extends Base {
           this.value.keys[idx] = await onPersist(fileKeyToPersist);
         } catch (e) {
           throw Error(
-            'Failed to persist file upload for key: ' + fileKeyToPersist,
+            `Failed to persist file upload for key: ${fileKeyToPersist}. Error: ${e}`,
+            { cause: e },
           );
         }
       }
     }
+
+    return this;
   }
 }
 
