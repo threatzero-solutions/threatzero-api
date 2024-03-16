@@ -22,7 +22,7 @@ import { MediaModule } from './media/media.module';
 import { TipsModule } from './tips/tips.module';
 import { UsersModule } from './users/users.module';
 import { AwsModule } from './aws/aws.module';
-import { APP_GUARD, APP_INTERCEPTOR, RouterModule } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import Redis from 'ioredis';
 import { BullModule } from '@nestjs/bullmq';
 import { ConnectionOptions as BullMQConnectionOptions } from 'bullmq';
@@ -37,6 +37,7 @@ import { HealthModule } from './health/health.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      expandVariables: true,
       load: [
         authConfig,
         generalConfig,
