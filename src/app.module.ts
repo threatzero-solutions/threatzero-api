@@ -10,7 +10,6 @@ import notificationsConfig from './config/notifications.config';
 import redisConfig, { RedisConfig } from './config/redis.config';
 import keycloakConfig from './config/keycloak.config';
 import vimeoConfig from './config/vimeo.config';
-import mediaConfig from './config/media.config';
 import authConfig from './config/auth.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
@@ -31,6 +30,8 @@ import { ResourcesModule } from './resources/resources.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
+import helmetConfig from './config/helmet.config';
+import corsConfig from './config/cors.config';
 
 @Module({
   imports: [
@@ -47,7 +48,8 @@ import { HealthModule } from './health/health.module';
         redisConfig,
         keycloakConfig,
         vimeoConfig,
-        mediaConfig,
+        helmetConfig,
+        corsConfig,
       ],
     }),
     TypeOrmModule.forRootAsync({

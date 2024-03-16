@@ -4,7 +4,9 @@ import { ValidationPipe } from '@nestjs/common';
 import { type StatelessUser } from './auth/user.factory';
 import { TypeORMErrorsFilter } from './common/typeorm-errors.filter';
 import helmet from 'helmet';
-import helmetConfig from './config/helmet.config';
+import helmetConfig, { HelmetConfig } from './config/helmet.config';
+import { ConfigService } from '@nestjs/config';
+import { CorsConfig } from './config/cors.config';
 
 declare global {
   namespace Express {
@@ -17,11 +19,14 @@ declare global {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Get config service.
+  const configService = app.get(ConfigService);
+
   // Cors.
-  app.enableCors();
+  app.enableCors(configService.getOrThrow<CorsConfig>('cors'));
 
   // Configure Helmet, for CSP and other headers.
-  app.use(helmet(helmetConfig));
+  app.use(helmet(configService.getOrThrow<HelmetConfig>('helmet')));
 
   // Validate all data and queries from incoming requests.
   app.useGlobalPipes(

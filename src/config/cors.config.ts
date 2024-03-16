@@ -1,14 +1,18 @@
-import * as dotenv from 'dotenv';
-dotenv.config();
+import { registerAs } from '@nestjs/config';
+import { validate } from './env.validation';
+import { IsOptional, IsString } from 'class-validator';
 
-// NOTE: Not meant to be inject into config service since Helmet
-// must be instantiated early on in the bootstrap process.
+export class CorsConfig {
+  @IsOptional()
+  @IsString({ each: true })
+  origin: string[];
+}
 
-const corsOptions = {
-  origin: [
-    ...(process.env.CORS_ALLOWED_ORIGINS?.split(',') || []),
-    'http://localhost:3000',
-  ],
-};
-
-export default corsOptions;
+export default registerAs('cors', () =>
+  validate(CorsConfig, {
+    origin: [
+      ...(process.env.CORS_ALLOWED_ORIGINS?.split(',') || []),
+      'http://localhost:3000',
+    ],
+  }),
+);

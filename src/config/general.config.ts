@@ -15,6 +15,10 @@ export class GeneralConfig {
   @IsOptional()
   threatzeroLogoUrl: string =
     'https://content.threatzero.org/TZ_logo_final.png';
+
+  @IsOptional()
+  @IsUrl()
+  appHost: string = 'https://app.threatzero.org';
 }
 
 export default registerAs('general', () =>
@@ -22,5 +26,6 @@ export default registerAs('general', () =>
     host: process.env.HOST,
     port: process.env.PORT,
     threatzeroLogoUrl: process.env.THREATZERO_LOGO_URL,
+    appHost: process.env.APP_HOST,
   }),
 );
