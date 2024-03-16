@@ -13,9 +13,12 @@ import { Cache } from 'cache-manager';
 import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
 import { PinpointSmsService } from 'src/aws/pinpoint-sms/pinpoint-sms.service';
 import { SesService } from 'src/aws/ses/ses.service';
-import { NOTIFICATIONS_QUEUE_NAME } from 'src/common/constants/queue.constants';
+import {
+  NOTIFICATIONS_QUEUE_NAME,
+  NOTIFICATIONS_QUEUE_PREFIX,
+} from 'src/common/constants/queue.constants';
 import { Tip } from 'src/tips/entities/tip.entity';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 
 export enum NotificationsJobNames {
   SendEmailNotification = 'send-email-notification',
@@ -23,7 +26,7 @@ export enum NotificationsJobNames {
   SendNewTipNotifications = 'send-new-tip-notifications',
 }
 
-@Processor(NOTIFICATIONS_QUEUE_NAME)
+@Processor(NOTIFICATIONS_QUEUE_NAME, { prefix: NOTIFICATIONS_QUEUE_PREFIX })
 export class NotificationsProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationsProcessor.name);
 
