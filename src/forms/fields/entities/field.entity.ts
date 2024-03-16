@@ -100,7 +100,7 @@ export class Field extends Base {
       })
     ) {
       throw new BadRequestException(
-        `Form field values ${fieldsToCompare} cannot be altered once published.`,
+        `The following field values cannot be altered once form is published: ${fieldsToCompare.map((f) => `"${f}"`).join(', ')}.`,
       );
     }
   }

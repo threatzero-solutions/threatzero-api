@@ -12,11 +12,11 @@ import {
 import { FormsService } from './forms.service';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { Form } from './entities/form.entity';
 import { Response } from 'express';
+import { QueryFormDto } from './dto/query-form.dto';
 
 // TODO: Fix form validation
 // TODO: Fix checkbox not working in editing form fields?
@@ -37,7 +37,7 @@ export class FormsController {
   }
 
   @Get()
-  findAll(@Query() query: BaseQueryDto) {
+  findAll(@Query() query: QueryFormDto) {
     return this.formsService.findAll(query);
   }
 

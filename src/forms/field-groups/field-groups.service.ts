@@ -33,7 +33,7 @@ export class FieldGroupsService extends BaseEntityService<FieldGroup> {
     return this.fieldGroupsRepository
       .createAncestorsQueryBuilder('group', 'groupClosure', fieldGroup)
       .leftJoinAndSelect('group.form', 'form')
-      .andWhere('form IS NOT NULL')
+      .andWhere('form.id IS NOT NULL')
       .getOne();
   }
 

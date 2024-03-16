@@ -17,6 +17,7 @@ import { UsersService } from 'src/users/users.service';
 import { Request } from 'express';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { scopeToOrganizationLevel } from 'src/organizations/common/organizations.utils';
+import { GetPresignedUploadUrlsDto } from 'src/forms/forms/dto/get-presigned-upload-urls.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
@@ -68,6 +69,14 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
     );
 
     return submittedTip;
+  }
+
+  async getPresignedUploadUrls(
+    getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
+    locationId: string,
+  ) {
+    await this.getUnitSlugForTip(locationId);
+    return super.getPresignedUploadUrls(getPresignedUploadUrlsDto);
   }
 
   /**

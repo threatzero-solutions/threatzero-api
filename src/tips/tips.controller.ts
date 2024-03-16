@@ -77,8 +77,11 @@ export class TipsController {
   @Throttle({ default: { limit: 10, ttl: 30 * 1000 } })
   @Public()
   @Post('submissions/presigned-upload-urls')
-  getPresignedUploadUrls(@Body() body: GetPresignedUploadUrlsDto) {
-    return this.tipsService.getPresignedUploadUrls(body);
+  getPresignedUploadUrls(
+    @Query('locationId') locationId: string,
+    @Body() body: GetPresignedUploadUrlsDto,
+  ) {
+    return this.tipsService.getPresignedUploadUrls(body, locationId);
   }
 
   @Post('submissions/:tipId/notes')

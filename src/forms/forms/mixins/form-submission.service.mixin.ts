@@ -145,6 +145,7 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
 
       async getPresignedUploadUrls(
         getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
+        ...args: any[]
       ) {
         return this.formsService.getPresignedUploadUrls(
           getPresignedUploadUrlsDto,
