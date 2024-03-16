@@ -18,6 +18,9 @@ import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { Form } from './entities/form.entity';
 import { Response } from 'express';
 
+// TODO: Fix form validation
+// TODO: Fix checkbox not working in editing form fields?
+
 @Controller('forms')
 @CheckPolicies(new EntityAbilityChecker(Form))
 export class FormsController {

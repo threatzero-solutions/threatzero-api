@@ -16,7 +16,7 @@ import { Field } from './entities/field.entity';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 
-@Controller('fields')
+@Controller('forms/fields')
 @CheckPolicies(new EntityAbilityChecker(Field))
 export class FieldsController {
   constructor(private readonly fieldsService: FieldsService) {}
