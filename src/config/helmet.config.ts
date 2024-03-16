@@ -5,6 +5,7 @@ import {
   IsArray,
   IsIn,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   ValidateNested,
 } from 'class-validator';
@@ -31,9 +32,6 @@ type ReferrerPolicyOptions = (typeof referrerPolicyOptions)[number];
 
 export class ContentSecurityPolicyConfig {
   @IsOptional()
-  @IsArray({
-    each: true,
-  })
   directives: Record<string, string[]>;
 }
 

@@ -1,6 +1,6 @@
 import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { KeycloakConfig } from './keycloak.config';
+import { HelmetConfig } from './helmet.config';
 
 export function validate(
   ConfigClass: ClassConstructor<object>,
@@ -10,6 +10,10 @@ export function validate(
     enableImplicitConversion: true,
     exposeUnsetFields: false,
   });
+
+  if (validatedConfig instanceof HelmetConfig) {
+    console.debug('Validated config', validatedConfig);
+  }
 
   const errors = validateSync(validatedConfig, {
     skipMissingProperties: false,
