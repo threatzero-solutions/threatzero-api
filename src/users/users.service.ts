@@ -10,6 +10,7 @@ import { CreateNoteDto } from './dto/create-note.dto';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { NotableEntity } from './interfaces/notable-entity.interface';
 import { UpdateNoteDto } from './dto/update-note.dto';
+import { Paginated } from 'src/common/dto/paginated.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class UsersService {
@@ -69,13 +70,7 @@ export class UsersService {
   ) {
     let qb = this.notesQb().andWhere({ [foreignKeyColumn]: entityId });
     qb = query.applyToQb(qb);
-    const [results, count] = await qb.getManyAndCount();
-    return {
-      results,
-      count,
-      limit: results.length,
-      offset: +query.offset,
-    };
+    return Paginated.fromQb(qb, query);
   }
 
   async editNote<E extends NotableEntity>(

@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { BaseQueryDto } from './dto/base-query.dto';
 import { Page } from './types/page';
+import { Paginated } from './dto/paginated.dto';
 
 export class BaseEntityService<E extends ObjectLiteral> {
   alias?: string;
@@ -59,19 +60,12 @@ export class BaseEntityService<E extends ObjectLiteral> {
   async findAll(...args: unknown[]): Promise<E[]>;
   async findAll(query: BaseQueryDto, ...args: unknown[]): Promise<Page<E>>;
   async findAll(query?: BaseQueryDto, ...args: unknown[]) {
-    let [results, count] = await this.getQb(query, ...args).getManyAndCount();
-
-    results = await this.mapResults(results);
-
     if (query) {
-      return {
-        results,
-        count,
-        limit: results.length,
-        offset: +query.offset,
-      };
+      return this.paginate(this.getQb(query, ...args), query);
     }
 
+    let results = await this.getQb(query, ...args).getMany();
+    results = await this.mapResults(results);
     return results;
   }
 
@@ -104,6 +98,10 @@ export class BaseEntityService<E extends ObjectLiteral> {
     const res = await this.getRepository().delete({ id });
     await this.afterRemove(id, ...args);
     return res;
+  }
+
+  async paginate(qb: SelectQueryBuilder<E>, query: BaseQueryDto) {
+    return Paginated.fromQb(qb, query, (r) => this.mapResults(r));
   }
 
   async beforeCreate(createEntityDto: DeepPartial<E>, ...args: unknown[]) {}

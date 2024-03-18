@@ -4,7 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { type StatelessUser } from './auth/user.factory';
 import { TypeORMErrorsFilter } from './common/typeorm-errors.filter';
 import helmet from 'helmet';
-import helmetConfig, { HelmetConfig } from './config/helmet.config';
+import { HelmetConfig } from './config/helmet.config';
 import { ConfigService } from '@nestjs/config';
 import { CorsConfig } from './config/cors.config';
 
