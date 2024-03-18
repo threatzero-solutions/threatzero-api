@@ -15,6 +15,7 @@ import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { ResourceItem } from './entities/resource.entity';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
+import { QueryResourceDto } from './dto/query-resource';
 
 @Controller('resources')
 @CheckPolicies(new EntityAbilityChecker(ResourceItem))
@@ -27,7 +28,7 @@ export class ResourcesController {
   }
 
   @Get()
-  findAll(@Query() query: BaseQueryDto) {
+  findAll(@Query() query: QueryResourceDto) {
     return this.resourcesService.findAll(query);
   }
 
