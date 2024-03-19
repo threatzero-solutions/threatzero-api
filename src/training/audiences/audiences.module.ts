@@ -8,5 +8,6 @@ import { Audience } from './entities/audience.entity';
   imports: [TypeOrmModule.forFeature([Audience])],
   controllers: [AudiencesController],
   providers: [AudiencesService],
+  exports: [TypeOrmModule],
 })
 export class AudiencesModule {}

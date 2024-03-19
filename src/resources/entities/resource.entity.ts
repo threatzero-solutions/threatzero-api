@@ -33,11 +33,11 @@ export class ResourceItem extends Base {
   category: string;
 
   sign(signer: (k: string) => string) {
-    if (this.fileKey) {
+    if (!this.vimeoUrl && this.fileKey) {
       this.resourceUrl = signer(this.fileKey);
     }
 
-    if (this.thumbnailKey) {
+    if (!this.vimeoUrl && this.thumbnailKey) {
       this.thumbnailUrl = signer(this.thumbnailKey);
     }
 
