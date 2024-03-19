@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import { validate } from './env.validation';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class CorsConfig {
@@ -14,7 +14,7 @@ export default registerAs('cors', () =>
     origin: [
       ...(process.env.CORS_ALLOWED_ORIGINS?.split(',').map((s) => s.trim()) ||
         []),
-      'http://localhost(:d+)?',
+      'http://localhost(:\\d+)?',
     ],
   }),
 );
