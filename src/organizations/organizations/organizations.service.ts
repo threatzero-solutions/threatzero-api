@@ -1,20 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Scope } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
-import { DeepPartial, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   ORGANIZATION_CHANGED_EVENT,
   ORGANIZATION_REMOVED_EVENT,
 } from '../listeners/organization-change.listener';
 import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { REQUEST } from '@nestjs/core';
+import { Request } from 'express';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { getOrganizationLevel } from '../common/organizations.utils';
+import { LEVEL } from 'src/auth/permissions';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class OrganizationsService extends BaseEntityService<Organization> {
   constructor(
     @InjectRepository(Organization)
     private organizationsRepository: Repository<Organization>,
+    @Inject(REQUEST) private request: Request,
     private eventEmitter: EventEmitter2,
   ) {
     super();
@@ -22,6 +28,21 @@ export class OrganizationsService extends BaseEntityService<Organization> {
 
   getRepository() {
     return this.organizationsRepository;
+  }
+
+  getQb(query?: BaseQueryDto) {
+    let qb = super.getQb(query);
+
+    switch (getOrganizationLevel(this.request)) {
+      case LEVEL.ADMIN:
+        return qb;
+      case LEVEL.ORGANIZATION:
+        return qb.andWhere(`${qb.alias}.slug = :organizationSlug`, {
+          organizationSlug: this.request.user?.organizationSlug,
+        });
+      default:
+        return qb.where('1 = 0');
+    }
   }
 
   async afterCreate(organization: Organization) {

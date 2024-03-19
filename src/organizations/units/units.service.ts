@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Scope } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Unit } from './entities/unit.entity';
-import { DeepPartial, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
@@ -10,13 +10,18 @@ import {
   UNIT_CHANGED_EVENT,
   UNIT_REMOVED_EVENT,
 } from '../listeners/organization-change.listener';
+import { Request } from 'express';
+import { REQUEST } from '@nestjs/core';
+import { getOrganizationLevel } from '../common/organizations.utils';
+import { LEVEL } from 'src/auth/permissions';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class UnitsService extends BaseEntityService<Unit> {
   alias = 'unit';
 
   constructor(
     @InjectRepository(Unit) private unitsRepository: Repository<Unit>,
+    @Inject(REQUEST) private request: Request,
     private eventEmitter: EventEmitter2,
   ) {
     super();
@@ -27,9 +32,26 @@ export class UnitsService extends BaseEntityService<Unit> {
   }
 
   getQb(query?: BaseQueryDto) {
-    return super
+    let qb = super
       .getQb(query)
       .leftJoinAndSelect('unit.organization', 'organization');
+
+    switch (getOrganizationLevel(this.request)) {
+      case LEVEL.ADMIN:
+        return qb;
+      case LEVEL.UNIT:
+        return qb.andWhere('unit.slug = :unitSlug', {
+          unitSlug: this.request.user?.unitSlug,
+        });
+      case LEVEL.ORGANIZATION:
+        return qb
+          .leftJoinAndSelect(`${qb.alias}.organization`, 'org_organization')
+          .andWhere('org_organization.slug = :organizationSlug', {
+            organizationSlug: this.request.user?.organizationSlug,
+          });
+      default:
+        return qb.where('1 = 0');
+    }
   }
 
   async afterCreate(unit: Unit) {

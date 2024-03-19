@@ -27,14 +27,16 @@ export const scopeToOrganizationLevel = <
     case LEVEL.ADMIN:
       return qb;
     case LEVEL.UNIT:
-      return qb.leftJoin('unit', 'unit').andWhere('unit.slug = :unitSlug', {
-        unitSlug: req.user?.unitSlug,
-      });
+      return qb
+        .leftJoin(`${qb.alias}.unit`, 'org_unit')
+        .andWhere('unit.slug = :unitSlug', {
+          unitSlug: req.user?.unitSlug,
+        });
     case LEVEL.ORGANIZATION:
       return qb
-        .leftJoin('unit', 'unit')
-        .leftJoinAndSelect('unit.organization', 'organization')
-        .andWhere('organization.slug = :organizationSlug', {
+        .leftJoin(`${qb.alias}.unit`, 'org_unit')
+        .leftJoinAndSelect('org_unit.organization', 'org_organization')
+        .andWhere('org_organization.slug = :organizationSlug', {
           organizationSlug: req.user?.organizationSlug,
         });
     default:
