@@ -123,12 +123,7 @@ export class FormsService extends BaseEntityService<Form> {
     formSubmissionDto: DeepPartial<FormSubmission>,
     request: Request,
   ) {
-    const existingSubmission =
-      await this.formSubmissionsRepository.preload(formSubmissionDto);
-    if (!existingSubmission) {
-      throw new NotFoundException();
-    }
-    return await this.createSubmission(formSlug, existingSubmission, request);
+    return await this.createSubmission(formSlug, formSubmissionDto, request);
   }
 
   async getSubmission(id: FormSubmission['id']) {

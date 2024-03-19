@@ -43,7 +43,7 @@ export class AudienceChangeListener {
         id: audience.groupId ?? undefined,
         name: audience.slug,
         attributes: {
-          slug: [audience.slug],
+          audience: [audience.slug],
         },
       },
       audienceParentGroupId,

@@ -128,11 +128,12 @@ export class NotificationsProcessor extends WorkerHost {
         let phoneNumber: string | undefined;
         let email: string | undefined;
         const userAttributes = user.attributes || {};
+        const userPhoneNumber = this.getUserAttr(userAttributes.phoneNumber);
         if (
-          userAttributes.phoneNumberVerified[0] &&
-          userAttributes.phoneNumber[0]
+          this.getUserAttr(userAttributes.phoneNumberVerified) === 'true' &&
+          userPhoneNumber
         ) {
-          phoneNumber = userAttributes.phoneNumber[0];
+          phoneNumber = userPhoneNumber;
         }
         if (user.email) {
           email = user.email;
@@ -147,7 +148,7 @@ export class NotificationsProcessor extends WorkerHost {
       this.cache.set(cacheKey, JSON.stringify(contacts), 60 * 60 * 1000); // Cache expires in 1 hour
     }
     const tipUrl =
-      this.config.get<string>('general.host') +
+      this.config.get<string>('general.appHost') +
       '/administrative-reports/safety-concerns/' +
       tip.id;
     const phoneNumbers = contacts
@@ -173,6 +174,22 @@ export class NotificationsProcessor extends WorkerHost {
           tipUrl,
         },
       });
+    }
+  }
+
+  private getUserAttr(attribute: unknown) {
+    if (Array.isArray(attribute) && attribute.length) {
+      attribute = attribute;
+    }
+
+    if (attribute === null || attribute === undefined) {
+      return undefined;
+    }
+
+    try {
+      return attribute.toString();
+    } catch {
+      return undefined;
     }
   }
 }
