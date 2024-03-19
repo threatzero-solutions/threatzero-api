@@ -52,13 +52,13 @@ export class LocationsController {
     return this.locationsService.remove(id);
   }
 
-  @Get('/sos/qr-code/:locationId')
+  @Get(':id/sos-qr-code/')
   async streamTipSubmissionQRCode(
-    @Param('locationId') locationId: string,
+    @Param('id') id: string,
     @Query() query: GenerateQrCodeQueryDto,
     @Res() response: Response,
   ) {
-    const streamer = this.locationsService.generateQRCode(locationId, query);
+    const streamer = this.locationsService.generateQRCode(id, query);
     streamer(response);
   }
 }
