@@ -60,6 +60,9 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
       ...createSubmissionEntityDto,
       // Add user unit slug to tip.
       unitSlug: await this.getUnitSlugForTip(locationId),
+      informantFirstName: this.request.user?.firstName,
+      informantLastName: this.request.user?.lastName,
+      informantEmail: this.request.user?.email,
     });
 
     // Emit tip submitted event.
