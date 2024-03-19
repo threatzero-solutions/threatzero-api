@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, EntityTarget, Repository } from 'typeorm';
+import { DataSource, DeepPartial, EntityTarget, Repository } from 'typeorm';
 import { UserRepresentation } from './entities/user-representation.entity';
 import { StatelessUser } from 'src/auth/user.factory';
 import { Note } from './entities/note.entity';
@@ -11,6 +11,9 @@ import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { NotableEntity } from './interfaces/notable-entity.interface';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { Paginated } from 'src/common/dto/paginated.dto';
+import { UserIdChangeDto, UserIdChangesDto } from './dto/user-id-change.dto';
+import { VideoEvent } from 'src/media/entities/video-event.entity';
+import { FormSubmission } from 'src/forms/forms/entities/form-submission.entity';
 
 @Injectable({ scope: Scope.REQUEST })
 export class UsersService {
@@ -19,6 +22,7 @@ export class UsersService {
     private usersRepository: Repository<UserRepresentation>,
     @InjectRepository(Note) private notesRepository: Repository<Note>,
     @Inject(REQUEST) private request: Request,
+    private dataSource: DataSource,
   ) {}
 
   async updateRepresentation(user: StatelessUser) {
@@ -126,5 +130,38 @@ export class UsersService {
       userExternalId: this.request.user.id,
       [foreignKeyColumn]: entityId,
     };
+  }
+
+  async updateUserId(change: UserIdChangeDto) {
+    await this.dataSource.transaction(async (manager) => {
+      const promises = [];
+      promises.push(
+        manager.update(
+          UserRepresentation,
+          { externalId: change.oldId },
+          { externalId: change.newId },
+        ),
+      );
+      promises.push(
+        manager.update(
+          FormSubmission,
+          { userId: change.oldId },
+          { userId: change.newId },
+        ),
+      );
+      promises.push(
+        manager.update(
+          VideoEvent,
+          { userId: change.oldId },
+          { userId: change.newId },
+        ),
+      );
+
+      await Promise.all(promises);
+    });
+  }
+
+  async updateUserIds(userIdChanges: UserIdChangesDto) {
+    await Promise.all(userIdChanges.changes.map((c) => this.updateUserId(c)));
   }
 }

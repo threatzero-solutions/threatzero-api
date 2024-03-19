@@ -22,6 +22,7 @@ import { Field } from 'src/forms/fields/entities/field.entity';
 import { Tip } from 'src/tips/entities/tip.entity';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { VideoEvent } from 'src/media/entities/video-event.entity';
+import { UserRepresentation } from 'src/users/entities/user-representation.entity';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 
@@ -54,6 +55,9 @@ type ResourceSubjectTypes = InferSubjects<(typeof ResourceSubjects)[number]>;
 
 type MediaSubjects = InferSubjects<typeof VideoEvent>;
 
+const UserSubjects = [UserRepresentation];
+type UserSubjectTypes = InferSubjects<(typeof UserSubjects)[number]>;
+
 type AllSubjectTypes =
   | TrainingSubjectTypes
   | OrganizationsSubjectTypes
@@ -61,7 +65,8 @@ type AllSubjectTypes =
   | FormsSubjectTypes
   | TipSubjectTypes
   | ResourceSubjectTypes
-  | MediaSubjects;
+  | MediaSubjects
+  | UserSubjectTypes;
 
 @Injectable()
 export class CaslAbilityFactory {
@@ -144,6 +149,11 @@ export class CaslAbilityFactory {
 
     // Anyone can create video events.
     can(Action.Create, VideoEvent);
+
+    // --------- USERS ---------
+    if (user.hasPermission(LEVEL.ADMIN, WRITE.USERS)) {
+      can(Action.Manage, UserSubjects);
+    }
 
     return build({
       detectSubjectType: (item) =>
