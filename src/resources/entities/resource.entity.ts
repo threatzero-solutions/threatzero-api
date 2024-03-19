@@ -8,13 +8,16 @@ export enum ResourceType {
 
 @Entity()
 export class ResourceItem extends Base {
-  @Column()
-  fileKey: string;
+  @Column({ type: 'text', nullable: true })
+  fileKey: string | null;
   resourceUrl?: string | null;
 
   @Column({ type: 'text', nullable: true })
   thumbnailKey: string | null;
   thumbnailUrl?: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  vimeoUrl: string | null;
 
   @Column({ type: 'text' })
   title: string;
@@ -30,12 +33,23 @@ export class ResourceItem extends Base {
   category: string;
 
   sign(signer: (k: string) => string) {
-    this.resourceUrl = signer(this.fileKey);
+    if (this.fileKey) {
+      this.resourceUrl = signer(this.fileKey);
+    }
 
     if (this.thumbnailKey) {
       this.thumbnailUrl = signer(this.thumbnailKey);
     }
 
+    return this;
+  }
+
+  async loadThumbnailUrl(
+    getVimeoThumbnail: (url: string) => Promise<string | null>,
+  ) {
+    if (this.vimeoUrl) {
+      this.thumbnailUrl = await getVimeoThumbnail(this.vimeoUrl);
+    }
     return this;
   }
 }

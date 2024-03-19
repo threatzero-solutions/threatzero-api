@@ -20,7 +20,11 @@ export class ResourcesService extends BaseEntityService<ResourceItem> {
   }
 
   async mapResult(r: ResourceItem) {
-    return r.sign(this.getCloudFrontUrlSigner());
+    r = r.sign(this.getCloudFrontUrlSigner());
+    r = await r.loadThumbnailUrl((url) =>
+      this.media.getThumbnailUrlForVimeoUrl(url),
+    );
+    return r;
   }
 
   private getCloudFrontUrlSigner() {

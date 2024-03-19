@@ -1,14 +1,25 @@
-import { IsNotEmpty, IsOptional, IsEnum, IsString } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { ResourceType } from '../entities/resource.entity';
 
 export class CreateResourceDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  fileKey: string;
+  fileKey?: string;
 
   @IsOptional()
   @IsString()
   thumbnailKey?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  vimeoUrl?: string;
 
   @IsNotEmpty()
   @IsString()
