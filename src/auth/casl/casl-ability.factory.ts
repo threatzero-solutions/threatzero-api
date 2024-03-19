@@ -136,7 +136,7 @@ export class CaslAbilityFactory {
       can(Action.Manage, ResourceSubjects);
     }
 
-    if (user.hasPermission(LEVEL.ADMIN, READ.RESOURCES)) {
+    if (user.hasPermission(READ.RESOURCES)) {
       can(Action.Read, ResourceSubjects);
     }
 
