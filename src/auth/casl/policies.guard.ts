@@ -13,6 +13,7 @@ import {
 } from './casl-ability.factory';
 import { MongoAbility } from '@casl/ability';
 import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from '../auth.guard';
 
 export interface PolicyHandlerContext {
   request: Request;
@@ -50,11 +51,20 @@ export class PoliciesGuard implements CanActivate {
         context.getClass(),
       ]) || [];
 
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
     const request: Request = context.switchToHttp().getRequest();
     const { user } = request;
 
-    if (!user) {
+    if (isPublic) {
       return true;
+    }
+
+    if (!user) {
+      return false;
     }
 
     const ability = this.caslAbilityFactory.createForUser(user);
