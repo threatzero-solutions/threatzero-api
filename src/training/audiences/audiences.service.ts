@@ -24,6 +24,13 @@ export class AudiencesService extends BaseEntityService<Audience> {
     return this.audiencesRepository;
   }
 
+  async afterCreate(audience: Audience) {
+    this.eventEmitter.emit(
+      AUDIENCE_CHANGED_EVENT,
+      AudienceChangeEvent.forAudience(audience),
+    );
+  }
+
   async afterUpdate(audience: Audience) {
     this.eventEmitter.emit(
       AUDIENCE_CHANGED_EVENT,
