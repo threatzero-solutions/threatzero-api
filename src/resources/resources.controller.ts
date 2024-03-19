@@ -11,7 +11,6 @@ import {
 import { ResourcesService } from './resources.service';
 import { CreateResourceDto } from './dto/create-resource.dto';
 import { UpdateResourceDto } from './dto/update-resource.dto';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { ResourceItem } from './entities/resource.entity';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';

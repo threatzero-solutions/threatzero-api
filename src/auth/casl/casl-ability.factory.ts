@@ -136,8 +136,9 @@ export class CaslAbilityFactory {
       can(Action.Manage, ResourceSubjects);
     }
 
-    // Anyone can read resources.
-    can(Action.Read, ResourceSubjects);
+    if (user.hasPermission(LEVEL.ADMIN, READ.RESOURCES)) {
+      can(Action.Read, ResourceSubjects);
+    }
 
     // --------- MEDIA ---------
 

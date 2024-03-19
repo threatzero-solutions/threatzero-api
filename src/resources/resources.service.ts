@@ -1,15 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ResourceItem } from './entities/resource.entity';
 import { Repository } from 'typeorm';
 import { MediaService } from '../media/media.service';
+import { REQUEST } from '@nestjs/core';
+import { LEVEL } from 'src/auth/permissions';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { getOrganizationLevel } from 'src/organizations/common/organizations.utils';
+import { Request } from 'express';
 
 @Injectable()
 export class ResourcesService extends BaseEntityService<ResourceItem> {
   constructor(
     @InjectRepository(ResourceItem)
     private resourceRepository: Repository<ResourceItem>,
+    @Inject(REQUEST) private request: Request,
     private media: MediaService,
   ) {
     super();
@@ -17,6 +23,26 @@ export class ResourcesService extends BaseEntityService<ResourceItem> {
 
   getRepository() {
     return this.resourceRepository;
+  }
+
+  getQb(query?: BaseQueryDto) {
+    let qb = super
+      .getQb(query)
+      .leftJoinAndSelect(
+        `${super.getQb().alias}.organizations`,
+        'organization',
+      );
+
+    switch (getOrganizationLevel(this.request)) {
+      case LEVEL.ADMIN:
+        return qb;
+      case LEVEL.ORGANIZATION:
+        return qb.andWhere('organization.slug = :organizationSlug', {
+          organizationSlug: this.request.user?.organizationSlug,
+        });
+      default:
+        return qb.where('1 = 0');
+    }
   }
 
   async mapResult(r: ResourceItem) {

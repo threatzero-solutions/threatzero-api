@@ -8,6 +8,7 @@ export const READ = {
   ORGANIZATIONS: 'read:organizations',
   UNITS: 'read:units',
   SURVEYS: 'read:surveys',
+  RESOURCES: 'read:resources',
 };
 
 export const WRITE = {

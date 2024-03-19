@@ -1,5 +1,13 @@
 import { Base } from 'src/common/base.entity';
-import { Column, Entity, Index } from 'typeorm';
+import { Organization } from 'src/organizations/organizations/entities/organization.entity';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinTable,
+  ManyToMany,
+  Relation,
+} from 'typeorm';
 
 export enum ResourceType {
   DOCUMENT = 'document',
@@ -31,6 +39,12 @@ export class ResourceItem extends Base {
   @Index()
   @Column({ length: 64 })
   category: string;
+
+  @ManyToMany(() => Organization, (organization) => organization.resources, {
+    eager: true,
+  })
+  @JoinTable()
+  organizations: Relation<Organization>[];
 
   sign(signer: (k: string) => string) {
     if (!this.vimeoUrl && this.fileKey) {
