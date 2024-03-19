@@ -36,12 +36,10 @@ export class ResourcesService extends BaseEntityService<ResourceItem> {
     switch (getOrganizationLevel(this.request)) {
       case LEVEL.ADMIN:
         return qb;
-      case LEVEL.ORGANIZATION:
+      default:
         return qb.andWhere('organization.slug = :organizationSlug', {
           organizationSlug: this.request.user?.organizationSlug,
         });
-      default:
-        return qb.where('1 = 0');
     }
   }
 
