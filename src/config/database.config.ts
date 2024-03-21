@@ -2,13 +2,28 @@ import { registerAs } from '@nestjs/config';
 import {
   IsBoolean,
   IsIn,
+  IsNotEmpty,
   IsOptional,
   IsPort,
   IsPositive,
   IsString,
+  ValidateNested,
 } from 'class-validator';
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 import { validate } from './env.validation';
+import { TlsOptions } from 'tls';
+import { readFileToString } from './utils';
+import { Type } from 'class-transformer';
+
+class DatabaseTlsOptions implements TlsOptions {
+  @IsString()
+  @IsNotEmpty()
+  ca: string;
+
+  @IsBoolean()
+  @IsOptional()
+  rejectUnauthorized?: boolean | undefined;
+}
 
 export class DatabaseConfig implements PostgresConnectionOptions {
   @IsIn(['postgres'])
@@ -47,24 +62,34 @@ export class DatabaseConfig implements PostgresConnectionOptions {
   @IsOptional()
   cache: boolean = true;
 
+  @ValidateNested()
+  @Type(() => DatabaseTlsOptions)
   @IsOptional()
-  @IsOptional()
-  ssl: boolean = false;
+  ssl?: DatabaseTlsOptions;
 }
 
-export default registerAs(
-  'database',
-  () =>
-    validate(DatabaseConfig, {
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_DATABASE,
-      synchronize: process.env.DB_SYNCHRONIZE === 'true',
-      logging: process.env.DB_LOGGING !== 'false',
-      cache: process.env.DB_CACHE !== 'false',
-      ssl: process.env.DB_SSL_ENABLED === 'true',
-    }) as DatabaseConfig,
-);
+export default registerAs('database', () => {
+  const tlsEnabled = process.env.DB_SSL_ENABLED === 'true';
+  let ssl: DatabaseTlsOptions | undefined = undefined;
+  if (tlsEnabled) {
+    ssl = {
+      ca: readFileToString(
+        process.env.DB_SSL_CA ?? '/etc/ssl/certs/ca-certificates.crt',
+      ),
+      rejectUnauthorized: true,
+    };
+  }
+
+  return validate(DatabaseConfig, {
+    type: 'postgres',
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    synchronize: process.env.DB_SYNCHRONIZE === 'true',
+    logging: process.env.DB_LOGGING !== 'false',
+    cache: process.env.DB_CACHE !== 'false',
+    ssl,
+  });
+});

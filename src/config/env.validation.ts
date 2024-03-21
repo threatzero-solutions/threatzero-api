@@ -2,18 +2,14 @@ import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { HelmetConfig } from './helmet.config';
 
-export function validate(
-  ConfigClass: ClassConstructor<object>,
+export function validate<T extends object>(
+  ConfigClass: ClassConstructor<T>,
   config: Record<string, unknown>,
-) {
+): T {
   const validatedConfig = plainToInstance(ConfigClass, config, {
     enableImplicitConversion: true,
     exposeUnsetFields: false,
   });
-
-  if (validatedConfig instanceof HelmetConfig) {
-    console.debug('Validated config', validatedConfig);
-  }
 
   const errors = validateSync(validatedConfig, {
     skipMissingProperties: false,
