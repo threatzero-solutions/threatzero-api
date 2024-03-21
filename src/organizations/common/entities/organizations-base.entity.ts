@@ -1,7 +1,6 @@
 import { Base } from 'src/common/base.entity';
 import { Entity, Index, Column } from 'typeorm';
 
-@Entity()
 export class OrganizationBase extends Base {
   @Index()
   @Column({ length: 64, unique: true })

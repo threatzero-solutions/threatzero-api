@@ -1,15 +1,13 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class V2Update1711061800959 implements MigrationInterface {
-    name = 'V2Update1711061800959'
+export class V2Update1711063983553 implements MigrationInterface {
+    name = 'V2Update1711063983553'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE "note" DROP CONSTRAINT "FK_17a903e8d2463bd3351a0687906"`);
+        await queryRunner.query(`ALTER TABLE "user_representation" RENAME COLUMN "organizationExternalId" TO "organizationSlug"`);
         await queryRunner.query(`ALTER TABLE "organization" RENAME COLUMN "externalId" TO "groupId"`);
         await queryRunner.query(`ALTER TABLE "organization" RENAME CONSTRAINT "UQ_64112faa73ec58b0f8ce1d01a86" TO "UQ_2019056e94321fa9f966d0d89e1"`);
-        await queryRunner.query(`ALTER TABLE "user_representation" RENAME COLUMN "organizationExternalId" TO "organizationSlug"`);
-        await queryRunner.query(`CREATE TABLE "organization_base" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedOn" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "slug" character varying(64) NOT NULL, "name" character varying(128) NOT NULL, "address" text, CONSTRAINT "UQ_aa11413ee8274d8c9347595f662" UNIQUE ("slug"), CONSTRAINT "PK_ee4cd3e13b88a9a4c8f7379b270" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_aa11413ee8274d8c9347595f66" ON "organization_base" ("slug") `);
         await queryRunner.query(`CREATE TABLE "resource_item_organizations_organization" ("resourceItemId" uuid NOT NULL, "organizationId" uuid NOT NULL, CONSTRAINT "PK_90793976122ca041a541ff5a0cf" PRIMARY KEY ("resourceItemId", "organizationId"))`);
         await queryRunner.query(`CREATE INDEX "IDX_867f5a3cf929cf7cbf46ba5f6c" ON "resource_item_organizations_organization" ("resourceItemId") `);
         await queryRunner.query(`CREATE INDEX "IDX_64d257bfe97c0225d5b7e16875" ON "resource_item_organizations_organization" ("organizationId") `);
@@ -77,11 +75,9 @@ export class V2Update1711061800959 implements MigrationInterface {
         await queryRunner.query(`DROP INDEX "public"."IDX_64d257bfe97c0225d5b7e16875"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_867f5a3cf929cf7cbf46ba5f6c"`);
         await queryRunner.query(`DROP TABLE "resource_item_organizations_organization"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_aa11413ee8274d8c9347595f66"`);
-        await queryRunner.query(`DROP TABLE "organization_base"`);
-        await queryRunner.query(`ALTER TABLE "user_representation" RENAME COLUMN "organizationSlug" TO "organizationExternalId"`);
         await queryRunner.query(`ALTER TABLE "organization" RENAME CONSTRAINT "UQ_2019056e94321fa9f966d0d89e1" TO "UQ_64112faa73ec58b0f8ce1d01a86"`);
         await queryRunner.query(`ALTER TABLE "organization" RENAME COLUMN "groupId" TO "externalId"`);
+        await queryRunner.query(`ALTER TABLE "user_representation" RENAME COLUMN "organizationSlug" TO "organizationExternalId"`);
         await queryRunner.query(`ALTER TABLE "note" ADD CONSTRAINT "FK_17a903e8d2463bd3351a0687906" FOREIGN KEY ("userExternalId") REFERENCES "user_representation"("externalId") ON DELETE RESTRICT ON UPDATE NO ACTION`);
     }
 
