@@ -1,6 +1,5 @@
 import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { HelmetConfig } from './helmet.config';
 
 export function validate<T extends object>(
   ConfigClass: ClassConstructor<T>,

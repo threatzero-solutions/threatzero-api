@@ -76,7 +76,7 @@ export default registerAs('database', () => {
       ca: readFileToString(
         process.env.DB_SSL_CA ?? '/etc/ssl/certs/ca-certificates.crt',
       ),
-      rejectUnauthorized: true,
+      rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true',
     };
   }
 
