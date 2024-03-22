@@ -14,7 +14,7 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { TrainingItem } from './entities/item.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { BaseQueryTrainingDto } from '../common/dto/base-query-training.dto';
 
 @Controller('training/items')
 @CheckPolicies(new EntityAbilityChecker(TrainingItem))
@@ -27,7 +27,7 @@ export class ItemsController {
   }
 
   @Get()
-  findAll(@Query() query: BaseQueryDto) {
+  findAll(@Query() query: BaseQueryTrainingDto) {
     return this.itemsService.findAll(query);
   }
 

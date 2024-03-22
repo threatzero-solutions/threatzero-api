@@ -14,7 +14,7 @@ import { UpdateSectionDto } from './dto/update-section.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { TrainingSection } from './entities/section.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { BaseQueryTrainingDto } from '../common/dto/base-query-training.dto';
 
 @Controller('training/sections')
 @CheckPolicies(new EntityAbilityChecker(TrainingSection))
@@ -27,7 +27,7 @@ export class SectionsController {
   }
 
   @Get()
-  findAll(@Query() query: BaseQueryDto) {
+  findAll(@Query() query: BaseQueryTrainingDto) {
     return this.sectionsService.findAll(query);
   }
 

@@ -6,12 +6,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import {
-  FindOptionsWhere,
-  ObjectLiteral,
-  Raw,
-  SelectQueryBuilder,
-} from 'typeorm';
+import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import { BaseQueryOrderDto } from './base-query-order.dto';
 
 const defaultOrder = new BaseQueryOrderDto();
@@ -42,7 +37,7 @@ export class BaseQueryDto {
   }
 
   applyToQb<T extends ObjectLiteral>(qb: SelectQueryBuilder<T>) {
-    let retQb = qb.limit(this.limit).offset(this.offset);
+    let retQb = qb.skip(this.offset).take(this.limit);
 
     retQb = this.applySearch<T>(retQb);
 
@@ -75,15 +70,9 @@ export class BaseQueryDto {
       return qb;
     }
 
-    const dummyKey = searchFields[0];
-
-    const vectorInput = (alias: string) =>
-      searchFields
-        ?.map(
-          (f) =>
-            `coalesce(${alias.replace(dummyKey.toString(), f.toString())}, '')`,
-        )
-        .join(" || ' ' || ");
+    const vectorInput = searchFields
+      ?.map((f) => `coalesce("${qb.alias}"."${f.toString()}", '')`)
+      .join(" || ' ' || ");
 
     const query = this.search
       .split(' ')
@@ -91,17 +80,10 @@ export class BaseQueryDto {
       .map((w) => `${w}:*`)
       .join(' & ');
 
-    const searchClause = {
-      [dummyKey]: Raw(
-        (alias) =>
-          `to_tsvector('english', ${vectorInput(
-            alias,
-          )}) @@ to_tsquery('english', :query)`,
-        { query },
-      ),
-    } as FindOptionsWhere<T>;
-
-    return qb.andWhere(searchClause);
+    return qb.andWhere(
+      `to_tsvector('english', ${vectorInput}) @@ to_tsquery('english', :query)`,
+      { query },
+    );
   }
 
   private applyJoins<T extends ObjectLiteral>(

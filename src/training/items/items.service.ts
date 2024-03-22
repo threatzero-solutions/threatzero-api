@@ -8,6 +8,7 @@ import { filterTraining } from '../common/training.utils';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { Video } from './entities/video-item.entity';
 import { MediaService } from 'src/media/media.service';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class ItemsService extends BaseEntityService<TrainingItem> {
@@ -26,9 +27,9 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     return this.itemsRepository;
   }
 
-  getQb() {
+  getQb(query?: BaseQueryDto) {
     let qb = super
-      .getQb()
+      .getQb(query)
       .leftJoin('item.sectionItems', 'section_item')
       .leftJoin('section_item.section', 'section')
       .leftJoin('section.course', 'course');
