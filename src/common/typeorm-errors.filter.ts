@@ -1,10 +1,12 @@
-import { ExceptionFilter, Catch, ArgumentsHost } from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { EntityNotFoundError, QueryFailedError, TypeORMError } from 'typeorm';
 import { DatabaseError } from 'pg';
 
 @Catch(TypeORMError)
 export class TypeORMErrorsFilter implements ExceptionFilter {
+  logger = new Logger(TypeORMErrorsFilter.name);
+
   catch(exception: TypeORMError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -37,7 +39,7 @@ export class TypeORMErrorsFilter implements ExceptionFilter {
     }
 
     if (status === 500) {
-      console.error(exception);
+      this.logger.error('Unknown TypeORM error', exception);
     }
 
     response.status(status).json({

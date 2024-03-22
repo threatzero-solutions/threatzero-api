@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  Logger,
   SetMetadata,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,6 +19,8 @@ export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 
 @Injectable()
 export class AuthGuard implements CanActivate {
+  logger = new Logger(AuthGuard.name);
+
   constructor(
     private jwtService: JwtService,
     private config: ConfigService,
@@ -68,7 +71,12 @@ export class AuthGuard implements CanActivate {
 
       request.user = this.userFactory.fromJwtPayload(payload);
     } catch (e) {
-      console.error('Error validating JWT token', e);
+      this.logger.error('Error validating JWT token', e);
+
+      if (isPublic) {
+        return true;
+      }
+
       throw new UnauthorizedException();
     }
     return true;
