@@ -1,12 +1,17 @@
 import { getSignedUrl } from '@aws-sdk/cloudfront-signer';
 import { HttpService } from '@nestjs/axios';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
 import dayjs from 'dayjs';
 import path from 'path';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, of } from 'rxjs';
 import { CloudFrontDistributionConfig } from 'src/config/aws.config';
 import { VimeoConfig } from 'src/config/vimeo.config';
 import {
@@ -17,11 +22,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { VideoEvent } from './entities/video-event.entity';
 import { DeepPartial, Repository } from 'typeorm';
 import { Request } from 'express';
+import { AxiosError } from 'axios';
 
 const DEFAULT_WIDTH = 640;
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+
   constructor(
     @InjectRepository(VideoEvent)
     private videoEventsRepository: Repository<VideoEvent>,
@@ -111,14 +119,21 @@ export class MediaService {
     )}/videos/${videoId}/pictures`;
 
     const res = await firstValueFrom(
-      this.http.get<VimeoThumbnailResponse>(url, {
-        headers: {
-          Authorization: `Bearer ${vimeoConfig.auth.accessToken}`,
-        },
-      }),
+      this.http
+        .get<VimeoThumbnailResponse>(url, {
+          headers: {
+            Authorization: `Bearer ${vimeoConfig.auth.accessToken}`,
+          },
+        })
+        .pipe(
+          catchError((e) => {
+            this.logger.error('Failed to get vimeo thumbnail', e);
+            return of(null);
+          }),
+        ),
     );
 
-    if (res.status >= 400) {
+    if (!res || res.status >= 400) {
       return null;
     }
 
