@@ -2,7 +2,7 @@ import { Inject, Injectable, Scope } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import {
   ORGANIZATION_CHANGED_EVENT,
   ORGANIZATION_REMOVED_EVENT,
@@ -42,6 +42,19 @@ export class OrganizationsService extends BaseEntityService<Organization> {
         });
       default:
         return qb.where('1 = 0');
+    }
+  }
+
+  getQbSingle(id: string) {
+    let qb = super.getQbSingle(id);
+
+    switch (getOrganizationLevel(this.request)) {
+      case LEVEL.ADMIN:
+        return qb
+          .leftJoinAndSelect(`${qb.alias}.courses`, 'course')
+          .leftJoinAndSelect(`${qb.alias}.resources`, 'resource');
+      default:
+        return qb;
     }
   }
 

@@ -28,8 +28,4 @@ export class CreateCourseDto {
   @Type(() => SaveByIdDto<Audience>)
   @IsOptional()
   presentableBy: SaveByIdDto<Audience>[];
-
-  @Type(() => SaveByIdDto<Organization>)
-  @IsOptional()
-  organizations: SaveByIdDto<Organization>[];
 }

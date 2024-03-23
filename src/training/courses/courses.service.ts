@@ -40,7 +40,6 @@ export class CoursesService extends BaseEntityService<TrainingCourse> {
   getQbSingle(id: string) {
     return super
       .getQbSingle(id)
-      .leftJoinAndSelect('course.organizations', 'organization')
       .leftJoinAndSelect('course.sections', 'section')
       .leftJoinAndSelect('section.items', 'section_items')
       .leftJoinAndSelect('section_items.item', 'item');

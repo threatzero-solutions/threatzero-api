@@ -26,20 +26,17 @@ export class ResourcesService extends BaseEntityService<ResourceItem> {
   }
 
   getQb(query?: BaseQueryDto) {
-    let qb = super
-      .getQb(query)
-      .leftJoinAndSelect(
-        `${super.getQb().alias}.organizations`,
-        'organization',
-      );
+    let qb = super.getQb(query);
 
     switch (getOrganizationLevel(this.request)) {
       case LEVEL.ADMIN:
         return qb;
       default:
-        return qb.andWhere('organization.slug = :organizationSlug', {
-          organizationSlug: this.request.user?.organizationSlug,
-        });
+        return qb
+          .leftJoin(`${super.getQb().alias}.organizations`, 'organization')
+          .andWhere('organization.slug = :organizationSlug', {
+            organizationSlug: this.request.user?.organizationSlug,
+          });
     }
   }
 

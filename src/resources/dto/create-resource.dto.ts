@@ -24,10 +24,6 @@ export class CreateResourceDto {
   @MaxLength(255)
   vimeoUrl?: string;
 
-  @Type(() => SaveByIdDto<Organization>)
-  @IsOptional()
-  organizations: SaveByIdDto<Organization>[];
-
   @IsNotEmpty()
   @IsString()
   title: string;
