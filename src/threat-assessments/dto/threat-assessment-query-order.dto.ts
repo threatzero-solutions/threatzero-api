@@ -6,9 +6,9 @@ import {
 } from 'src/common/dto/base-query-order.dto';
 
 export class ThreatAssessmentQueryOrderDto extends BaseQueryOrderDto {
-  // @IsOptional()
-  // @IsIn(QueryOrderOptions)
-  // ['unit.name']: QueryOrder;
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  ['unit.name']: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)

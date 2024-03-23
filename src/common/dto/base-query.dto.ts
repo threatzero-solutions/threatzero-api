@@ -45,7 +45,9 @@ export class BaseQueryDto {
     Object.entries(this.order).forEach(([sort, order]) => {
       const [_qb, tableAlias, columnName] = this.applyJoins<T>(retQb, sort);
       retQb = _qb.addOrderBy(`${tableAlias}.${columnName}`, order);
-      // retQb = _qb.addSelect(`${_qb.alias}.${tableAlias}.${columnName}`);
+      if (_qb.alias !== tableAlias) {
+        retQb = _qb.addSelect(`${tableAlias}.${columnName}`);
+      }
     });
 
     // Apply where clauses for all remaining fields.
