@@ -15,6 +15,7 @@ import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { Unit } from './entities/unit.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { BaseQueryOrganizationsDto } from '../common/dto/base-query-organizations';
+import { QueryUnitsDto } from './dto/query-units.dto';
 
 @Controller('organizations/units')
 @CheckPolicies(new EntityAbilityChecker(Unit))
@@ -27,7 +28,7 @@ export class UnitsController {
   }
 
   @Get()
-  findAll(@Query() query: BaseQueryOrganizationsDto) {
+  findAll(@Query() query: QueryUnitsDto) {
     return this.unitsService.findAll(query);
   }
 

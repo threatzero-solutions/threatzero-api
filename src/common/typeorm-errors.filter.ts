@@ -39,7 +39,11 @@ export class TypeORMErrorsFilter implements ExceptionFilter {
     }
 
     if (status === 500) {
-      this.logger.error('Unknown TypeORM error', exception);
+      this.logger.error(
+        'Unknown TypeORM error',
+        exception.message,
+        exception.stack,
+      );
     }
 
     response.status(status).json({

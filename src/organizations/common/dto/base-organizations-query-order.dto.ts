@@ -5,12 +5,12 @@ import {
   QueryOrderOptions,
 } from 'src/common/dto/base-query-order.dto';
 
-export class TipQueryOrderDto extends BaseQueryOrderDto {
-  // @IsOptional()
-  // @IsIn(QueryOrderOptions)
-  // ['unit.name']: QueryOrder;
+export class BaseOrganizationsQueryOrderDto extends BaseQueryOrderDto {
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  name: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  status: QueryOrder;
+  slug: QueryOrder;
 }
