@@ -179,7 +179,7 @@ export class NotificationsProcessor extends WorkerHost {
 
   private getUserAttr(attribute: unknown) {
     if (Array.isArray(attribute) && attribute.length) {
-      attribute = attribute;
+      attribute = attribute[0];
     }
 
     if (attribute === null || attribute === undefined) {

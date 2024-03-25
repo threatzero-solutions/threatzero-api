@@ -17,7 +17,7 @@ export class EmailTemplatesConfig {
 export class EmailNotificationsConfig {
   @IsOptional()
   @IsString()
-  defaultFrom: string = 'ThreatZero <tech@threatzero.org>';
+  defaultFrom: string = 'ThreatZero <support@threatzero.org>';
 
   @ValidateNested()
   @Type(() => EmailTemplatesConfig)
