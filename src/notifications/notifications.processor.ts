@@ -3,11 +3,15 @@ import {
   SendTextMessageCommandInput,
 } from '@aws-sdk/client-pinpoint-sms-voice-v2';
 import { SendEmailCommand, SendEmailCommandInput } from '@aws-sdk/client-sesv2';
-import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
+import {
+  InjectQueue,
+  Processor,
+  WorkerHost,
+  OnWorkerEvent,
+} from '@nestjs/bullmq';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Job, Queue } from 'bullmq';
 import { Cache } from 'cache-manager';
 import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
@@ -56,6 +60,11 @@ export class NotificationsProcessor extends WorkerHost {
       default:
         break;
     }
+  }
+
+  @OnWorkerEvent('failed')
+  async onWorkerFailed(job: Job<unknown>, error: Error) {
+    this.logger.error(`Job ${job.name} failed`, error.stack);
   }
 
   private async sendEmailNotification(data: any) {
