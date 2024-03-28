@@ -21,6 +21,13 @@ export enum TipStatus {
 
 @Entity()
 export class Tip extends Base {
+  @Column({
+    type: 'varchar',
+    length: 128,
+    nullable: true,
+  })
+  tag: string | null;
+
   @Column({ length: 64 })
   unitSlug: string;
 

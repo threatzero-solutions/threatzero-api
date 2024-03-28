@@ -22,6 +22,13 @@ export enum AssessmentStatus {
 
 @Entity()
 export class ThreatAssessment extends Base {
+  @Column({
+    type: 'varchar',
+    length: 128,
+    nullable: true,
+  })
+  tag: string | null;
+
   @Column({ length: 64 })
   unitSlug: string;
 

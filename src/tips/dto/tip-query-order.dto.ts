@@ -8,6 +8,10 @@ import {
 export class TipQueryOrderDto extends BaseQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
+  tag: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
   ['unit.name']: QueryOrder;
 
   @IsOptional()

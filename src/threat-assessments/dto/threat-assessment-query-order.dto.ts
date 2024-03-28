@@ -8,6 +8,10 @@ import {
 export class ThreatAssessmentQueryOrderDto extends BaseQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
+  tag: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
   ['unit.name']: QueryOrder;
 
   @IsOptional()

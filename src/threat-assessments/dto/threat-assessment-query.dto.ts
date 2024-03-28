@@ -17,4 +17,8 @@ export class ThreatAssessmentQueryDto extends BaseQueryDto {
   @ValidateNested()
   @Type(() => ThreatAssessmentQueryOrderDto)
   order: ThreatAssessmentQueryOrderDto = new ThreatAssessmentQueryOrderDto();
+
+  protected getSearchFields(): string[] {
+    return ['tag'];
+  }
 }

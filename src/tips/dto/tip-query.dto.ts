@@ -21,4 +21,8 @@ export class TipQueryDto extends BaseQueryDto {
   @ValidateNested()
   @Type(() => TipQueryOrderDto)
   order: TipQueryOrderDto = new TipQueryOrderDto();
+
+  protected getSearchFields(): string[] {
+    return ['tag'];
+  }
 }
