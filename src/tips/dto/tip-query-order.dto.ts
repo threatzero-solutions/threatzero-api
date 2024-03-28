@@ -12,5 +12,9 @@ export class TipQueryOrderDto extends BaseQueryOrderDto {
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
+  ['location.name']: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
   status: QueryOrder;
 }

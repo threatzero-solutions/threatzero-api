@@ -14,6 +14,10 @@ export class TipQueryDto extends BaseQueryDto {
   unitSlug?: string;
 
   @IsOptional()
+  @IsString()
+  ['location.id']?: string;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => TipQueryOrderDto)
   order: TipQueryOrderDto = new TipQueryOrderDto();

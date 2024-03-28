@@ -7,8 +7,8 @@ export class Location extends Base {
   @ManyToOne(() => Unit)
   unit: Relation<Unit>;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  name: string | null;
+  @Column({ type: 'varchar', length: 100 })
+  name: string;
 
   @Index()
   @Column({ type: 'varchar', length: 15, update: false, unique: true })

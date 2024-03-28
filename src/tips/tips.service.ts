@@ -18,6 +18,7 @@ import { Request } from 'express';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { scopeToOrganizationLevel } from 'src/organizations/common/organizations.utils';
 import { GetPresignedUploadUrlsDto } from 'src/forms/forms/dto/get-presigned-upload-urls.dto';
+import { Location } from 'src/organizations/locations/entities/location.entity';
 
 @Injectable({ scope: Scope.REQUEST })
 export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
@@ -44,10 +45,9 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
   }
 
   getQb(query?: BaseQueryDto) {
-    return scopeToOrganizationLevel(
-      this.request,
-      super.getQb(query),
-    ).leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit');
+    return scopeToOrganizationLevel(this.request, super.getQb(query))
+      .leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit')
+      .leftJoinAndSelect(`${super.getQb().alias}.location`, 'location');
   }
 
   async create(
@@ -56,10 +56,13 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
     },
     locationId?: string,
   ) {
+    const [unitSlug, location] =
+      await this.getUnitSlugAndLocationForTip(locationId);
     const submittedTip = await super.create({
       ...createSubmissionEntityDto,
       // Add user unit slug to tip.
-      unitSlug: await this.getUnitSlugForTip(locationId),
+      unitSlug,
+      location: location ?? undefined,
       informantFirstName: this.request.user?.firstName,
       informantLastName: this.request.user?.lastName,
       informantEmail: this.request.user?.email,
@@ -78,7 +81,8 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
     getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
     locationId: string,
   ) {
-    await this.getUnitSlugForTip(locationId);
+    // Validate location.
+    await this.getUnitSlugAndLocationForTip(locationId);
     return super.getPresignedUploadUrls(getPresignedUploadUrlsDto);
   }
 
@@ -89,18 +93,20 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
    * @param locationId the location id of the tip
    * @returns the unit slug
    */
-  private async getUnitSlugForTip(locationId?: string) {
-    if (this.request.user?.unitSlug) {
-      return this.request.user.unitSlug;
-    }
+  private async getUnitSlugAndLocationForTip(locationId?: string) {
+    let unitSlug = this.request.user?.unitSlug ?? null;
+    let location: Location | null = null;
 
     if (locationId) {
-      const unit =
-        await this.locationsService.findUnitForLocationId(locationId);
+      location = await this.locationsService.findUnitLocation(locationId);
 
-      if (unit) {
-        return unit.slug;
+      if (location?.unit) {
+        unitSlug = location.unit.slug;
       }
+    }
+
+    if (unitSlug) {
+      return [unitSlug, location] as const;
     }
 
     throw new BadRequestException('No location information found.');

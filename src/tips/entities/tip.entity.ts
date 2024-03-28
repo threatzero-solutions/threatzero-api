@@ -1,5 +1,6 @@
 import { Base } from 'src/common/base.entity';
 import { FormSubmission } from 'src/forms/forms/entities/form-submission.entity';
+import { Location } from 'src/organizations/locations/entities/location.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { Note } from 'src/users/entities/note.entity';
 import {
@@ -31,6 +32,11 @@ export class Tip extends Base {
     referencedColumnName: 'slug',
   })
   unit: Relation<Unit>;
+
+  @ManyToOne(() => Location, {
+    nullable: true,
+  })
+  location: Relation<Location>;
 
   @OneToOne(() => FormSubmission, {
     // Use forms service to validate and save submissions.

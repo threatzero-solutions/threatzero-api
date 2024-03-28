@@ -103,7 +103,9 @@ export class BaseQueryDto {
         parts.unshift(alias);
       }
       const nextAlias = parts.join('_');
-      _qb = _qb.leftJoin(parts.join('.'), nextAlias);
+      if (_qb.expressionMap.aliases.every((a) => a.name !== nextAlias)) {
+        _qb = _qb.leftJoin(parts.join('.'), nextAlias);
+      }
       alias = nextAlias;
     });
     return [_qb, alias, columnName] as const;
