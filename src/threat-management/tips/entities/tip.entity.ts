@@ -2,11 +2,13 @@ import { Base } from 'src/common/base.entity';
 import { FormSubmission } from 'src/forms/forms/entities/form-submission.entity';
 import { Location } from 'src/organizations/locations/entities/location.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { POCFile } from 'src/threat-management/poc-files/entities/poc-file.entity';
 import { Note } from 'src/users/entities/note.entity';
 import {
   Column,
   Entity,
   JoinColumn,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   OneToOne,
@@ -44,6 +46,9 @@ export class Tip extends Base {
     nullable: true,
   })
   location: Relation<Location>;
+
+  @ManyToMany(() => POCFile, (pocFile) => pocFile.tips)
+  pocFiles: Relation<POCFile>[];
 
   @OneToOne(() => FormSubmission, {
     // Use forms service to validate and save submissions.

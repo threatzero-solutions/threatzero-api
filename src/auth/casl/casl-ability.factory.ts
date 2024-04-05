@@ -15,14 +15,15 @@ import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { LEVEL, WRITE, READ } from '../permissions';
 import { Action } from './actions';
-import { ThreatAssessment } from 'src/threat-assessments/entities/threat-assessment.entity';
+import { ThreatAssessment } from 'src/threat-management/threat-assessments/entities/threat-assessment.entity';
 import { Form } from 'src/forms/forms/entities/form.entity';
 import { FieldGroup } from 'src/forms/field-groups/entities/field-group.entity';
 import { Field } from 'src/forms/fields/entities/field.entity';
-import { Tip } from 'src/tips/entities/tip.entity';
+import { Tip } from 'src/threat-management/tips/entities/tip.entity';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { VideoEvent } from 'src/media/entities/video-event.entity';
 import { UserRepresentation } from 'src/users/entities/user-representation.entity';
+import { POCFile } from 'src/threat-management/poc-files/entities/poc-file.entity';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 
@@ -42,13 +43,10 @@ type OrganizationsSubjectTypes = InferSubjects<
   (typeof OrganizationsSubjects)[number]
 >;
 
-const ThreatAssessmentSubjects = [ThreatAssessment];
-type ThreatAssessmentSubjectTypes = InferSubjects<
-  (typeof ThreatAssessmentSubjects)[number]
+const ThreatManagementSubjects = [ThreatAssessment, Tip, POCFile];
+type ThreatManagementSubjectTypes = InferSubjects<
+  (typeof ThreatManagementSubjects)[number]
 >;
-
-const TipSubjects = [Tip];
-type TipSubjectTypes = InferSubjects<(typeof TipSubjects)[number]>;
 
 const ResourceSubjects = [ResourceItem];
 type ResourceSubjectTypes = InferSubjects<(typeof ResourceSubjects)[number]>;
@@ -61,9 +59,8 @@ type UserSubjectTypes = InferSubjects<(typeof UserSubjects)[number]>;
 type AllSubjectTypes =
   | TrainingSubjectTypes
   | OrganizationsSubjectTypes
-  | ThreatAssessmentSubjectTypes
+  | ThreatManagementSubjectTypes
   | FormsSubjectTypes
-  | TipSubjectTypes
   | ResourceSubjectTypes
   | MediaSubjects
   | UserSubjectTypes;
@@ -102,35 +99,19 @@ export class CaslAbilityFactory {
 
     // --------- THREAT ASSESSMENTS ---------
     if (user.hasPermission(LEVEL.ADMIN, WRITE.THREAT_ASSESSMENTS)) {
-      can(Action.Manage, ThreatAssessmentSubjects);
+      can(Action.Manage, ThreatManagementSubjects);
     }
 
     if (
       user.hasPermission(LEVEL.ORGANIZATION, WRITE.THREAT_ASSESSMENTS) ||
       user.hasPermission(LEVEL.UNIT, WRITE.THREAT_ASSESSMENTS)
     ) {
-      can(Action.Create, ThreatAssessmentSubjects);
-      can(Action.Update, ThreatAssessmentSubjects);
+      can(Action.Create, ThreatManagementSubjects);
+      can(Action.Update, ThreatManagementSubjects);
     }
 
     if (user.hasPermission(READ.THREAT_ASSESSMENTS)) {
-      can(Action.Read, ThreatAssessmentSubjects);
-    }
-
-    // --------- TIPS ---------
-    if (user.hasPermission(LEVEL.ADMIN, WRITE.TIPS)) {
-      can(Action.Manage, TipSubjects);
-    }
-
-    if (
-      user.hasPermission(LEVEL.ORGANIZATION, WRITE.TIPS) ||
-      user.hasPermission(LEVEL.UNIT, WRITE.TIPS)
-    ) {
-      can(Action.Update, TipSubjects);
-    }
-
-    if (user.hasPermission(READ.TIPS)) {
-      can(Action.Read, TipSubjects);
+      can(Action.Read, ThreatManagementSubjects);
     }
 
     // Anyone can submit a tip.

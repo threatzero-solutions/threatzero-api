@@ -26,6 +26,6 @@ import { UsersModule } from 'src/users/users.module';
   ],
   controllers: [TipsController],
   providers: [TipsService, SubmitTipListener],
-  exports: [TypeOrmModule],
+  exports: [TypeOrmModule, TipsService],
 })
 export class TipsModule {}

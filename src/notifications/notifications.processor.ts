@@ -21,7 +21,7 @@ import {
   NOTIFICATIONS_QUEUE_NAME,
   NOTIFICATIONS_QUEUE_PREFIX,
 } from 'src/common/constants/queue.constants';
-import { Tip } from 'src/tips/entities/tip.entity';
+import { Tip } from 'src/threat-management/tips/entities/tip.entity';
 import { DataSource } from 'typeorm';
 
 export enum NotificationsJobNames {

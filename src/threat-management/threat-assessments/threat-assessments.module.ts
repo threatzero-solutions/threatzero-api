@@ -14,5 +14,6 @@ import { UsersModule } from 'src/users/users.module';
   ],
   controllers: [ThreatAssessmentsController],
   providers: [ThreatAssessmentsService],
+  exports: [ThreatAssessmentsService],
 })
 export class ThreatAssessmentsModule {}
