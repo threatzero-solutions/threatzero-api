@@ -6,6 +6,12 @@ export class CreateTrainingMetadataDto {
   @IsNotEmpty()
   title: string;
 
+  @IsString()
   @IsOptional()
   description?: string;
+
+  @MaxLength(100)
+  @IsString()
+  @IsOptional()
+  tag?: string;
 }
