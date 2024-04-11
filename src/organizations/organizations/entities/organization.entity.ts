@@ -9,6 +9,9 @@ export class Organization extends OrganizationBase {
   @Column({ unique: true, nullable: true, type: 'varchar', length: 50 })
   groupId: string | null;
 
+  @Column({ unique: true, nullable: true, type: 'varchar', length: 50 })
+  tatGroupId: string | null;
+
   @OneToMany(() => Unit, (unit) => unit.organization)
   units: Relation<Unit>[];
 

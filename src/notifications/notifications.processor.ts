@@ -104,7 +104,9 @@ export class NotificationsProcessor extends WorkerHost {
         id: data.tipId,
       },
       relations: {
-        unit: true,
+        unit: {
+          organization: true,
+        },
       },
     });
     const cacheKey = `unit:${tip.unitSlug}:assessment-user-contact`;
@@ -125,13 +127,21 @@ export class NotificationsProcessor extends WorkerHost {
     }
     if (!contacts) {
       const tatGroupId = tip.unit.tatGroupId;
+      const orgTatGroupId = tip.unit.organization.tatGroupId;
       if (!tatGroupId) {
         this.logger.warn(`No TAT group found for ${tip.unitSlug}`);
         return;
       }
-      const tatMembers = await this.keycloak.client.groups.listMembers({
-        id: tatGroupId,
-      });
+      const tatMembers = await Promise.all(
+        [tatGroupId, orgTatGroupId]
+          .filter((id) => !!id)
+          .map((id) =>
+            this.keycloak.client.groups.listMembers({
+              id: id!,
+            }),
+          ),
+      ).then((results) => results.flat(2));
+
       contacts = [];
       for (const user of tatMembers) {
         let phoneNumber: string | undefined;
@@ -139,7 +149,8 @@ export class NotificationsProcessor extends WorkerHost {
         const userAttributes = user.attributes || {};
         const userPhoneNumber = this.getUserAttr(userAttributes.phoneNumber);
         if (
-          this.getUserAttr(userAttributes.phoneNumberVerified) === 'true' &&
+          this.truthyAttr(userAttributes.phoneNumberVerified) &&
+          this.truthyAttr(userAttributes.sosNotificationsEnabled) &&
           userPhoneNumber
         ) {
           phoneNumber = userPhoneNumber;
@@ -200,5 +211,13 @@ export class NotificationsProcessor extends WorkerHost {
     } catch {
       return undefined;
     }
+  }
+
+  private truthyAttr(attribute: unknown) {
+    const attr = this.getUserAttr(attribute);
+    if (attr?.trim().match(/^(true)|1|(on)|(yes)$/i)) {
+      return true;
+    }
+    return false;
   }
 }
