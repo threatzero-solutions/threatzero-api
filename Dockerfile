@@ -9,7 +9,7 @@ COPY package*.json ./
 
 # Install app dependencies
 RUN npm ci --ignore-scripts
-RUN npm i --ignore-scripts @swc/core-linux-x64-musl
+RUN npm i --ignore-scripts @swc/core-linux-x64-gnu
 
 # Bundle app source
 COPY . .
