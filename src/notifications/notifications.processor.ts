@@ -143,21 +143,37 @@ export class NotificationsProcessor extends WorkerHost {
       ).then((results) => results.flat(2));
 
       contacts = [];
+      const foundUserIds = new Set();
       for (const user of tatMembers) {
+        // Ensure only one contact per user.
+        if (foundUserIds.has(user.id)) {
+          continue;
+        }
+        foundUserIds.add(user.id);
+
+        const userAttributes = user.attributes || {};
+
+        if (!this.truthyAttr(userAttributes.sosNotificationsEnabled)) {
+          continue;
+        }
+
         let phoneNumber: string | undefined;
         let email: string | undefined;
-        const userAttributes = user.attributes || {};
+
+        // Get phone number if user has verified phone number.
         const userPhoneNumber = this.getUserAttr(userAttributes.phoneNumber);
         if (
           this.truthyAttr(userAttributes.phoneNumberVerified) &&
-          this.truthyAttr(userAttributes.sosNotificationsEnabled) &&
           userPhoneNumber
         ) {
           phoneNumber = userPhoneNumber;
         }
+
+        // Get user email.
         if (user.email) {
           email = user.email;
         }
+
         if (phoneNumber || email) {
           contacts.push({
             email,
