@@ -109,7 +109,7 @@ export class NotificationsProcessor extends WorkerHost {
         },
       },
     });
-    const cacheKey = `unit:${tip.unitSlug}:assessment-user-contact`;
+    const cacheKey = `unit:${tip.unitSlug}:tat-member-contacts`;
     const cachedContacts = await this.cache.get(cacheKey);
     let contacts: { email?: string; phoneNumber?: string }[] | undefined;
     if (cachedContacts && typeof cachedContacts === 'string') {
@@ -181,7 +181,7 @@ export class NotificationsProcessor extends WorkerHost {
           });
         }
       }
-      this.cache.set(cacheKey, JSON.stringify(contacts), 60 * 60 * 1000); // Cache expires in 1 hour
+      this.cache.set(cacheKey, JSON.stringify(contacts), 5 * 60 * 1000); // Cache expires in 5 minutes
     }
     const tipUrl =
       this.config.get<string>('general.appHost') +
