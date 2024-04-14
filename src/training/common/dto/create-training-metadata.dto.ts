@@ -1,9 +1,8 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateTrainingMetadataDto {
   @MaxLength(100)
   @IsString()
-  @IsNotEmpty()
   title: string;
 
   @IsString()

@@ -32,6 +32,7 @@ export class TrainingCourse extends Base {
 
   @OneToMany(() => TrainingSection, (section) => section.course, {
     eager: true,
+    cascade: true,
   })
   sections: Relation<TrainingSection>[];
 

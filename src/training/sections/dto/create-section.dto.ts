@@ -2,8 +2,8 @@ import {
   ValidateNested,
   IsOptional,
   IsNumber,
-  IsDateString,
   IsEnum,
+  IsDate,
 } from 'class-validator';
 import { CreateTrainingMetadataDto } from 'src/training/common/dto/create-training-metadata.dto';
 import { TrainingRepeats } from '../entities/section.entity';
@@ -20,12 +20,12 @@ export class CreateSectionDto {
   @IsNumber()
   order: number;
 
-  @IsDateString()
+  @IsDate()
   @IsOptional()
   availableOn: Date;
 
   @IsOptional()
-  @IsDateString()
+  @IsDate()
   expiresOn: Date;
 
   @IsEnum(TrainingRepeats)

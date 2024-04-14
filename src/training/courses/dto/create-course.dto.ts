@@ -10,6 +10,7 @@ import { SaveByIdDto } from 'src/common/dto.utils';
 import { Audience } from 'src/training/audiences/entities/audience.entity';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Type } from 'class-transformer';
+import { CreateSectionDto } from 'src/training/sections/dto/create-section.dto';
 
 export class CreateCourseDto {
   @ValidateNested()
@@ -28,4 +29,9 @@ export class CreateCourseDto {
   @Type(() => SaveByIdDto<Audience>)
   @IsOptional()
   presentableBy: SaveByIdDto<Audience>[];
+
+  @Type(() => CreateSectionDto)
+  @ValidateNested()
+  @IsOptional()
+  sections: CreateSectionDto[];
 }
