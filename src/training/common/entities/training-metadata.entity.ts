@@ -5,5 +5,8 @@ export class TrainingMetadata {
   title: string | null;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
+
+  @Column({ length: 100, type: 'varchar', nullable: true })
+  tag: string | null;
 }

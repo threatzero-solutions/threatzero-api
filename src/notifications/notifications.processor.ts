@@ -104,10 +104,12 @@ export class NotificationsProcessor extends WorkerHost {
         id: data.tipId,
       },
       relations: {
-        unit: true,
+        unit: {
+          organization: true,
+        },
       },
     });
-    const cacheKey = `unit:${tip.unitSlug}:assessment-user-contact`;
+    const cacheKey = `unit:${tip.unitSlug}:tat-member-contacts`;
     const cachedContacts = await this.cache.get(cacheKey);
     let contacts: { email?: string; phoneNumber?: string }[] | undefined;
     if (cachedContacts && typeof cachedContacts === 'string') {
@@ -125,28 +127,53 @@ export class NotificationsProcessor extends WorkerHost {
     }
     if (!contacts) {
       const tatGroupId = tip.unit.tatGroupId;
+      const orgTatGroupId = tip.unit.organization.tatGroupId;
       if (!tatGroupId) {
         this.logger.warn(`No TAT group found for ${tip.unitSlug}`);
         return;
       }
-      const tatMembers = await this.keycloak.client.groups.listMembers({
-        id: tatGroupId,
-      });
+      const tatMembers = await Promise.all(
+        [tatGroupId, orgTatGroupId]
+          .filter((id) => !!id)
+          .map((id) =>
+            this.keycloak.client.groups.listMembers({
+              id: id!,
+            }),
+          ),
+      ).then((results) => results.flat(2));
+
       contacts = [];
+      const foundUserIds = new Set();
       for (const user of tatMembers) {
+        // Ensure only one contact per user.
+        if (foundUserIds.has(user.id)) {
+          continue;
+        }
+        foundUserIds.add(user.id);
+
+        const userAttributes = user.attributes || {};
+
+        if (!this.truthyAttr(userAttributes.sosNotificationsEnabled)) {
+          continue;
+        }
+
         let phoneNumber: string | undefined;
         let email: string | undefined;
-        const userAttributes = user.attributes || {};
+
+        // Get phone number if user has verified phone number.
         const userPhoneNumber = this.getUserAttr(userAttributes.phoneNumber);
         if (
-          this.getUserAttr(userAttributes.phoneNumberVerified) === 'true' &&
+          this.truthyAttr(userAttributes.phoneNumberVerified) &&
           userPhoneNumber
         ) {
           phoneNumber = userPhoneNumber;
         }
+
+        // Get user email.
         if (user.email) {
           email = user.email;
         }
+
         if (phoneNumber || email) {
           contacts.push({
             email,
@@ -154,7 +181,7 @@ export class NotificationsProcessor extends WorkerHost {
           });
         }
       }
-      this.cache.set(cacheKey, JSON.stringify(contacts), 60 * 60 * 1000); // Cache expires in 1 hour
+      this.cache.set(cacheKey, JSON.stringify(contacts), 5 * 60 * 1000); // Cache expires in 5 minutes
     }
     const tipUrl =
       this.config.get<string>('general.appHost') +
@@ -200,5 +227,13 @@ export class NotificationsProcessor extends WorkerHost {
     } catch {
       return undefined;
     }
+  }
+
+  private truthyAttr(attribute: unknown) {
+    const attr = this.getUserAttr(attribute);
+    if (attr?.trim().match(/^(true)|1|(on)|(yes)$/i)) {
+      return true;
+    }
+    return false;
   }
 }

@@ -55,12 +55,21 @@ export class OrganizationChangeListener {
       organizationParentGroupId,
     );
 
+    const orgTatGroup = await this.keycloak.upsertGroup(
+      {
+        id: organization.tatGroupId ?? undefined,
+        name: `${organization.name} Organization TAT`,
+      },
+      orgGroup.id,
+    );
+
     await this.organizationsRepository.update(
       {
         id: organization.id,
       },
       {
         groupId: orgGroup.id,
+        tatGroupId: orgTatGroup.id,
       },
     );
   }
@@ -71,16 +80,15 @@ export class OrganizationChangeListener {
       id: event.id,
     });
 
-    if (organization.groupId) {
-      await this.keycloak.client.groups
-        .del({ id: organization.groupId })
-        .catch((e) => {
-          this.logger.error(
-            `Failed to delete organization group ${organization.groupId}`,
-            e,
-          );
-        });
-    }
+    Promise.all(
+      [organization.groupId, organization.tatGroupId]
+        .filter((id) => !!id)
+        .map((id) =>
+          this.keycloak.client.groups.del({ id: id! }).catch((e) => {
+            this.logger.error(`Failed to delete organization group ${id}`, e);
+          }),
+        ),
+    );
   }
 
   @OnEvent(UNIT_CHANGED_EVENT)

@@ -63,7 +63,7 @@ export class LocationsService extends BaseEntityService<Location> {
   }
 
   generateQRCode(locationId: string, query: GenerateQrCodeQueryDto) {
-    const tipUrl = `${this.config.get<string>('general.host')}/sos/?loc_id=${locationId}`;
+    const tipUrl = `${this.config.get<string>('general.appHost')}/sos/?loc_id=${locationId}`;
 
     return (res: Response) => {
       res.setHeader('Content-Type', 'image/png');
