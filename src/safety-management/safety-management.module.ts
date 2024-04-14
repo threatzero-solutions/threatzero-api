@@ -6,4 +6,4 @@ import { POCFilesModule } from './poc-files/poc-files.module';
 @Module({
   imports: [ThreatAssessmentsModule, TipsModule, POCFilesModule],
 })
-export class ThreatManagementModule {}
+export class SafetyManagementModule {}

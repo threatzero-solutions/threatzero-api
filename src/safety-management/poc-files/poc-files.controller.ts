@@ -17,7 +17,7 @@ import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
-@Controller('threat-management/poc-files')
+@Controller('safety-management/poc-files')
 @CheckPolicies(new EntityAbilityChecker(POCFile))
 export class POCFilesController {
   constructor(private readonly pocFilesService: POCFilesService) {}

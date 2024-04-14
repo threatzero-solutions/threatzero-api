@@ -15,15 +15,15 @@ import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { LEVEL, WRITE, READ } from '../permissions';
 import { Action } from './actions';
-import { ThreatAssessment } from 'src/threat-management/threat-assessments/entities/threat-assessment.entity';
+import { ThreatAssessment } from 'src/safety-management/threat-assessments/entities/threat-assessment.entity';
 import { Form } from 'src/forms/forms/entities/form.entity';
 import { FieldGroup } from 'src/forms/field-groups/entities/field-group.entity';
 import { Field } from 'src/forms/fields/entities/field.entity';
-import { Tip } from 'src/threat-management/tips/entities/tip.entity';
+import { Tip } from 'src/safety-management/tips/entities/tip.entity';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { VideoEvent } from 'src/media/entities/video-event.entity';
 import { UserRepresentation } from 'src/users/entities/user-representation.entity';
-import { POCFile } from 'src/threat-management/poc-files/entities/poc-file.entity';
+import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 

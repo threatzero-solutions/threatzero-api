@@ -1,6 +1,6 @@
 import { Base } from 'src/common/base.entity';
-import { ThreatAssessment } from 'src/threat-management/threat-assessments/entities/threat-assessment.entity';
-import { Tip } from 'src/threat-management/tips/entities/tip.entity';
+import { ThreatAssessment } from 'src/safety-management/threat-assessments/entities/threat-assessment.entity';
+import { Tip } from 'src/safety-management/tips/entities/tip.entity';
 import { Column, Entity, JoinColumn, ManyToOne, type Relation } from 'typeorm';
 import { UserRepresentation } from './user-representation.entity';
 

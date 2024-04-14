@@ -2,7 +2,7 @@ import { Base } from 'src/common/base.entity';
 import { FormSubmission } from 'src/forms/forms/entities/form-submission.entity';
 import { Location } from 'src/organizations/locations/entities/location.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
-import { POCFile } from 'src/threat-management/poc-files/entities/poc-file.entity';
+import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
 import { Note } from 'src/users/entities/note.entity';
 import {
   Column,

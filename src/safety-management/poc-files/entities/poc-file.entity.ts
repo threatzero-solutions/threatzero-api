@@ -1,7 +1,7 @@
 import { Base } from 'src/common/base.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
-import { ThreatAssessment } from 'src/threat-management/threat-assessments/entities/threat-assessment.entity';
-import { Tip } from 'src/threat-management/tips/entities/tip.entity';
+import { ThreatAssessment } from 'src/safety-management/threat-assessments/entities/threat-assessment.entity';
+import { Tip } from 'src/safety-management/tips/entities/tip.entity';
 import {
   Column,
   Entity,
