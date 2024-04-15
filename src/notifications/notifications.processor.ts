@@ -30,6 +30,9 @@ export enum NotificationsJobNames {
   SendNewTipNotifications = 'send-new-tip-notifications',
 }
 
+const SMS_THROTTLING_BUFFER = 0.1;
+const SMS_MESSAGES_PER_SECOND = 3;
+
 @Processor(NOTIFICATIONS_QUEUE_NAME, { prefix: NOTIFICATIONS_QUEUE_PREFIX })
 export class NotificationsProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationsProcessor.name);
@@ -191,11 +194,17 @@ export class NotificationsProcessor extends WorkerHost {
       .filter((c) => c.phoneNumber)
       .map((c) => c.phoneNumber);
     this.queue.addBulk(
-      phoneNumbers.map((phoneNumber) => ({
+      phoneNumbers.map((phoneNumber, idx) => ({
         name: NotificationsJobNames.SendSMSNotification,
         data: {
           to: phoneNumber,
           messageBody: `[THREATZERO] A new safety concern has been submitted. View at ${tipUrl}`,
+        },
+        opts: {
+          delay:
+            ((1000 * (1 + SMS_THROTTLING_BUFFER)) / SMS_MESSAGES_PER_SECOND) *
+            idx,
+          attempts: 3,
         },
       })),
     );
