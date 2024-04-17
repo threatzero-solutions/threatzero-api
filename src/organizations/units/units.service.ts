@@ -54,6 +54,16 @@ export class UnitsService extends BaseEntityService<Unit> {
     }
   }
 
+  getUserUnit() {
+    if (!this.request.user?.unitSlug) {
+      return Promise.resolve(null);
+    }
+
+    return this.getRepository().findOneBy({
+      slug: this.request.user.unitSlug,
+    });
+  }
+
   async afterCreate(unit: Unit) {
     this.eventEmitter.emit(
       UNIT_CHANGED_EVENT,

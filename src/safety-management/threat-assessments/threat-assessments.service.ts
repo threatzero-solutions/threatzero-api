@@ -43,10 +43,9 @@ export class ThreatAssessmentsService extends FormSubmissionsServiceMixin<Threat
   }
 
   getQb(query?: BaseQueryDto) {
-    return scopeToOrganizationLevel(
-      this.request,
-      super.getQb(query),
-    ).leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit');
+    return scopeToOrganizationLevel(this.request, super.getQb(query))
+      .leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit')
+      .leftJoinAndSelect(`${super.getQb().alias}.pocFiles`, 'pocFiles');
   }
 
   create(

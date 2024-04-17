@@ -1,15 +1,13 @@
-import { Base } from 'src/common/base.entity';
-import { FormSubmission } from 'src/forms/forms/entities/form-submission.entity';
 import { Location } from 'src/organizations/locations/entities/location.entity';
-import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { SafetyResourceBase } from 'src/safety-management/common/safety-resource-base.entity';
+import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
 import { Note } from 'src/users/entities/note.entity';
 import {
   Column,
   Entity,
-  JoinColumn,
+  ManyToMany,
   ManyToOne,
   OneToMany,
-  OneToOne,
   type Relation,
 } from 'typeorm';
 
@@ -20,38 +18,11 @@ export enum TipStatus {
 }
 
 @Entity()
-export class Tip extends Base {
-  @Column({
-    type: 'varchar',
-    length: 128,
-    nullable: true,
-  })
-  tag: string | null;
-
-  @Column({ length: 64 })
-  unitSlug: string;
-
-  @ManyToOne(() => Unit, {
-    eager: true,
-  })
-  @JoinColumn({
-    name: 'unitSlug',
-    referencedColumnName: 'slug',
-  })
-  unit: Relation<Unit>;
-
+export class Tip extends SafetyResourceBase {
   @ManyToOne(() => Location, {
     nullable: true,
   })
   location: Relation<Location>;
-
-  @OneToOne(() => FormSubmission, {
-    // Use forms service to validate and save submissions.
-    eager: false,
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn()
-  submission: Relation<FormSubmission>;
 
   @Column({ type: 'varchar', length: 64, nullable: true })
   informantFirstName: string | null;
@@ -66,9 +37,12 @@ export class Tip extends Base {
   @Column({ type: 'varchar', length: 32, nullable: true })
   informantPhone: string | null;
 
-  @OneToMany(() => Note, (note) => note.tip)
-  notes: Relation<Note>[];
-
   @Column({ default: TipStatus.NEW })
   status: TipStatus;
+
+  @ManyToMany(() => POCFile, (pocFile) => pocFile.tips)
+  pocFiles: Relation<POCFile>[];
+
+  @OneToMany(() => Note, (note) => note.tip)
+  notes: Relation<Note>[];
 }

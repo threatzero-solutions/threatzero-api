@@ -15,10 +15,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { AuthModule } from './auth/auth.module';
-import { ThreatAssessmentsModule } from './threat-assessments/threat-assessments.module';
 import { FormsModule } from './forms/forms.module';
 import { MediaModule } from './media/media.module';
-import { TipsModule } from './tips/tips.module';
 import { UsersModule } from './users/users.module';
 import { AwsModule } from './aws/aws.module';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -30,6 +28,7 @@ import { ResourcesModule } from './resources/resources.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
+import { SafetyManagementModule } from './safety-management/safety-management.module';
 import helmetConfig from './config/helmet.config';
 import corsConfig from './config/cors.config';
 
@@ -97,13 +96,12 @@ import corsConfig from './config/cors.config';
     MediaModule,
     TrainingModule,
     OrganizationsModule,
-    ThreatAssessmentsModule,
     FormsModule,
-    TipsModule,
     UsersModule,
     AwsModule,
     NotificationsModule,
     HealthModule,
+    SafetyManagementModule,
   ],
   controllers: [AppController],
   providers: [

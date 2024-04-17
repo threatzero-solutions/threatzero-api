@@ -15,14 +15,16 @@ import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { LEVEL, WRITE, READ } from '../permissions';
 import { Action } from './actions';
-import { ThreatAssessment } from 'src/threat-assessments/entities/threat-assessment.entity';
+import { ThreatAssessment } from 'src/safety-management/threat-assessments/entities/threat-assessment.entity';
 import { Form } from 'src/forms/forms/entities/form.entity';
 import { FieldGroup } from 'src/forms/field-groups/entities/field-group.entity';
 import { Field } from 'src/forms/fields/entities/field.entity';
-import { Tip } from 'src/tips/entities/tip.entity';
+import { Tip } from 'src/safety-management/tips/entities/tip.entity';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { VideoEvent } from 'src/media/entities/video-event.entity';
 import { UserRepresentation } from 'src/users/entities/user-representation.entity';
+import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
+import { ViolentIncidentReport } from 'src/safety-management/violent-incident-reports/entities/violent-incident-report.entity';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 
@@ -42,13 +44,15 @@ type OrganizationsSubjectTypes = InferSubjects<
   (typeof OrganizationsSubjects)[number]
 >;
 
-const ThreatAssessmentSubjects = [ThreatAssessment];
-type ThreatAssessmentSubjectTypes = InferSubjects<
-  (typeof ThreatAssessmentSubjects)[number]
+const SafetyManagementSubjects = [
+  ThreatAssessment,
+  Tip,
+  POCFile,
+  ViolentIncidentReport,
+];
+type SafetyManagementSubjectTypes = InferSubjects<
+  (typeof SafetyManagementSubjects)[number]
 >;
-
-const TipSubjects = [Tip];
-type TipSubjectTypes = InferSubjects<(typeof TipSubjects)[number]>;
 
 const ResourceSubjects = [ResourceItem];
 type ResourceSubjectTypes = InferSubjects<(typeof ResourceSubjects)[number]>;
@@ -61,9 +65,8 @@ type UserSubjectTypes = InferSubjects<(typeof UserSubjects)[number]>;
 type AllSubjectTypes =
   | TrainingSubjectTypes
   | OrganizationsSubjectTypes
-  | ThreatAssessmentSubjectTypes
+  | SafetyManagementSubjectTypes
   | FormsSubjectTypes
-  | TipSubjectTypes
   | ResourceSubjectTypes
   | MediaSubjects
   | UserSubjectTypes;
@@ -100,37 +103,52 @@ export class CaslAbilityFactory {
       can(Action.Read, OrganizationsSubjects);
     }
 
-    // --------- THREAT ASSESSMENTS ---------
+    // --------- SAFETY MANAGEMENT ---------
     if (user.hasPermission(LEVEL.ADMIN, WRITE.THREAT_ASSESSMENTS)) {
-      can(Action.Manage, ThreatAssessmentSubjects);
+      can(Action.Manage, ThreatAssessment);
+    }
+
+    if (user.hasPermission(LEVEL.ADMIN, WRITE.TIPS)) {
+      can(Action.Manage, Tip);
+    }
+
+    if (user.hasPermission(LEVEL.ADMIN, WRITE.VIOLENT_INCIDENT_REPORTS)) {
+      can(Action.Manage, ViolentIncidentReport);
     }
 
     if (
       user.hasPermission(LEVEL.ORGANIZATION, WRITE.THREAT_ASSESSMENTS) ||
       user.hasPermission(LEVEL.UNIT, WRITE.THREAT_ASSESSMENTS)
     ) {
-      can(Action.Create, ThreatAssessmentSubjects);
-      can(Action.Update, ThreatAssessmentSubjects);
-    }
-
-    if (user.hasPermission(READ.THREAT_ASSESSMENTS)) {
-      can(Action.Read, ThreatAssessmentSubjects);
-    }
-
-    // --------- TIPS ---------
-    if (user.hasPermission(LEVEL.ADMIN, WRITE.TIPS)) {
-      can(Action.Manage, TipSubjects);
+      can(Action.Create, ThreatAssessment);
+      can(Action.Update, ThreatAssessment);
     }
 
     if (
       user.hasPermission(LEVEL.ORGANIZATION, WRITE.TIPS) ||
       user.hasPermission(LEVEL.UNIT, WRITE.TIPS)
     ) {
-      can(Action.Update, TipSubjects);
+      can(Action.Update, Tip);
+    }
+
+    if (
+      user.hasPermission(LEVEL.ORGANIZATION, WRITE.VIOLENT_INCIDENT_REPORTS) ||
+      user.hasPermission(LEVEL.UNIT, WRITE.VIOLENT_INCIDENT_REPORTS)
+    ) {
+      can(Action.Create, ViolentIncidentReport);
+      can(Action.Update, ViolentIncidentReport);
+    }
+
+    if (user.hasPermission(READ.THREAT_ASSESSMENTS)) {
+      can(Action.Read, ThreatAssessment);
     }
 
     if (user.hasPermission(READ.TIPS)) {
-      can(Action.Read, TipSubjects);
+      can(Action.Read, Tip);
+    }
+
+    if (user.hasPermission(READ.VIOLENT_INCIDENT_REPORTS)) {
+      can(Action.Read, ViolentIncidentReport);
     }
 
     // Anyone can submit a tip.

@@ -1,4 +1,4 @@
-import { IsOptional, IsEnum, IsString } from 'class-validator';
+import { IsOptional, IsEnum, IsString, IsNumber } from 'class-validator';
 import { FormState } from '../entities/form.entity';
 
 export class CreateFormDto {
@@ -17,4 +17,12 @@ export class CreateFormDto {
   @IsEnum(FormState)
   @IsOptional()
   state?: FormState;
+
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @IsOptional()
+  @IsNumber()
+  version = 0;
 }
