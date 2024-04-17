@@ -104,14 +104,6 @@ export class CaslAbilityFactory {
     }
 
     // --------- SAFETY MANAGEMENT ---------
-    if (user.hasPermission(LEVEL.ADMIN, WRITE.SAFETY_MANAGEMENT_RESOURCES)) {
-      can(Action.Manage, SafetyManagementSubjects);
-    }
-
-    if (user.hasPermission(LEVEL.ADMIN, WRITE.TIPS)) {
-      can(Action.Manage, SafetyManagementSubjects);
-    }
-
     if (user.hasPermission(LEVEL.ADMIN, WRITE.THREAT_ASSESSMENTS)) {
       can(Action.Manage, ThreatAssessment);
     }
@@ -122,17 +114,6 @@ export class CaslAbilityFactory {
 
     if (user.hasPermission(LEVEL.ADMIN, WRITE.VIOLENT_INCIDENT_REPORTS)) {
       can(Action.Manage, ViolentIncidentReport);
-    }
-
-    if (
-      user.hasPermission(
-        LEVEL.ORGANIZATION,
-        WRITE.SAFETY_MANAGEMENT_RESOURCES,
-      ) ||
-      user.hasPermission(LEVEL.UNIT, WRITE.SAFETY_MANAGEMENT_RESOURCES)
-    ) {
-      can(Action.Create, SafetyManagementSubjects);
-      can(Action.Update, SafetyManagementSubjects);
     }
 
     if (
@@ -158,8 +139,16 @@ export class CaslAbilityFactory {
       can(Action.Update, ViolentIncidentReport);
     }
 
-    if (user.hasPermission(READ.SAFETY_MANAGEMENT_RESOURCES)) {
-      can(Action.Read, SafetyManagementSubjects);
+    if (user.hasPermission(READ.THREAT_ASSESSMENTS)) {
+      can(Action.Read, ThreatAssessment);
+    }
+
+    if (user.hasPermission(READ.TIPS)) {
+      can(Action.Read, Tip);
+    }
+
+    if (user.hasPermission(READ.VIOLENT_INCIDENT_REPORTS)) {
+      can(Action.Read, ViolentIncidentReport);
     }
 
     // Anyone can submit a tip.
