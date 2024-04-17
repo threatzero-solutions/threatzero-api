@@ -1,28 +1,9 @@
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MaxLength,
-  ValidateNested,
-} from 'class-validator';
+import { IsEnum, IsOptional } from 'class-validator';
 import { AssessmentStatus } from '../entities/threat-assessment.entity';
-import { CreateFormSubmissionDto } from 'src/forms/forms/dto/create-form-submission.dto';
-import { Transform, Type } from 'class-transformer';
+import { CreateSafetyResourceBaseDto } from 'src/safety-management/common/create-safety-resource-base.dto';
 
-export class CreateThreatAssessmentDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(128)
-  @Transform(({ value }) => (value === '' ? null : value))
-  tag?: string | null;
-
+export class CreateThreatAssessmentDto extends CreateSafetyResourceBaseDto {
   @IsOptional()
   @IsEnum(AssessmentStatus)
   status: AssessmentStatus;
-
-  @IsNotEmpty()
-  @ValidateNested()
-  @Type(() => CreateFormSubmissionDto)
-  submission: CreateFormSubmissionDto;
 }

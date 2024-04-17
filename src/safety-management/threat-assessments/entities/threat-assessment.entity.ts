@@ -1,19 +1,10 @@
-import { IsEnum, IsOptional, IsNotEmpty } from 'class-validator';
-import { Base } from 'src/common/base.entity';
-import { FormSubmission } from 'src/forms/forms/entities/form-submission.entity';
-import { Unit } from 'src/organizations/units/entities/unit.entity';
-import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
-import { Note } from 'src/users/entities/note.entity';
+import { SafetyResourceBase } from 'src/safety-management/common/safety-resource-base.entity';
 import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToMany,
-  ManyToOne,
-  OneToMany,
-  OneToOne,
-  type Relation,
-} from 'typeorm';
+  POCFile as POCFileEntity,
+  type POCFile,
+} from 'src/safety-management/poc-files/entities/poc-file.entity';
+import { Note } from 'src/users/entities/note.entity';
+import { Column, Entity, ManyToMany, OneToMany, Relation } from 'typeorm';
 
 export enum AssessmentStatus {
   IN_PROGRESS = 'in_progress',
@@ -23,42 +14,12 @@ export enum AssessmentStatus {
 }
 
 @Entity()
-export class ThreatAssessment extends Base {
-  @Column({
-    type: 'varchar',
-    length: 128,
-    nullable: true,
-  })
-  tag: string | null;
-
-  @Column({ length: 64 })
-  unitSlug: string;
-
-  @ManyToOne(() => Unit, {
-    eager: true,
-  })
-  @JoinColumn({
-    name: 'unitSlug',
-    referencedColumnName: 'slug',
-  })
-  unit: Relation<Unit>;
-
-  @ManyToMany(() => POCFile, (pocFile) => pocFile.assessments)
-  pocFiles: Relation<POCFile>[];
-
+export class ThreatAssessment extends SafetyResourceBase {
   @Column({ default: AssessmentStatus.IN_PROGRESS })
-  @IsEnum(AssessmentStatus)
-  @IsOptional()
   status: AssessmentStatus;
 
-  @OneToOne(() => FormSubmission, {
-    // Use forms service to validate and save submissions.
-    eager: false,
-    cascade: true,
-  })
-  @JoinColumn()
-  @IsNotEmpty()
-  submission: Relation<FormSubmission>;
+  @ManyToMany(() => POCFileEntity, (pocFile) => pocFile.assessments)
+  pocFiles: POCFile[];
 
   @OneToMany(() => Note, (note) => note.assessment)
   notes: Relation<Note>[];

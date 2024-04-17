@@ -24,6 +24,7 @@ import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { VideoEvent } from 'src/media/entities/video-event.entity';
 import { UserRepresentation } from 'src/users/entities/user-representation.entity';
 import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
+import { ViolentIncidentReport } from 'src/safety-management/violent-incident-reports/entities/violent-incident-report.entity';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 
@@ -43,9 +44,14 @@ type OrganizationsSubjectTypes = InferSubjects<
   (typeof OrganizationsSubjects)[number]
 >;
 
-const ThreatManagementSubjects = [ThreatAssessment, Tip, POCFile];
-type ThreatManagementSubjectTypes = InferSubjects<
-  (typeof ThreatManagementSubjects)[number]
+const SafetyManagementSubjects = [
+  ThreatAssessment,
+  Tip,
+  POCFile,
+  ViolentIncidentReport,
+];
+type SafetyManagementSubjectTypes = InferSubjects<
+  (typeof SafetyManagementSubjects)[number]
 >;
 
 const ResourceSubjects = [ResourceItem];
@@ -59,7 +65,7 @@ type UserSubjectTypes = InferSubjects<(typeof UserSubjects)[number]>;
 type AllSubjectTypes =
   | TrainingSubjectTypes
   | OrganizationsSubjectTypes
-  | ThreatManagementSubjectTypes
+  | SafetyManagementSubjectTypes
   | FormsSubjectTypes
   | ResourceSubjectTypes
   | MediaSubjects
@@ -97,21 +103,63 @@ export class CaslAbilityFactory {
       can(Action.Read, OrganizationsSubjects);
     }
 
-    // --------- THREAT ASSESSMENTS ---------
+    // --------- SAFETY MANAGEMENT ---------
+    if (user.hasPermission(LEVEL.ADMIN, WRITE.SAFETY_MANAGEMENT_RESOURCES)) {
+      can(Action.Manage, SafetyManagementSubjects);
+    }
+
+    if (user.hasPermission(LEVEL.ADMIN, WRITE.TIPS)) {
+      can(Action.Manage, SafetyManagementSubjects);
+    }
+
     if (user.hasPermission(LEVEL.ADMIN, WRITE.THREAT_ASSESSMENTS)) {
-      can(Action.Manage, ThreatManagementSubjects);
+      can(Action.Manage, ThreatAssessment);
+    }
+
+    if (user.hasPermission(LEVEL.ADMIN, WRITE.TIPS)) {
+      can(Action.Manage, Tip);
+    }
+
+    if (user.hasPermission(LEVEL.ADMIN, WRITE.VIOLENT_INCIDENT_REPORTS)) {
+      can(Action.Manage, ViolentIncidentReport);
+    }
+
+    if (
+      user.hasPermission(
+        LEVEL.ORGANIZATION,
+        WRITE.SAFETY_MANAGEMENT_RESOURCES,
+      ) ||
+      user.hasPermission(LEVEL.UNIT, WRITE.SAFETY_MANAGEMENT_RESOURCES)
+    ) {
+      can(Action.Create, SafetyManagementSubjects);
+      can(Action.Update, SafetyManagementSubjects);
     }
 
     if (
       user.hasPermission(LEVEL.ORGANIZATION, WRITE.THREAT_ASSESSMENTS) ||
       user.hasPermission(LEVEL.UNIT, WRITE.THREAT_ASSESSMENTS)
     ) {
-      can(Action.Create, ThreatManagementSubjects);
-      can(Action.Update, ThreatManagementSubjects);
+      can(Action.Create, ThreatAssessment);
+      can(Action.Update, ThreatAssessment);
     }
 
-    if (user.hasPermission(READ.THREAT_ASSESSMENTS)) {
-      can(Action.Read, ThreatManagementSubjects);
+    if (
+      user.hasPermission(LEVEL.ORGANIZATION, WRITE.TIPS) ||
+      user.hasPermission(LEVEL.UNIT, WRITE.TIPS)
+    ) {
+      can(Action.Update, Tip);
+    }
+
+    if (
+      user.hasPermission(LEVEL.ORGANIZATION, WRITE.VIOLENT_INCIDENT_REPORTS) ||
+      user.hasPermission(LEVEL.UNIT, WRITE.VIOLENT_INCIDENT_REPORTS)
+    ) {
+      can(Action.Create, ViolentIncidentReport);
+      can(Action.Update, ViolentIncidentReport);
+    }
+
+    if (user.hasPermission(READ.SAFETY_MANAGEMENT_RESOURCES)) {
+      can(Action.Read, SafetyManagementSubjects);
     }
 
     // Anyone can submit a tip.
