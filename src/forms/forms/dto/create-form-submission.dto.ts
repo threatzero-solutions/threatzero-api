@@ -2,6 +2,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
+  IsString,
   ValidateNested,
 } from 'class-validator';
 import { FormSubmissionState } from '../entities/form-submission.entity';
@@ -9,6 +10,10 @@ import { CreateFieldResponseDto } from 'src/forms/fields/dto/create-field-respon
 import { Type } from 'class-transformer';
 
 export class CreateFormSubmissionDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
   @IsNotEmpty()
   @ValidateNested()
   @Type(() => CreateFieldResponseDto)

@@ -12,6 +12,10 @@ import { CreateTrainingSectionItemDto } from './create-section-item.dto';
 import { Type } from 'class-transformer';
 
 export class CreateSectionDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
   @ValidateNested()
   @Type(() => CreateTrainingMetadataDto)
   @IsOptional()

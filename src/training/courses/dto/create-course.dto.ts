@@ -8,7 +8,6 @@ import { CreateTrainingMetadataDto } from 'src/training/common/dto/create-traini
 import { TrainingVisibility } from '../entities/course.entity';
 import { SaveByIdDto } from 'src/common/dto.utils';
 import { Audience } from 'src/training/audiences/entities/audience.entity';
-import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Type } from 'class-transformer';
 import { CreateSectionDto } from 'src/training/sections/dto/create-section.dto';
 
