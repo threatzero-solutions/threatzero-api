@@ -48,10 +48,6 @@ export class UnitsService extends BaseEntityService<Unit> {
     switch (getOrganizationLevel(this.request)) {
       case LEVEL.ADMIN:
         return qb;
-      case LEVEL.UNIT:
-        return qb.andWhere('unit.slug = :unitSlug', {
-          unitSlug: this.request.user?.unitSlug,
-        });
       case LEVEL.ORGANIZATION:
         return qb
           .leftJoinAndSelect(`${qb.alias}.organization`, 'org_organization')
@@ -59,7 +55,11 @@ export class UnitsService extends BaseEntityService<Unit> {
             organizationSlug: this.request.user?.organizationSlug,
           });
       default:
-        return qb.where('1 = 0');
+        return this.request.user?.unitSlug
+          ? qb.andWhere('unit.slug = :unitSlug', {
+              unitSlug: this.request.user?.unitSlug,
+            })
+          : qb.where('1 = 0');
     }
   }
 

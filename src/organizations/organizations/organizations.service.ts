@@ -45,12 +45,12 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     switch (getOrganizationLevel(this.request)) {
       case LEVEL.ADMIN:
         return qb;
-      case LEVEL.ORGANIZATION:
-        return qb.andWhere(`${qb.alias}.slug = :organizationSlug`, {
-          organizationSlug: this.request.user?.organizationSlug,
-        });
       default:
-        return qb.where('1 = 0');
+        return this.request.user?.organizationSlug
+          ? qb.andWhere(`${qb.alias}.slug = :organizationSlug`, {
+              organizationSlug: this.request.user.organizationSlug,
+            })
+          : qb.where('1 = 0');
     }
   }
 

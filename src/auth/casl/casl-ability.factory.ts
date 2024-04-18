@@ -103,6 +103,10 @@ export class CaslAbilityFactory {
       can(Action.Read, OrganizationsSubjects);
     }
 
+    // Anyone can read their own organization/unit. Fine grained access is managed
+    // in organization service.
+    can(Action.Read, [Organization, Unit]);
+
     // --------- SAFETY MANAGEMENT ---------
     if (user.hasPermission(LEVEL.ADMIN, WRITE.THREAT_ASSESSMENTS)) {
       can(Action.Manage, ThreatAssessment);
