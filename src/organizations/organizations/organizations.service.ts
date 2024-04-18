@@ -2,7 +2,7 @@ import { Inject, Injectable, Scope } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   ORGANIZATION_CHANGED_EVENT,
   ORGANIZATION_REMOVED_EVENT,
@@ -14,6 +14,7 @@ import { Request } from 'express';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { getOrganizationLevel } from '../common/organizations.utils';
 import { LEVEL } from 'src/auth/permissions';
+import { MediaService } from 'src/media/media.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class OrganizationsService extends BaseEntityService<Organization> {
@@ -22,6 +23,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     private organizationsRepository: Repository<Organization>,
     @Inject(REQUEST) private request: Request,
     private eventEmitter: EventEmitter2,
+    private media: MediaService,
   ) {
     super();
   }
@@ -32,6 +34,13 @@ export class OrganizationsService extends BaseEntityService<Organization> {
 
   getQb(query?: BaseQueryDto) {
     let qb = super.getQb(query);
+
+    qb = qb
+      .leftJoinAndSelect(`${qb.alias}.safetyContact`, 'safetyContact')
+      .leftJoinAndSelect(
+        `${qb.alias}.workplaceViolencePreventionPlan`,
+        'workplaceViolencePreventionPlan',
+      );
 
     switch (getOrganizationLevel(this.request)) {
       case LEVEL.ADMIN:
@@ -58,6 +67,11 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     }
   }
 
+  async mapResult(organization: Organization) {
+    organization = organization.sign(this.getCloudFrontUrlSigner());
+    return organization;
+  }
+
   async afterCreate(organization: Organization) {
     this.eventEmitter.emit(
       ORGANIZATION_CHANGED_EVENT,
@@ -77,5 +91,9 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       ORGANIZATION_REMOVED_EVENT,
       new BaseOrganizationChangeEvent(id),
     );
+  }
+
+  private getCloudFrontUrlSigner() {
+    return this.media.getCloudFrontUrlSigner('wvp-plans');
   }
 }

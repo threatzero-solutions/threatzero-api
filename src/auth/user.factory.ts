@@ -5,8 +5,8 @@ class TokenPayload {
   sub: string;
   email: string;
   name?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
+  given_name?: string | null;
+  family_name?: string | null;
   picture?: string | null;
   resource_access?: {
     [key: string]:
@@ -72,8 +72,8 @@ export class UserFactory {
       tokenPayload.sub,
       tokenPayload.email,
       tokenPayload.name,
-      tokenPayload.first_name,
-      tokenPayload.last_name,
+      tokenPayload.given_name,
+      tokenPayload.family_name,
       tokenPayload.picture,
       tokenPayload.resource_access?.['threatzero-api']?.roles ?? [],
       tokenPayload.audiences ?? [],

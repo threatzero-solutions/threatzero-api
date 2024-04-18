@@ -14,6 +14,7 @@ import { Request } from 'express';
 import { REQUEST } from '@nestjs/core';
 import { getOrganizationLevel } from '../common/organizations.utils';
 import { LEVEL } from 'src/auth/permissions';
+import { MediaService } from 'src/media/media.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class UnitsService extends BaseEntityService<Unit> {
@@ -23,6 +24,7 @@ export class UnitsService extends BaseEntityService<Unit> {
     @InjectRepository(Unit) private unitsRepository: Repository<Unit>,
     @Inject(REQUEST) private request: Request,
     private eventEmitter: EventEmitter2,
+    private media: MediaService,
   ) {
     super();
   }
@@ -35,6 +37,13 @@ export class UnitsService extends BaseEntityService<Unit> {
     let qb = super
       .getQb(query)
       .leftJoinAndSelect('unit.organization', 'organization');
+
+    qb = qb
+      .leftJoinAndSelect(`${qb.alias}.safetyContact`, 'safetyContact')
+      .leftJoinAndSelect(
+        `${qb.alias}.workplaceViolencePreventionPlan`,
+        'workplaceViolencePreventionPlan',
+      );
 
     switch (getOrganizationLevel(this.request)) {
       case LEVEL.ADMIN:
@@ -64,6 +73,11 @@ export class UnitsService extends BaseEntityService<Unit> {
     });
   }
 
+  async mapResult(unit: Unit) {
+    unit = unit.sign(this.getCloudFrontUrlSigner());
+    return unit;
+  }
+
   async afterCreate(unit: Unit) {
     this.eventEmitter.emit(
       UNIT_CHANGED_EVENT,
@@ -83,5 +97,9 @@ export class UnitsService extends BaseEntityService<Unit> {
       UNIT_REMOVED_EVENT,
       new BaseOrganizationChangeEvent(id),
     );
+  }
+
+  private getCloudFrontUrlSigner() {
+    return this.media.getCloudFrontUrlSigner('wvp-plans');
   }
 }
