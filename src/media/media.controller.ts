@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
 import { MediaService } from './media.service';
 import { CreateVideoEventDto } from './dto/create-video-event.dto';
 import { Request } from 'express';
@@ -12,10 +12,11 @@ export class MediaController {
 
   @Post('video/events')
   @CheckPolicies((ability) => ability.can(Action.Create, VideoEvent))
+  @HttpCode(202)
   async receiveVideoEvent(
     @Body() event: CreateVideoEventDto,
     @Req() request: Request,
   ) {
-    return this.mediaService.receiveVideoEvent(event, request);
+    await this.mediaService.receiveVideoEvent(event, request);
   }
 }

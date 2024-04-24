@@ -184,11 +184,13 @@ export class MediaService {
     if (!request.user) {
       throw new UnauthorizedException('No user information found.');
     }
-    return this.videoEventsRepository.create({
+    const newEvent = this.videoEventsRepository.create({
       ...event,
       userId: request.user.id,
       unitSlug: request.user.unitSlug,
       audienceSlugs: request.user.audiences,
     });
+
+    return await this.videoEventsRepository.save(newEvent);
   }
 }
