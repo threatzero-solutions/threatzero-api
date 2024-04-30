@@ -58,7 +58,7 @@ export class TrainingSection extends Base {
     if (this.repeats === TrainingRepeats.YEARLY && this.expiresOn) {
       const expiresOn = dayjs(this.expiresOn);
 
-      if (expiresOn.isBefore(dayjs())) {
+      if (expiresOn.isBefore(dayjs(), 'day')) {
         this.availableOn = dayjs(this.availableOn).add(1, 'year').toDate();
         this.expiresOn = expiresOn.add(1, 'year').toDate();
       }
