@@ -60,12 +60,16 @@ export class FormsService extends BaseEntityService<Form> {
 
   async findAllGroupedBySlug() {
     return this.getQb()
-      .where((qb) => {
+      .andWhere((qb) => {
         const q = qb
           .subQuery()
           .from(Form, 'f')
           .select('f.slug')
           .addSelect('MAX(f.version)')
+          .leftJoin('f.language', 'language')
+          .where('language.code = :language', {
+            language: 'en',
+          })
           .groupBy('f.slug')
           .getQuery();
         return `(form.slug, form.version) IN ${q}`;
@@ -84,6 +88,7 @@ export class FormsService extends BaseEntityService<Form> {
           .from(Form, 'f')
           .select('f.languageId')
           .addSelect('MAX(f.version)')
+          .where({ slug })
           .groupBy('f.languageId')
           .getQuery();
         return `(form.languageId, form.version) IN ${q}`;
