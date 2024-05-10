@@ -31,6 +31,7 @@ export class StatelessUser {
   public readonly audiences: string[];
   public readonly organizationSlug?: string | null;
   public readonly unitSlug?: string | null;
+  public readonly peerUnits: string[] = [];
 
   constructor(
     id: string,
@@ -43,6 +44,7 @@ export class StatelessUser {
     audiences: string[],
     organizationSlug?: string | null,
     unitSlug?: string | null,
+    peerUnits?: string[],
   ) {
     this.id = id;
     this.email = email;
@@ -54,6 +56,7 @@ export class StatelessUser {
     this.audiences = audiences;
     this.organizationSlug = organizationSlug;
     this.unitSlug = unitSlug;
+    this.peerUnits = peerUnits ?? [];
   }
 
   public hasPermission = (...permissions: string[]): boolean => {

@@ -29,8 +29,9 @@ export const scopeToOrganizationLevel = <
     case LEVEL.UNIT:
       return qb
         .leftJoin(`${qb.alias}.unit`, 'org_unit')
-        .andWhere('unit.slug = :unitSlug', {
+        .andWhere('unit.slug = :unitSlug OR unit.slug IN (:peerUnitSlugs)', {
           unitSlug: req.user?.unitSlug,
+          peerUnitSlugs: req.user?.peerUnits,
         });
     case LEVEL.ORGANIZATION:
       return qb
