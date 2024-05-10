@@ -59,24 +59,40 @@ export class FormsService extends BaseEntityService<Form> {
   }
 
   async findAllGroupedBySlug() {
-    return this.findAllLatest()
+    return this.getQb()
+      .where((qb) => {
+        const q = qb
+          .subQuery()
+          .from(Form, 'f')
+          .select('f.slug')
+          .addSelect('MAX(f.version)')
+          .groupBy('f.slug')
+          .getQuery();
+        return `(form.slug, form.version) IN ${q}`;
+      })
       .andWhere('language.code = :language', {
         language: 'en',
       })
       .getMany();
   }
 
-  findAllLatest() {
-    return this.getQb().where((qb) => {
-      const q = qb
-        .subQuery()
-        .from(Form, 'f')
-        .select('f.slug')
-        .addSelect('MAX(f.version)')
-        .groupBy('f.slug')
-        .getQuery();
-      return `(form.slug, form.version) IN ${q}`;
-    });
+  async findAllLatestByLanguage(slug?: string) {
+    return this.getQb()
+      .where((qb) => {
+        const q = qb
+          .subQuery()
+          .from(Form, 'f')
+          .select('f.languageId')
+          .addSelect('MAX(f.version)')
+          .groupBy('f.languageId')
+          .getQuery();
+        return `(form.languageId, form.version) IN ${q}`;
+      })
+      .andWhere({
+        slug,
+      })
+      .orderBy({ 'language.nativeName': 'ASC' })
+      .getMany();
   }
 
   async createNewDraft(id: Form['id'], languageId: string) {
