@@ -188,7 +188,7 @@ export class NotificationsProcessor extends WorkerHost {
     }
     const tipUrl =
       this.config.get<string>('general.appHost') +
-      '/administrative-reports/safety-concerns/' +
+      '/safety-management/safety-concerns/' +
       tip.id;
     const phoneNumbers = contacts
       .filter((c) => c.phoneNumber)
