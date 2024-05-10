@@ -164,7 +164,7 @@ export class OrganizationChangeListener {
 
   private async getOrCreateUnitTatsGroupId(orgGroupId: string) {
     const unitTatsGroup = await this.keycloak.client.groups
-      .listSubGroups({ parentId: orgGroupId })
+      .listSubGroups({ parentId: orgGroupId, max: 100 })
       .then((groups) => groups.find((g) => g.name === 'Unit TATs'));
 
     if (unitTatsGroup) {
