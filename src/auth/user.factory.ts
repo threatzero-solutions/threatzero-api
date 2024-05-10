@@ -18,6 +18,7 @@ class TokenPayload {
   audiences?: string[];
   organization?: string;
   unit?: string;
+  peer_units?: string[];
 }
 
 export class StatelessUser {
@@ -82,6 +83,7 @@ export class UserFactory {
       tokenPayload.audiences ?? [],
       tokenPayload.organization,
       tokenPayload.unit,
+      tokenPayload.peer_units ?? [],
     );
   };
 }
