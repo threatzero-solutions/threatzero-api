@@ -6,9 +6,6 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ResourceType } from '../entities/resource.entity';
-import { Type } from 'class-transformer';
-import { SaveByIdDto } from 'src/common/dto.utils';
-import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 
 export class CreateResourceDto {
   @IsOptional()

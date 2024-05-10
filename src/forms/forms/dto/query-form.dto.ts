@@ -14,4 +14,8 @@ export class QueryFormDto extends BaseQueryDto {
   @IsOptional()
   @IsNumber()
   version?: number;
+
+  @IsOptional()
+  @IsString()
+  ['language.code']?: string;
 }

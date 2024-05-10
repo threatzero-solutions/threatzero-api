@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Scope } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ResourceItem } from './entities/resource.entity';
@@ -10,7 +10,7 @@ import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { getOrganizationLevel } from 'src/organizations/common/organizations.utils';
 import { Request } from 'express';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ResourcesService extends BaseEntityService<ResourceItem> {
   constructor(
     @InjectRepository(ResourceItem)

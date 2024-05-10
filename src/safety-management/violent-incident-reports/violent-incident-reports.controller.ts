@@ -52,8 +52,13 @@ export class ViolentIncidentReportsController {
   }
 
   @Get('form')
-  getForm() {
-    return this.violentIncidentReportsService.getForm();
+  getForm(@Query('language_code') languageCode?: string) {
+    return this.violentIncidentReportsService.getForm(languageCode);
+  }
+
+  @Get('forms')
+  getForms() {
+    return this.violentIncidentReportsService.getForms();
   }
 
   @Get('submissions/:id/pdf')

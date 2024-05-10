@@ -25,6 +25,7 @@ import { VideoEvent } from 'src/media/entities/video-event.entity';
 import { UserRepresentation } from 'src/users/entities/user-representation.entity';
 import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
 import { ViolentIncidentReport } from 'src/safety-management/violent-incident-reports/entities/violent-incident-report.entity';
+import { Language } from 'src/languages/entities/language.entity';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 
@@ -62,6 +63,9 @@ type MediaSubjects = InferSubjects<typeof VideoEvent>;
 const UserSubjects = [UserRepresentation];
 type UserSubjectTypes = InferSubjects<(typeof UserSubjects)[number]>;
 
+const LanguageSubjects = [Language];
+type LanguageSubjectTypes = InferSubjects<(typeof LanguageSubjects)[number]>;
+
 type AllSubjectTypes =
   | TrainingSubjectTypes
   | OrganizationsSubjectTypes
@@ -69,7 +73,8 @@ type AllSubjectTypes =
   | FormsSubjectTypes
   | ResourceSubjectTypes
   | MediaSubjects
-  | UserSubjectTypes;
+  | UserSubjectTypes
+  | LanguageSubjectTypes;
 
 @Injectable()
 export class CaslAbilityFactory {
@@ -176,6 +181,14 @@ export class CaslAbilityFactory {
     if (user.hasPermission(LEVEL.ADMIN, WRITE.USERS)) {
       can(Action.Manage, UserSubjects);
     }
+
+    // --------- LANGUAGES ---------
+    if (user.hasPermission(WRITE.LANGUAGES)) {
+      can(Action.Manage, LanguageSubjects);
+    }
+
+    // Anyone can read available languages.
+    can(Action.Read, LanguageSubjects);
 
     return build({
       detectSubjectType: (item) =>

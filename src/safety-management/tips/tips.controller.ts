@@ -52,8 +52,13 @@ export class TipsController {
 
   @Public()
   @Get('form')
-  getForm() {
-    return this.tipsService.getForm();
+  getForm(@Query('language_code') languageCode?: string) {
+    return this.tipsService.getForm(languageCode);
+  }
+
+  @Get('forms')
+  getForms() {
+    return this.tipsService.getForms();
   }
 
   @Get('submissions/:id/pdf')

@@ -4,7 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
-import { DataSource, DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
+import {
+  DataSource,
+  DeepPartial,
+  FindOptionsWhere,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Form, FormState } from './entities/form.entity';
 import { FormSubmission } from './entities/form-submission.entity';
@@ -20,6 +26,7 @@ import { GetPresignedUploadUrlsDto } from './dto/get-presigned-upload-urls.dto';
 import { v4 as uuidv4 } from 'uuid';
 import mime from 'mime';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
 @Injectable()
 export class FormsService extends BaseEntityService<Form> {
@@ -43,30 +50,40 @@ export class FormsService extends BaseEntityService<Form> {
     return this.formsRepository;
   }
 
+  getQb(query?: BaseQueryDto | undefined): SelectQueryBuilder<Form> {
+    return super.getQb(query).leftJoinAndSelect('form.language', 'language');
+  }
+
   async findOne(id: Form['id']) {
     return this.getFormBy({ id });
   }
 
   async findAllGroupedBySlug() {
-    return this.getQb()
-      .where((qb) => {
-        const q = qb
-          .subQuery()
-          .from(Form, 'f')
-          .select('f.slug')
-          .addSelect('MAX(f.version)')
-          .groupBy('f.slug')
-          .getQuery();
-        return `(form.slug, form.version) IN ${q}`;
+    return this.findAllLatest()
+      .andWhere('language.code = :language', {
+        language: 'en',
       })
       .getMany();
   }
 
-  async createNewDraft(id: Form['id']) {
+  findAllLatest() {
+    return this.getQb().where((qb) => {
+      const q = qb
+        .subQuery()
+        .from(Form, 'f')
+        .select('f.slug')
+        .addSelect('MAX(f.version)')
+        .groupBy('f.slug')
+        .getQuery();
+      return `(form.slug, form.version) IN ${q}`;
+    });
+  }
+
+  async createNewDraft(id: Form['id'], languageId: string) {
     const form = await this.findOne(id);
 
     const newDraft = await this.dataSource.transaction(async (manager) => {
-      return await form.asNewDraft(manager);
+      return await form.asNewDraft(manager, languageId);
     });
 
     return await this.findOne(newDraft.id);
@@ -94,12 +111,10 @@ export class FormsService extends BaseEntityService<Form> {
   }
 
   async createSubmission(
-    formSlug: string,
     formSubmissionDto: DeepPartial<FormSubmission>,
     request: Request,
   ) {
     const validatedSubmission = await this.validateSubmission(
-      formSlug,
       formSubmissionDto,
       request,
     );
@@ -119,11 +134,10 @@ export class FormsService extends BaseEntityService<Form> {
   }
 
   async updateSubmission(
-    formSlug: string,
     formSubmissionDto: DeepPartial<FormSubmission>,
     request: Request,
   ) {
-    return await this.createSubmission(formSlug, formSubmissionDto, request);
+    return await this.createSubmission(formSubmissionDto, request);
   }
 
   async getSubmission(id: FormSubmission['id']) {
@@ -136,11 +150,16 @@ export class FormsService extends BaseEntityService<Form> {
   }
 
   async validateSubmission(
-    formSlug: string,
     formSubmissionDto: DeepPartial<FormSubmission>,
     request: Request,
   ) {
-    const form = await this.getFormBy({ slug: formSlug });
+    const formId = formSubmissionDto.formId || formSubmissionDto.form?.id;
+
+    if (!formId) {
+      throw new BadRequestException('Form ID must not be empty.');
+    }
+
+    const form = await this.getFormBy({ id: formId });
     const validatedSubmission = form.validateSubmission(
       formSubmissionDto,
       request,

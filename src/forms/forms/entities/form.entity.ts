@@ -14,11 +14,13 @@ import {
   SelectQueryBuilder,
   Not,
   Equal,
+  ManyToOne,
 } from 'typeorm';
 import { FormSubmission } from './form-submission.entity';
 import { Request } from 'express';
 import { isIPv4, isIPv6 } from 'net';
 import { BadRequestException } from '@nestjs/common';
+import { Language } from 'src/languages/entities/language.entity';
 
 export enum FormState {
   DRAFT = 'draft',
@@ -27,7 +29,7 @@ export enum FormState {
 
 @Entity()
 @Check("state = 'draft' OR (state = 'published' AND version > 0)")
-@Unique(['slug', 'version'])
+@Unique(['slug', 'version', 'language'])
 export class Form extends Base {
   @Index()
   @Column({ length: 100 })
@@ -35,6 +37,12 @@ export class Form extends Base {
 
   @Column({ type: 'int' })
   version: number;
+
+  @ManyToOne(() => Language, {
+    eager: true,
+    nullable: true,
+  })
+  language: Relation<Language>;
 
   @Column({ type: 'text', nullable: true })
   title: string | null;
@@ -76,7 +84,11 @@ export class Form extends Base {
     } else if (changes.slug && changes.state === FormState.PUBLISHED) {
       const previousForm = await qb
         .select('form.version')
-        .where({ slug: changes.slug, version: Not(Equal(0)) })
+        .where({
+          slug: changes.slug,
+          version: Not(Equal(0)),
+          language: { id: changes.language?.id },
+        })
         .orderBy({ version: 'DESC' })
         .getOne();
 
@@ -90,11 +102,12 @@ export class Form extends Base {
     return changes;
   }
 
-  async asNewDraft(manager: EntityManager) {
+  async asNewDraft(manager: EntityManager, languageId: string) {
     let newDraft: Form = {
       ...this,
       version: 0,
       state: FormState.DRAFT,
+      language: { id: languageId },
     };
 
     Reflect.deleteProperty(newDraft, 'id');

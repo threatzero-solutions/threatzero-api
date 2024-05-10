@@ -48,8 +48,13 @@ export class ThreatAssessmentsController {
   }
 
   @Get('form')
-  getForm() {
-    return this.threatAssessmentsService.getForm();
+  getForm(@Query('language_code') languageCode?: string) {
+    return this.threatAssessmentsService.getForm(languageCode);
+  }
+
+  @Get('forms')
+  getForms() {
+    return this.threatAssessmentsService.getForms();
   }
 
   @Get('submissions/:id/pdf')

@@ -29,6 +29,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
 import { SafetyManagementModule } from './safety-management/safety-management.module';
+import { LanguagesModule } from './languages/languages.module';
 import helmetConfig from './config/helmet.config';
 import corsConfig from './config/cors.config';
 
@@ -102,6 +103,7 @@ import corsConfig from './config/cors.config';
     NotificationsModule,
     HealthModule,
     SafetyManagementModule,
+    LanguagesModule,
   ],
   controllers: [AppController],
   providers: [

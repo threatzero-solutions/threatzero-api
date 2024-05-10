@@ -34,8 +34,20 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
           .leftJoinAndSelect(`${super.getQb().alias}.submission`, 'submission');
       }
 
-      async getForm() {
-        return this.formsService.getFormBy({ slug: this.formSlug });
+      async getForm(languageCode = 'en') {
+        return this.formsService.getFormBy({
+          slug: this.formSlug,
+          language: { code: languageCode },
+        });
+      }
+
+      async getForms() {
+        return this.formsService
+          .findAllLatest()
+          .andWhere({
+            slug: this.formSlug,
+          })
+          .getMany();
       }
 
       async mapResult(entity: E) {
@@ -59,7 +71,6 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
       ) {
         // First, validate & create submission.
         const savedSubmission = await this.formsService.createSubmission(
-          this.formSlug,
           createSubmissionEntityDto.submission,
           this.request,
         );
@@ -81,7 +92,6 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
       ) {
         if (updateEntityDto.submission) {
           await this.formsService.updateSubmission(
-            this.formSlug,
             updateEntityDto.submission,
             this.request,
           );

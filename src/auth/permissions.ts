@@ -24,6 +24,7 @@ export const WRITE = {
   USERS: 'write:users',
   SURVEYS: 'write:surveys',
   RESOURCES: 'write:resources',
+  LANGUAGES: 'write:languages',
 };
 
 export const LEVEL = {

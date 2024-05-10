@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import { FormsService } from './forms.service';
 import { CreateFormDto } from './dto/create-form.dto';
@@ -32,8 +33,14 @@ export class FormsController {
   }
 
   @Post(':id/new-draft')
-  createNewDraft(@Param('id') id: string) {
-    return this.formsService.createNewDraft(id);
+  createNewDraft(
+    @Param('id') id: string,
+    @Query('languageId') languageId?: string,
+  ) {
+    if (!languageId) {
+      throw new BadRequestException('Language ID must not be empty.');
+    }
+    return this.formsService.createNewDraft(id, languageId);
   }
 
   @Get()
