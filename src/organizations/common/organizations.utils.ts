@@ -29,10 +29,14 @@ export const scopeToOrganizationLevel = <
     case LEVEL.UNIT:
       return qb
         .leftJoin(`${qb.alias}.unit`, 'org_unit')
-        .andWhere('unit.slug = :unitSlug OR unit.slug IN (:peerUnitSlugs)', {
-          unitSlug: req.user?.unitSlug,
-          peerUnitSlugs: req.user?.peerUnits,
-        });
+        .andWhere(
+          `unit.slug = :unitSlug OR unit.slug IN (${req.user?.peerUnits
+            .map((pu) => `'${pu}'`)
+            .join(', ')})`,
+          {
+            unitSlug: req.user?.unitSlug,
+          },
+        );
     case LEVEL.ORGANIZATION:
       return qb
         .leftJoin(`${qb.alias}.unit`, 'org_unit')
