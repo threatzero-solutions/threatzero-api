@@ -80,7 +80,7 @@ export class FormsService extends BaseEntityService<Form> {
       .getMany();
   }
 
-  async findAllLatestByLanguage(slug?: string) {
+  async findAllLatestByLanguage(slug?: string, published = true) {
     return this.getQb()
       .where((qb) => {
         const q = qb
@@ -95,6 +95,7 @@ export class FormsService extends BaseEntityService<Form> {
       })
       .andWhere({
         slug,
+        state: published ? FormState.PUBLISHED : undefined,
       })
       .orderBy({ 'language.nativeName': 'ASC' })
       .getMany();

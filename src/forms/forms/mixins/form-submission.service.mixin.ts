@@ -42,7 +42,7 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
       }
 
       async getForms() {
-        return this.formsService.findAllLatestByLanguage(this.formSlug);
+        return this.formsService.findAllLatestByLanguage(this.formSlug, true);
       }
 
       async mapResult(entity: E) {
