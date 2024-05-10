@@ -63,6 +63,8 @@ export class OrganizationChangeListener {
       orgGroup.id,
     );
 
+    await this.getOrCreateUnitTatsGroupId(orgGroup.id);
+
     await this.organizationsRepository.update(
       {
         id: organization.id,
@@ -118,12 +120,18 @@ export class OrganizationChangeListener {
       organizationGroupId,
     );
 
+    const unitTatsGroupId =
+      await this.getOrCreateUnitTatsGroupId(organizationGroupId);
+
     const tatGroup = await this.keycloak.upsertGroup(
       {
         id: unit.tatGroupId ?? undefined,
         name: `${unit.name} TAT`,
+        attributes: {
+          peerUnit: [unit.slug],
+        },
       },
-      unitGroup.id,
+      unitTatsGroupId,
     );
 
     await this.unitsRepository.update(
@@ -152,5 +160,26 @@ export class OrganizationChangeListener {
           }),
         ),
     );
+  }
+
+  private async getOrCreateUnitTatsGroupId(orgGroupId: string) {
+    const unitTatsGroup = await this.keycloak.client.groups
+      .listSubGroups({ parentId: orgGroupId })
+      .then((groups) => groups.find((g) => g.name === 'Unit TATs'));
+
+    if (unitTatsGroup) {
+      return unitTatsGroup.id;
+    }
+
+    const createResponse = await this.keycloak.client.groups.createChildGroup(
+      {
+        id: orgGroupId,
+      },
+      {
+        name: 'Unit TATs',
+      },
+    );
+
+    return createResponse.id;
   }
 }
