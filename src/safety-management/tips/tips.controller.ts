@@ -56,6 +56,7 @@ export class TipsController {
     return this.tipsService.getForm(languageCode);
   }
 
+  @Public()
   @Get('forms')
   getForms() {
     return this.tipsService.getForms();
