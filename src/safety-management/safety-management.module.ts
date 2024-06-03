@@ -5,11 +5,11 @@ import { POCFilesModule } from './poc-files/poc-files.module';
 import { ViolentIncidentReportsModule } from './violent-incident-reports/violent-incident-reports.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SafetyContact } from './common/entities/safety-contact.entity';
-import { WorkplaceViolencePreventionPlan } from './common/entities/workplace-violence-prevention-plan.entity';
+import { OrganizationPolicyFile } from './common/entities/organization-policy-file.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SafetyContact, WorkplaceViolencePreventionPlan]),
+    TypeOrmModule.forFeature([SafetyContact, OrganizationPolicyFile]),
     ThreatAssessmentsModule,
     TipsModule,
     POCFilesModule,

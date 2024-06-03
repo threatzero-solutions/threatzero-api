@@ -1,6 +1,7 @@
 import { OrganizationBase } from 'src/organizations/common/entities/organizations-base.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
+import { OrganizationPolicyFile } from 'src/safety-management/common/entities/organization-policy-file.entity';
 import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { Entity, Column, OneToMany, Relation, ManyToMany } from 'typeorm';
 
@@ -20,4 +21,20 @@ export class Organization extends OrganizationBase {
 
   @ManyToMany(() => ResourceItem, (resource) => resource.organizations)
   resources: Relation<ResourceItem>[];
+
+  @OneToMany(() => OrganizationPolicyFile, (p) => p.organization, {
+    cascade: true,
+  })
+  policiesAndProcedures: Relation<OrganizationPolicyFile>[];
+
+  sign(signer: (k: string) => string) {
+    if (this.policiesAndProcedures?.length) {
+      this.policiesAndProcedures = this.policiesAndProcedures.map((p) => {
+        p.pdfUrl = signer(p.pdfS3Key);
+        return p;
+      });
+    }
+
+    return this;
+  }
 }

@@ -41,8 +41,8 @@ export class UnitsService extends BaseEntityService<Unit> {
     qb = qb
       .leftJoinAndSelect(`${qb.alias}.safetyContact`, 'safetyContact')
       .leftJoinAndSelect(
-        `${qb.alias}.workplaceViolencePreventionPlan`,
-        'workplaceViolencePreventionPlan',
+        `${qb.alias}.policiesAndProcedures`,
+        'policiesAndProcedure',
       );
 
     switch (getOrganizationLevel(this.request)) {
@@ -100,6 +100,6 @@ export class UnitsService extends BaseEntityService<Unit> {
   }
 
   private getCloudFrontUrlSigner() {
-    return this.media.getCloudFrontUrlSigner('wvp-plans');
+    return this.media.getCloudFrontUrlSigner('organization-policies');
   }
 }

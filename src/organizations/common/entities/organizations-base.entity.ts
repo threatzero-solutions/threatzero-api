@@ -1,7 +1,14 @@
 import { Base } from 'src/common/base.entity';
 import { SafetyContact } from 'src/safety-management/common/entities/safety-contact.entity';
-import { WorkplaceViolencePreventionPlan } from 'src/safety-management/common/entities/workplace-violence-prevention-plan.entity';
-import { Index, Column, Relation, OneToOne, JoinColumn } from 'typeorm';
+import { OrganizationPolicyFile } from 'src/safety-management/common/entities/organization-policy-file.entity';
+import {
+  Index,
+  Column,
+  Relation,
+  OneToOne,
+  JoinColumn,
+  OneToMany,
+} from 'typeorm';
 
 export class OrganizationBase extends Base {
   @Index()
@@ -20,21 +27,4 @@ export class OrganizationBase extends Base {
   })
   @JoinColumn()
   safetyContact: Relation<SafetyContact> | null;
-
-  @OneToOne(() => WorkplaceViolencePreventionPlan, {
-    onDelete: 'SET NULL',
-    cascade: true,
-  })
-  @JoinColumn()
-  workplaceViolencePreventionPlan: Relation<WorkplaceViolencePreventionPlan> | null;
-
-  sign(signer: (k: string) => string) {
-    if (this.workplaceViolencePreventionPlan?.pdfS3Key) {
-      this.workplaceViolencePreventionPlan.pdfUrl = signer(
-        this.workplaceViolencePreventionPlan.pdfS3Key,
-      );
-    }
-
-    return this;
-  }
 }

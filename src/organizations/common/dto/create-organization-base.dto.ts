@@ -7,7 +7,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { CreateSafetyContactDto } from 'src/safety-management/common/dto/create-safety-contact.dto';
-import { CreateWorkplaceViolencePreventionPlanDto } from 'src/safety-management/common/dto/create-workplace-violence-prevention-plan.dto';
+import { CreateOrganizationPolicyFileDto } from 'src/safety-management/common/dto/create-organization-policy-file.dto';
 
 export class CreateOrganizationBaseDto {
   @Matches(/^[a-z0-9-]+$/)
@@ -27,8 +27,8 @@ export class CreateOrganizationBaseDto {
   @Type(() => CreateSafetyContactDto)
   safetyContact?: CreateSafetyContactDto;
 
-  @IsOptional()
+  @Type(() => CreateOrganizationPolicyFileDto)
   @ValidateNested()
-  @Type(() => CreateWorkplaceViolencePreventionPlanDto)
-  workplaceViolencePreventionPlan?: CreateWorkplaceViolencePreventionPlanDto;
+  @IsOptional()
+  policiesAndProcedures?: CreateOrganizationPolicyFileDto[];
 }
