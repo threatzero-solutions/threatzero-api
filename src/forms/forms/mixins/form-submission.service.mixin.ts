@@ -34,10 +34,11 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
           .leftJoinAndSelect(`${super.getQb().alias}.submission`, 'submission');
       }
 
-      async getForm(languageCode = 'en') {
+      async getForm(id?: E['id'], languageCode?: string) {
         return this.formsService.getFormBy({
           slug: this.formSlug,
-          language: { code: languageCode },
+          language: id ? undefined : { code: languageCode ?? 'en' },
+          id,
         });
       }
 

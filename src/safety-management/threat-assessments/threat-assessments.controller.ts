@@ -48,8 +48,11 @@ export class ThreatAssessmentsController {
   }
 
   @Get('form')
-  getForm(@Query('language_code') languageCode?: string) {
-    return this.threatAssessmentsService.getForm(languageCode);
+  getForm(
+    @Query('id') id?: string,
+    @Query('language_code') languageCode?: string,
+  ) {
+    return this.threatAssessmentsService.getForm(id, languageCode);
   }
 
   @Get('forms')

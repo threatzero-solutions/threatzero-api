@@ -52,8 +52,11 @@ export class ViolentIncidentReportsController {
   }
 
   @Get('form')
-  getForm(@Query('language_code') languageCode?: string) {
-    return this.violentIncidentReportsService.getForm(languageCode);
+  getForm(
+    @Query('id') id?: string,
+    @Query('language_code') languageCode?: string,
+  ) {
+    return this.violentIncidentReportsService.getForm(id, languageCode);
   }
 
   @Get('forms')
