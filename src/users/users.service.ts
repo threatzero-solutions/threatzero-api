@@ -14,6 +14,10 @@ import { Paginated } from 'src/common/dto/paginated.dto';
 import { UserIdChangeDto, UserIdChangesDto } from './dto/user-id-change.dto';
 import { VideoEvent } from 'src/media/entities/video-event.entity';
 import { FormSubmission } from 'src/forms/forms/entities/form-submission.entity';
+import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
+import { OpaqueTokenService } from 'src/auth/opaque-token.service';
+import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
+import { TrainingTokenQueryDto } from './dto/training-token-query.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class UsersService {
@@ -23,6 +27,7 @@ export class UsersService {
     @InjectRepository(Note) private notesRepository: Repository<Note>,
     @Inject(REQUEST) private request: Request,
     private dataSource: DataSource,
+    private opaqueTokenService: OpaqueTokenService,
   ) {}
 
   async updateRepresentation(user: StatelessUser) {
@@ -163,5 +168,41 @@ export class UsersService {
 
   async updateUserIds(userIdChanges: UserIdChangesDto) {
     await Promise.all(userIdChanges.changes.map((c) => this.updateUserId(c)));
+  }
+
+  async getTrainingToken(key: string) {
+    return await this.opaqueTokenService.get(key);
+  }
+
+  async findTrainingTokens(query: TrainingTokenQueryDto) {
+    return await this.opaqueTokenService.findAll(query);
+  }
+
+  async createTrainingToken(
+    trainingParticipantRepresentationDto:
+      | TrainingParticipantRepresentationDto
+      | TrainingParticipantRepresentationDto[],
+  ) {
+    const opaqueTokenResponse = await this.opaqueTokenService.create(
+      trainingParticipantRepresentationDto,
+      TrainingParticipantRepresentationDto,
+    );
+
+    const _buildRes = (
+      o: OpaqueToken<TrainingParticipantRepresentationDto>,
+    ) => ({
+      token: o.key,
+      email: o.value.email,
+    });
+
+    if (Array.isArray(opaqueTokenResponse)) {
+      return opaqueTokenResponse.map(_buildRes);
+    }
+
+    return _buildRes(opaqueTokenResponse);
+  }
+
+  async deleteTrainingToken(token: string) {
+    return await this.opaqueTokenService.delete(token);
   }
 }

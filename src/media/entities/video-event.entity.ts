@@ -32,6 +32,9 @@ export class VideoEvent implements ObjectLiteral {
   @Column({ length: 64, select: false, update: true })
   userId: string;
 
+  @Column({ type: 'varchar', length: 254, nullable: true })
+  email: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   audienceSlugs?: string[] | null;
 
@@ -58,4 +61,10 @@ export class VideoEvent implements ObjectLiteral {
 
   @Column()
   url: string;
+
+  @Column({ type: 'inet', nullable: true })
+  ipv4: string | null;
+
+  @Column({ type: 'inet', nullable: true })
+  ipv6: string | null;
 }

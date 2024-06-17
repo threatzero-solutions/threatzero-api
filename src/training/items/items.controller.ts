@@ -15,6 +15,7 @@ import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { TrainingItem } from './entities/item.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { BaseQueryTrainingDto } from '../common/dto/base-query-training.dto';
+import { Public } from 'src/auth/auth.guard';
 
 @Controller('training/items')
 @CheckPolicies(new EntityAbilityChecker(TrainingItem))
@@ -34,6 +35,12 @@ export class ItemsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.itemsService.findOne(id);
+  }
+
+  @Public()
+  @Get('watch/:id')
+  watch(@Param('id') id: string, @Query('watch_id') watchId: string) {
+    return this.itemsService.watch(id, watchId);
   }
 
   @Patch(':id')

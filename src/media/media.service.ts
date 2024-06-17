@@ -22,9 +22,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { VideoEvent } from './entities/video-event.entity';
 import { DeepPartial, Repository } from 'typeorm';
 import { Request } from 'express';
-import { AxiosError } from 'axios';
+import { isIPv4, isIPv6 } from 'net';
+import { OpaqueTokenService } from 'src/auth/opaque-token.service';
+import { ViewingUserRepresentationDto } from './dto/viewing-user-representation.dto';
 
 const DEFAULT_WIDTH = 640;
+
+interface BasicUserEntity {
+  id: string;
+  email: string;
+  unitSlug?: string | null;
+  audiences?: string[];
+  trainingItemId?: string;
+}
 
 @Injectable()
 export class MediaService {
@@ -36,6 +46,7 @@ export class MediaService {
     @Inject(CACHE_MANAGER) private cache: Cache,
     private config: ConfigService,
     private readonly http: HttpService,
+    private readonly opaqueTokenService: OpaqueTokenService,
   ) {}
 
   getCloudFrontUrlSigner(prefix = '') {
@@ -180,16 +191,50 @@ export class MediaService {
     return bestUrlBySize;
   };
 
-  async receiveVideoEvent(event: DeepPartial<VideoEvent>, request: Request) {
-    if (!request.user) {
+  async receiveVideoEvent(
+    event: DeepPartial<VideoEvent>,
+    request: Request,
+    watchId?: string,
+  ) {
+    let user: BasicUserEntity | undefined | null = request.user;
+
+    if (!user && watchId) {
+      const viewingUser = await this.opaqueTokenService.validate(
+        watchId,
+        ViewingUserRepresentationDto,
+      );
+
+      if (viewingUser) {
+        user = {
+          id: viewingUser.userId,
+          email: viewingUser.email,
+          unitSlug: viewingUser.unitSlug,
+          audiences: viewingUser.audiences,
+        };
+      }
+    }
+
+    if (!user) {
       throw new UnauthorizedException('No user information found.');
     }
-    const newEvent = this.videoEventsRepository.create({
+
+    const preparedEvent = {
       ...event,
-      userId: request.user.id,
-      unitSlug: request.user.unitSlug,
-      audienceSlugs: request.user.audiences,
-    });
+      userId: user.id,
+      email: user.email,
+      unitSlug: user.unitSlug,
+      audienceSlugs: user.audiences,
+    };
+
+    // Add IP address if possible.
+    const ip = request.ip;
+    if (ip && isIPv4(ip)) {
+      preparedEvent.ipv4 = ip;
+    } else if (ip && isIPv6(ip)) {
+      preparedEvent.ipv6 = ip;
+    }
+
+    const newEvent = this.videoEventsRepository.create(preparedEvent);
 
     return await this.videoEventsRepository.save(newEvent);
   }

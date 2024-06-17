@@ -6,6 +6,7 @@ import { CacheConfigService } from 'src/common/cache-config/cache-config.service
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VideoEvent } from './entities/video-event.entity';
 import { MediaController } from './media.controller';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { MediaController } from './media.controller';
       useClass: CacheConfigService,
     }),
     TypeOrmModule.forFeature([VideoEvent]),
+    AuthModule,
   ],
   providers: [MediaService],
   exports: [MediaService],

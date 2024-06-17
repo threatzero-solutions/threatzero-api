@@ -15,9 +15,16 @@ import {
   keycloakAdminClientFactory,
 } from './keycloak-admin-client/keycloak-admin-client.service';
 import { ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { OpaqueToken } from './entities/opaque-token.entity';
+import { OpaqueTokenService } from './opaque-token.service';
 
 @Module({
-  imports: [JwtModule.register({}), CaslModule],
+  imports: [
+    JwtModule.register({}),
+    CaslModule,
+    TypeOrmModule.forFeature([OpaqueToken]),
+  ],
   providers: [
     {
       provide: CASL_ABILITY_FACTORY,
@@ -38,7 +45,8 @@ import { ConfigService } from '@nestjs/config';
     },
     UserFactory,
     KeycloakAdminClientService,
+    OpaqueTokenService,
   ],
-  exports: [KeycloakAdminClientService],
+  exports: [KeycloakAdminClientService, OpaqueTokenService],
 })
 export class AuthModule {}
