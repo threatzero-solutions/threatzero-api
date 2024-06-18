@@ -21,6 +21,7 @@ export class OpaqueTokenService {
   async create<T extends object>(
     value: unknown,
     valueClass?: new () => T,
+    type?: string,
     keyFactory: () => string = uuidv4,
   ) {
     let validatedValue: object;
@@ -51,6 +52,7 @@ export class OpaqueTokenService {
       return this.opaqueTokenRepository.create({
         key,
         value: val,
+        type,
       }) as OpaqueToken<T>;
     };
 

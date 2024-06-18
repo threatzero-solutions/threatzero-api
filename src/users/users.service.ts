@@ -175,6 +175,7 @@ export class UsersService {
   }
 
   async findTrainingTokens(query: TrainingTokenQueryDto) {
+    query.type = 'training';
     return await this.opaqueTokenService.findAll(query);
   }
 
@@ -186,6 +187,7 @@ export class UsersService {
     const opaqueTokenResponse = await this.opaqueTokenService.create(
       trainingParticipantRepresentationDto,
       TrainingParticipantRepresentationDto,
+      'training',
     );
 
     const _buildRes = (
