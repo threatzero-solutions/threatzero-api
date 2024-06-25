@@ -5,6 +5,7 @@ import { SectionsModule } from './sections/sections.module';
 import { ItemsModule } from './items/items.module';
 import { AudienceChangeListener } from './listeners/audience-change.listener';
 import { AuthModule } from 'src/auth/auth.module';
+import { ItemsService } from './items/items.service';
 
 @Module({
   imports: [

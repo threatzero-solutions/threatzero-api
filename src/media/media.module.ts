@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { VideoEvent } from './entities/video-event.entity';
 import { MediaController } from './media.controller';
 import { AuthModule } from 'src/auth/auth.module';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuthModule } from 'src/auth/auth.module';
     }),
     TypeOrmModule.forFeature([VideoEvent]),
     AuthModule,
+    UsersModule,
   ],
   providers: [MediaService],
   exports: [MediaService],

@@ -1,0 +1,6 @@
+{
+  "TemplateName": "tz-training-link-notification",
+  "SubjectPart": "ThreatZero - Training Invitation",
+  "TextPart": "Dear {{firstName}},\n\nYou have been invited to watch the following training video from ThreatZero.\n\n{{trainingTitle}}\n{{trainingDescription}}\n\nPlease follow this link to watch the video:\n\n{{trainingLink}}\n\nThank you,\nThe ThreatZero Team",
+  "HtmlPart": "<p>Dear {{firstName}},</p><p>You have been invited to watch the following training video from ThreatZero.</p><p><strong>{{trainingTitle}}</strong> - {{trainingDescription}}</p><p>Please follow this link to watch the video:</p><p>{{trainingLink}}</p><p>Thank you,<br/>The ThreatZero Team</p><img src=\"https://content.threatzero.org/TZ_logo_final.png\" alt=\"ThreatZero Logo\" width=\"150px\"/>"
+}

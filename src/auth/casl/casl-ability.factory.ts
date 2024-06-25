@@ -26,6 +26,8 @@ import { UserRepresentation } from 'src/users/entities/user-representation.entit
 import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
 import { ViolentIncidentReport } from 'src/safety-management/violent-incident-reports/entities/violent-incident-report.entity';
 import { Language } from 'src/languages/entities/language.entity';
+import { SendTrainingLinksDto } from 'src/safety-management/training-admin/dto/send-training-links.dto';
+import { WatchStatsDto } from 'src/safety-management/training-admin/dto/watch-stats.dto';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 
@@ -50,6 +52,8 @@ const SafetyManagementSubjects = [
   Tip,
   POCFile,
   ViolentIncidentReport,
+  WatchStatsDto,
+  SendTrainingLinksDto,
 ];
 type SafetyManagementSubjectTypes = InferSubjects<
   (typeof SafetyManagementSubjects)[number]
@@ -113,6 +117,14 @@ export class CaslAbilityFactory {
     can(Action.Read, [Organization, Unit]);
 
     // --------- SAFETY MANAGEMENT ---------
+    if (user.hasPermission(READ.TRAINING_STATS)) {
+      can(Action.Read, WatchStatsDto);
+    }
+
+    if (user.hasPermission(WRITE.TRAINING_LINKS)) {
+      can(Action.Manage, SendTrainingLinksDto);
+    }
+
     if (user.hasPermission(LEVEL.ADMIN, WRITE.THREAT_ASSESSMENTS)) {
       can(Action.Manage, ThreatAssessment);
     }

@@ -47,18 +47,20 @@ export class OpaqueTokenService {
       validatedValue = value as object;
     }
 
-    const _build = (val: object) => {
+    const _build = (val: object, batchId?: string) => {
       const key = keyFactory();
       return this.opaqueTokenRepository.create({
         key,
         value: val,
         type,
+        batchId,
       }) as OpaqueToken<T>;
     };
 
     if (Array.isArray(validatedValue)) {
+      const batchId = uuidv4();
       return await this.opaqueTokenRepository.save(
-        validatedValue.map((v) => _build(v)),
+        validatedValue.map((v) => _build(v, batchId)),
       );
     }
 

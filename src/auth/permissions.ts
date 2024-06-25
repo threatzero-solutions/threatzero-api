@@ -10,6 +10,7 @@ export const READ = {
   UNITS: 'read:units',
   SURVEYS: 'read:surveys',
   RESOURCES: 'read:resources',
+  TRAINING_STATS: 'read:training-stats',
 };
 
 export const WRITE = {
@@ -25,6 +26,7 @@ export const WRITE = {
   SURVEYS: 'write:surveys',
   RESOURCES: 'write:resources',
   LANGUAGES: 'write:languages',
+  TRAINING_LINKS: 'write:training-links',
 };
 
 export const LEVEL = {

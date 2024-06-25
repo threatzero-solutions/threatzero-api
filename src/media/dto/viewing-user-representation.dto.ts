@@ -33,8 +33,20 @@ export class ViewingUserRepresentationDto {
   email: string;
 
   @IsString()
-  @IsOptional()
-  unitSlug?: string;
+  @IsNotEmpty()
+  firstName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  organizationSlug: string;
+
+  @IsString()
+  @IsNotEmpty()
+  unitSlug: string;
 
   @IsString({ each: true })
   @IsOptional()

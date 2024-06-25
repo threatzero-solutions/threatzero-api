@@ -6,6 +6,7 @@ import { ViolentIncidentReportsModule } from './violent-incident-reports/violent
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SafetyContact } from './common/entities/safety-contact.entity';
 import { OrganizationPolicyFile } from './common/entities/organization-policy-file.entity';
+import { TrainingAdminModule } from './training-admin/training-admin.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { OrganizationPolicyFile } from './common/entities/organization-policy-fi
     TipsModule,
     POCFilesModule,
     ViolentIncidentReportsModule,
+    TrainingAdminModule,
   ],
 })
 export class SafetyManagementModule {}

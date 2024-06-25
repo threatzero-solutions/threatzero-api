@@ -23,5 +23,6 @@ import { CacheConfigService } from 'src/common/cache-config/cache-config.service
     AuthModule,
   ],
   providers: [NotificationsProcessor, SesService, PinpointSmsService],
+  exports: [BullModule],
 })
 export class NotificationsModule {}

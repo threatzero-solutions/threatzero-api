@@ -15,10 +15,7 @@ import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { UserRepresentation } from './entities/user-representation.entity';
 import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
-import {
-  TrainingTokenQueryDto,
-  TrainingTokenQueryOrderDto,
-} from './dto/training-token-query.dto';
+import { TrainingTokenQueryDto } from './dto/training-token-query.dto';
 
 @Controller('users')
 @CheckPolicies(new EntityAbilityChecker(UserRepresentation))

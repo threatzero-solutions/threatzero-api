@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ObjectLiteral,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -24,6 +25,7 @@ export enum VideoEventType {
 }
 
 @Entity()
+@Index(['unitSlug', 'itemId'])
 export class VideoEvent implements ObjectLiteral {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -38,15 +40,18 @@ export class VideoEvent implements ObjectLiteral {
   @Column({ type: 'jsonb', nullable: true })
   audienceSlugs?: string[] | null;
 
+  @Index()
   @Column({ type: 'varchar', length: 64, nullable: true })
   unitSlug?: string | null;
 
+  @Index()
   @CreateDateColumn({ type: 'timestamptz' })
   timestamp: Date;
 
   @Column({ type: 'enum', enum: VideoEventType })
   type: VideoEventType;
 
+  @Index()
   @Column({ type: 'varchar', length: 50, nullable: true })
   itemId?: string | null;
 

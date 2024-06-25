@@ -12,6 +12,10 @@ export class EmailTemplatesConfig {
   @IsOptional()
   @IsString()
   newTip: string = 'tz-new-tip-notification';
+
+  @IsOptional()
+  @IsString()
+  trainingLink: string = 'tz-training-link-notification';
 }
 
 export class EmailNotificationsConfig {

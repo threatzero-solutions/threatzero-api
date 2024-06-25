@@ -180,6 +180,29 @@ export class UsersService {
   }
 
   async createTrainingToken(
+    trainingParticipantRepresentationDto: TrainingParticipantRepresentationDto,
+  ): Promise<{
+    token: string;
+    email: string;
+    value: TrainingParticipantRepresentationDto;
+  }>;
+  async createTrainingToken(
+    trainingParticipantRepresentationDto: TrainingParticipantRepresentationDto[],
+  ): Promise<
+    {
+      token: string;
+      email: string;
+      value: TrainingParticipantRepresentationDto;
+    }[]
+  >;
+  async createTrainingToken(
+    trainingParticipantRepresentationDto:
+      | TrainingParticipantRepresentationDto
+      | TrainingParticipantRepresentationDto[],
+  ): Promise<
+    { token: string; email: string } | { token: string; email: string }[]
+  >;
+  async createTrainingToken(
     trainingParticipantRepresentationDto:
       | TrainingParticipantRepresentationDto
       | TrainingParticipantRepresentationDto[],
@@ -195,6 +218,7 @@ export class UsersService {
     ) => ({
       token: o.key,
       email: o.value.email,
+      value: o.value,
     });
 
     if (Array.isArray(opaqueTokenResponse)) {

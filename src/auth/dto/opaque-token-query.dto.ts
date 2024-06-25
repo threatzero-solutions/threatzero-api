@@ -17,12 +17,16 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
   @IsString()
   type: string;
 
+  @IsOptional()
+  @IsString()
+  batchId: string;
+
   applyToQb<T extends ObjectLiteral>(qb: SelectQueryBuilder<T>) {
     let retQb = qb.skip(this.offset).take(this.limit);
 
     // Apply order by clauses.
     Object.entries(this.order).forEach(([sort, order]) => {
-      if (['createdOn', 'updatedOn', 'type'].includes(sort)) {
+      if (['createdOn', 'updatedOn', 'type', 'batchId'].includes(sort)) {
         retQb = retQb.addOrderBy(`${retQb.alias}.${sort}`, order);
       } else {
         retQb = retQb.addOrderBy(`"${retQb.alias}".value->>'${sort}'`, order);
@@ -31,13 +35,14 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
 
     const query = Object.fromEntries(
       Object.entries(this).filter(
-        ([key]) => !['limit', 'offset', 'order', 'type'].includes(key),
+        ([key]) =>
+          !['limit', 'offset', 'order', 'type', 'batchId'].includes(key),
       ),
     );
     retQb = retQb.where(`value @> '${JSON.stringify(query)}'::jsonb`);
 
     if (this.type) {
-      retQb = retQb.andWhere({ type: this.type });
+      retQb = retQb.andWhere({ type: this.type, batchId: this.batchId });
     }
 
     return retQb;

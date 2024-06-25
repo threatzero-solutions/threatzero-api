@@ -19,6 +19,10 @@ export class ViewingUserTokenQueryOrderDto extends BaseQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
   unitSlug?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  organizationSlug?: QueryOrder;
 }
 
 export class ViewingUserTokenQueryDto extends OpaqueTokenQueryDto {
@@ -33,6 +37,10 @@ export class ViewingUserTokenQueryDto extends OpaqueTokenQueryDto {
   @IsOptional()
   @IsString()
   unitSlug?: string;
+
+  @IsOptional()
+  @IsString()
+  organizationSlug?: string;
 
   @IsOptional()
   @ValidateNested()

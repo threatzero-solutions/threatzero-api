@@ -25,16 +25,12 @@ import { Request } from 'express';
 import { isIPv4, isIPv6 } from 'net';
 import { OpaqueTokenService } from 'src/auth/opaque-token.service';
 import { ViewingUserRepresentationDto } from './dto/viewing-user-representation.dto';
+import { UsersService } from 'src/users/users.service';
+import { StatelessUser } from 'src/auth/user.factory';
+import { Timeout } from '@nestjs/schedule';
+import { UserRepresentation } from 'src/users/entities/user-representation.entity';
 
 const DEFAULT_WIDTH = 640;
-
-interface BasicUserEntity {
-  id: string;
-  email: string;
-  unitSlug?: string | null;
-  audiences?: string[];
-  trainingItemId?: string;
-}
 
 @Injectable()
 export class MediaService {
@@ -47,6 +43,7 @@ export class MediaService {
     private config: ConfigService,
     private readonly http: HttpService,
     private readonly opaqueTokenService: OpaqueTokenService,
+    private readonly usersService: UsersService,
   ) {}
 
   getCloudFrontUrlSigner(prefix = '') {
@@ -196,7 +193,7 @@ export class MediaService {
     request: Request,
     watchId?: string,
   ) {
-    let user: BasicUserEntity | undefined | null = request.user;
+    let user: StatelessUser | undefined | null = request.user;
 
     if (!user && watchId) {
       const viewingUser = await this.opaqueTokenService.validate(
@@ -205,12 +202,18 @@ export class MediaService {
       );
 
       if (viewingUser) {
-        user = {
-          id: viewingUser.userId,
-          email: viewingUser.email,
-          unitSlug: viewingUser.unitSlug,
-          audiences: viewingUser.audiences,
-        };
+        user = new StatelessUser(
+          viewingUser.userId,
+          viewingUser.email,
+          `${viewingUser.firstName ?? ''} ${viewingUser.lastName ?? ''}`.trim(),
+          viewingUser.firstName,
+          viewingUser.lastName,
+          null,
+          [],
+          viewingUser.audiences ?? [],
+          viewingUser.organizationSlug,
+          viewingUser.unitSlug,
+        );
       }
     }
 
@@ -236,6 +239,9 @@ export class MediaService {
 
     const newEvent = this.videoEventsRepository.create(preparedEvent);
 
-    return await this.videoEventsRepository.save(newEvent);
+    return await Promise.all([
+      this.videoEventsRepository.save(newEvent),
+      this.usersService.updateRepresentation(user),
+    ]);
   }
 }
