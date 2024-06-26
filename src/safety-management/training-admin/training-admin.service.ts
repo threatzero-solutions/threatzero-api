@@ -31,6 +31,7 @@ import { WatchStatsQueryDto } from './dto/watch-stats-query.dto';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { UnitsService } from 'src/organizations/units/units.service';
 import sanitizeHtml from 'sanitize-html';
+import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -214,7 +215,7 @@ export class TrainingAdminService {
             });
           }
 
-          return `video_event."unitSlug" IN ${subQb.getQuery()}`;
+          return `video_event."unitSlug" IN (${subQb.getQuery()})`;
         });
       } else if (unitSlugs) {
         qb = qb.andWhere('video_event."unitSlug" IN (:...unitSlugs)', {
@@ -276,6 +277,18 @@ export class TrainingAdminService {
               const q = ` COALESCE((${subQb.getQuery()}), CURRENT_TIMESTAMP - INTERVAL '1 YEAR')`;
 
               return `video_event.timestamp >= ${q} AND video_event.timestamp < (${q} + INTERVAL '1 YEAR')`;
+            })
+            .andWhere((qb) => {
+              let subQb = qb
+                .subQuery()
+                .select('item.id::TEXT')
+                .from(TrainingCourse, 'course')
+                .leftJoin('course.sections', 'section')
+                .leftJoin('section.items', 'section_item')
+                .leftJoin('section_item.item', 'item')
+                .where('course.id = :courseId', { courseId: query.courseId });
+
+              return 'video_event."itemId" IN (' + subQb.getQuery() + ')';
             })
             .orderBy('played_seconds', 'ASC'),
         ),
@@ -346,10 +359,10 @@ export class TrainingAdminService {
       .addSelect('organization.name', 'organizationName')
       .addSelect('unit.slug', 'unitSlug')
       .addSelect('unit.name', 'unitName')
-      .from(TrainingItem, 'training_item')
+      .from('user_video_progress', 'user_video_progress')
       .leftJoin(
-        'user_video_progress',
-        'user_video_progress',
+        TrainingItem,
+        'training_item',
         'user_video_progress.item_id = training_item.id::TEXT',
       )
       .leftJoin(
