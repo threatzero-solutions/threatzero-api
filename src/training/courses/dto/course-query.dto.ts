@@ -1,4 +1,10 @@
-import { IsOptional, IsEnum, ValidateNested } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  ValidateNested,
+  IsUUID,
+  IsString,
+} from 'class-validator';
 import { TrainingVisibility } from '../entities/course.entity';
 import { Type } from 'class-transformer';
 import { CourseQueryOrderDto } from './course-query-order.dto';
@@ -13,4 +19,12 @@ export class CourseQueryDto extends BaseQueryTrainingDto {
   @ValidateNested()
   @Type(() => CourseQueryOrderDto)
   order: CourseQueryOrderDto = new CourseQueryOrderDto();
+
+  @IsOptional()
+  @IsUUID()
+  ['organizations.id']?: string;
+
+  @IsOptional()
+  @IsString()
+  ['organizations.slug']?: string;
 }
