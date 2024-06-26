@@ -42,11 +42,11 @@ export class ViewingUserRepresentationDto {
 
   @IsString()
   @IsNotEmpty()
-  organizationSlug: string;
+  unitSlug: string;
 
   @IsString()
-  @IsNotEmpty()
-  unitSlug: string;
+  @IsOptional()
+  organizationSlug?: string;
 
   @IsString({ each: true })
   @IsOptional()

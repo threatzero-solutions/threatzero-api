@@ -19,7 +19,7 @@ import { plainToInstance } from 'class-transformer';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 import { LEVEL } from 'src/auth/permissions';
-import { DataSource, SelectQueryBuilder } from 'typeorm';
+import { DataSource, In, SelectQueryBuilder } from 'typeorm';
 import { VideoEvent } from 'src/media/entities/video-event.entity';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { getOrganizationLevel } from 'src/organizations/common/organizations.utils';
@@ -69,7 +69,6 @@ export class TrainingAdminService {
     }
 
     // Filter down and auto-populate input if possible for users who are not system admins.
-    const availableOrganizationSlugs: string[] = [];
     const availableUnitSlugs: string[] = [];
 
     let tokenAddIns: Partial<TrainingParticipantRepresentationDto> = {};
@@ -77,24 +76,19 @@ export class TrainingAdminService {
       this.request.user.hasPermission(LEVEL.ORGANIZATION) ||
       this.request.user.hasPermission(LEVEL.UNIT)
     ) {
-      if (!this.request.user.organizationSlug || !this.request.user.unitSlug) {
+      if (!this.request.user.unitSlug) {
         throw new ForbiddenException('Missing user information.');
       }
 
-      availableOrganizationSlugs.push(this.request.user.organizationSlug);
       availableUnitSlugs.push(
         ...(await this.unitsService.findAll()).map((u) => u.slug),
       );
-
-      tokenAddIns = {
-        organizationSlug: this.request.user.organizationSlug,
-      };
     } else if (!this.request.user.hasPermission(LEVEL.ADMIN)) {
       throw new ForbiddenException();
     }
 
     // Prepare token values.
-    const preparedTokenValues = trainingTokenValues.map((tokenValue) => {
+    let preparedTokenValues = trainingTokenValues.map((tokenValue) => {
       const preparedValue = {
         ...tokenValue,
         expiresOn: dayjs().add(DEFAULT_TOKEN_EXPIRATION_DAYS, 'day').toDate(),
@@ -103,15 +97,8 @@ export class TrainingAdminService {
       };
 
       if (!this.request.user?.hasPermission(LEVEL.ADMIN)) {
-        if (
-          !availableOrganizationSlugs.includes(
-            preparedValue.organizationSlug,
-          ) ||
-          !availableUnitSlugs.includes(preparedValue.unitSlug)
-        ) {
-          throw new BadRequestException(
-            'Invalid organization or unit provided.',
-          );
+        if (!availableUnitSlugs.includes(preparedValue.unitSlug)) {
+          throw new BadRequestException('Invalid unit provided.');
         }
       }
 
@@ -119,6 +106,33 @@ export class TrainingAdminService {
         TrainingParticipantRepresentationDto,
         preparedValue,
       );
+    });
+
+    // Build mapping of units to organizations.
+    const unitSlugs = preparedTokenValues
+      .filter((t) => !!t.unitSlug)
+      .map((t) => t.unitSlug);
+    const unitsQb = this.unitsService.getQb();
+    const unitsMap = await unitsQb
+      .select(`${unitsQb.alias}.slug`, 'unitSlug')
+      .addSelect('organization.slug', 'organizationSlug')
+      .where({
+        slug: In(unitSlugs),
+      })
+      .getRawMany()
+      .then((rows) =>
+        rows.reduce((acc, row) => {
+          acc.set(row.unitSlug, row.organizationSlug);
+          return acc;
+        }, new Map<string, string>()),
+      );
+
+    // Add organization slugs to token values.
+    preparedTokenValues = preparedTokenValues.map((t) => {
+      if (t.unitSlug) {
+        t.organizationSlug = unitsMap.get(t.unitSlug);
+      }
+      return t;
     });
 
     // Create tokens.
