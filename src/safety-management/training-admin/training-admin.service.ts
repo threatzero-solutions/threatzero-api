@@ -30,6 +30,7 @@ import { format as csvFormat } from '@fast-csv/format';
 import { WatchStatsQueryDto } from './dto/watch-stats-query.dto';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { UnitsService } from 'src/organizations/units/units.service';
+import sanitizeHtml from 'sanitize-html';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -143,6 +144,9 @@ export class TrainingAdminService {
       return trainingUrlTemplate.replace('{token}', encodeURIComponent(token));
     };
 
+    const stripTags = (s?: string | null) =>
+      s && sanitizeHtml(s, { allowedTags: [] });
+
     // Send out training invite emails.
     this.notificationsQueue.addBulk(
       tokenSets.map(({ token, email, value }) => ({
@@ -155,8 +159,8 @@ export class TrainingAdminService {
           context: {
             firstName: value.firstName,
             trainingLink: _buildTrainingLink(token),
-            trainingTitle: trainingItem.metadata.title,
-            trainingDescription: trainingItem.metadata.description,
+            trainingTitle: stripTags(trainingItem.metadata.title),
+            trainingDescription: stripTags(trainingItem.metadata.description),
             trainingThumbnailUrl: trainingItem.thumbnailUrl,
           },
         },
@@ -198,8 +202,8 @@ export class TrainingAdminService {
           let subQb = _qb
             .subQuery()
             .select('unit.slug')
-            .from('organization', 'organization')
-            .innerJoin('organization.unit', 'unit')
+            .from(Unit, 'unit')
+            .innerJoin('unit.organization', 'organization')
             .where('organization.slug IN (:...organizationSlugs)', {
               organizationSlugs,
             });
