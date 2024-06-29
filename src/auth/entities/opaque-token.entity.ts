@@ -14,6 +14,6 @@ export class OpaqueToken<T extends object = object> extends Base {
   type: string | null;
 
   @Index()
-  @Column({ type: 'uuid', unique: true, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   batchId: string | null;
 }

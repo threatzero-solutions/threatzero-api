@@ -15,11 +15,11 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
 
   @IsOptional()
   @IsString()
-  type: string;
+  type?: string;
 
   @IsOptional()
   @IsString()
-  batchId: string;
+  batchId?: string;
 
   applyToQb<T extends ObjectLiteral>(qb: SelectQueryBuilder<T>) {
     let retQb = qb.skip(this.offset).take(this.limit);
@@ -41,8 +41,14 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
     );
     retQb = retQb.where(`value @> '${JSON.stringify(query)}'::jsonb`);
 
-    if (this.type) {
-      retQb = retQb.andWhere({ type: this.type, batchId: this.batchId });
+    const fieldClause = Object.fromEntries(
+      Object.entries({ type: this.type, batchId: this.batchId }).filter(
+        ([key, value]) => !!value,
+      ),
+    );
+
+    if (Object.keys(fieldClause).length > 0) {
+      retQb = retQb.andWhere(fieldClause);
     }
 
     return retQb;
