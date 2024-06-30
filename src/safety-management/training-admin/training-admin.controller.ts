@@ -15,16 +15,23 @@ import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { WatchStatsDto } from './dto/watch-stats.dto';
 import { Response } from 'express';
 import { WatchStatsQueryDto } from './dto/watch-stats-query.dto';
+import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
 
 @Controller('training-admin')
 export class TrainingAdminController {
   constructor(private readonly trainingAdminService: TrainingAdminService) {}
 
   @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))
-  @Post('send-links')
+  @Post('invites')
   @HttpCode(HttpStatus.ACCEPTED)
   async sendLinks(@Body() sendTrainingLinksDto: SendTrainingLinksDto) {
     await this.trainingAdminService.sendTrainingLinks(sendTrainingLinksDto);
+  }
+
+  @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))
+  @Get('invites')
+  async viewLinks(@Query() query: TrainingTokenQueryDto) {
+    return this.trainingAdminService.findTrainingLinks(query);
   }
 
   @CheckPolicies(new EntityAbilityChecker(WatchStatsDto))

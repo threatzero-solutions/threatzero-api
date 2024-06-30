@@ -32,6 +32,8 @@ import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { UnitsService } from 'src/organizations/units/units.service';
 import sanitizeHtml from 'sanitize-html';
 import { TrainingCourse } from 'src/training/courses/entities/course.entity';
+import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
+import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -169,33 +171,24 @@ export class TrainingAdminService {
     );
   }
 
+  async findTrainingLinks(query: TrainingTokenQueryDto) {
+    const [unitSlugs, organizationSlugs] =
+      this.parseAvailableOrganizations(query);
+    query.unitSlug = unitSlugs;
+    query.organizationSlug = organizationSlugs;
+
+    return this.usersService.findTrainingTokens(query);
+  }
+
   getWatchStatsQb(query: WatchStatsQueryDto) {
-    const organizationLevel = getOrganizationLevel(this.request);
-
-    let unitSlugs = query.unitSlug;
-    let organizationSlugs = query.organizationSlug;
-
     const scopeToOrganizationLevel = (qb: SelectQueryBuilder<VideoEvent>) => {
-      if (organizationLevel === LEVEL.UNIT) {
-        const availableUnits = [
-          this.request.user!.unitSlug!,
-          ...(this.request.user?.peerUnits ?? []),
-        ];
-        unitSlugs = (unitSlugs ?? []).filter((slug) =>
-          availableUnits.includes(slug),
-        );
+      const [unitSlugs, organizationSlugs] =
+        this.parseAvailableOrganizations(query);
 
-        if (!unitSlugs.length) {
-          unitSlugs = [this.request.user!.unitSlug!];
-        }
-      } else if (
-        organizationLevel === LEVEL.ORGANIZATION ||
-        organizationLevel === LEVEL.UNIT
-      ) {
-        if (!this.request.user?.organizationSlug) {
-          throw new ForbiddenException('Missing user information.');
-        }
-        organizationSlugs = [this.request.user.organizationSlug];
+      if (!organizationSlugs && !unitSlugs) {
+        throw new BadRequestException(
+          'Please provide at least one organization or unit slug.',
+        );
       }
 
       if (organizationSlugs) {
@@ -221,12 +214,6 @@ export class TrainingAdminService {
         qb = qb.andWhere('video_event."unitSlug" IN (:...unitSlugs)', {
           unitSlugs,
         });
-      }
-
-      if (!organizationSlugs && !unitSlugs) {
-        throw new BadRequestException(
-          'Please provide at least one organization or unit slug.',
-        );
       }
 
       return qb;
@@ -395,5 +382,39 @@ export class TrainingAdminService {
     return this.getWatchStatsQb(query)
       .stream()
       .then((stream) => stream.pipe(csvFormat({ headers: true })));
+  }
+
+  private parseAvailableOrganizations(query: {
+    unitSlug?: string[];
+    organizationSlug?: string[];
+  }) {
+    const organizationLevel = getOrganizationLevel(this.request);
+
+    let unitSlugs = query.unitSlug;
+    let organizationSlugs = query.organizationSlug;
+
+    if (organizationLevel === LEVEL.UNIT) {
+      const availableUnits = [
+        this.request.user!.unitSlug!,
+        ...(this.request.user?.peerUnits ?? []),
+      ];
+      unitSlugs = (unitSlugs ?? []).filter((slug) =>
+        availableUnits.includes(slug),
+      );
+
+      if (!unitSlugs.length) {
+        unitSlugs = [this.request.user!.unitSlug!];
+      }
+    } else if (
+      organizationLevel === LEVEL.ORGANIZATION ||
+      organizationLevel === LEVEL.UNIT
+    ) {
+      if (!this.request.user?.organizationSlug) {
+        throw new ForbiddenException('Missing user information.');
+      }
+      organizationSlugs = [this.request.user.organizationSlug];
+    }
+
+    return [unitSlugs, organizationSlugs];
   }
 }

@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { OpaqueTokenQueryDto } from 'src/auth/dto/opaque-token-query.dto';
 import {
@@ -35,12 +35,14 @@ export class ViewingUserTokenQueryDto extends OpaqueTokenQueryDto {
   email?: string;
 
   @IsOptional()
-  @IsString()
-  unitSlug?: string;
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  unitSlug?: string[];
 
   @IsOptional()
-  @IsString()
-  organizationSlug?: string;
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  organizationSlug?: string[];
 
   @IsOptional()
   @ValidateNested()

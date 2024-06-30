@@ -6,7 +6,7 @@ export type QueryOrder = (typeof QueryOrderOptions)[number];
 export class BaseQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  createdOn: QueryOrder;
+  createdOn: QueryOrder = 'DESC';
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
