@@ -181,26 +181,17 @@ export class UsersService {
 
   async createTrainingToken(
     trainingParticipantRepresentationDto: TrainingParticipantRepresentationDto,
-  ): Promise<{
-    token: string;
-    email: string;
-    value: TrainingParticipantRepresentationDto;
-  }>;
+  ): Promise<OpaqueToken<TrainingParticipantRepresentationDto>>;
   async createTrainingToken(
     trainingParticipantRepresentationDto: TrainingParticipantRepresentationDto[],
-  ): Promise<
-    {
-      token: string;
-      email: string;
-      value: TrainingParticipantRepresentationDto;
-    }[]
-  >;
+  ): Promise<OpaqueToken<TrainingParticipantRepresentationDto>[]>;
   async createTrainingToken(
     trainingParticipantRepresentationDto:
       | TrainingParticipantRepresentationDto
       | TrainingParticipantRepresentationDto[],
   ): Promise<
-    { token: string; email: string } | { token: string; email: string }[]
+    | OpaqueToken<TrainingParticipantRepresentationDto>
+    | OpaqueToken<TrainingParticipantRepresentationDto>[]
   >;
   async createTrainingToken(
     trainingParticipantRepresentationDto:
@@ -213,19 +204,7 @@ export class UsersService {
       'training',
     );
 
-    const _buildRes = (
-      o: OpaqueToken<TrainingParticipantRepresentationDto>,
-    ) => ({
-      token: o.key,
-      email: o.value.email,
-      value: o.value,
-    });
-
-    if (Array.isArray(opaqueTokenResponse)) {
-      return opaqueTokenResponse.map(_buildRes);
-    }
-
-    return _buildRes(opaqueTokenResponse);
+    return opaqueTokenResponse;
   }
 
   async deleteTrainingToken(token: string) {

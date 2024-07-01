@@ -12,13 +12,13 @@ import {
 import { ViewingUserRepresentationDto } from 'src/media/dto/viewing-user-representation.dto';
 
 @ValidatorConstraint({ name: 'ContainsTokenPlaceholder', async: false })
-class ContainsTokenPlaceholder implements ValidatorConstraintInterface {
+export class ContainsTokenPlaceholder implements ValidatorConstraintInterface {
   validate(text: string, args: ValidationArguments) {
-    return text.includes('{token}');
+    return text.includes('{trainingItemId}') && text.includes('{token}');
   }
 
   defaultMessage(args: ValidationArguments) {
-    return "Missing token placeholder '{token}' in training link template.";
+    return "Missing either training item placeholder '{trainingItemId}' or token placeholder '{token}' in training link template.";
   }
 }
 

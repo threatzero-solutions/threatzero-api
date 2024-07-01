@@ -16,6 +16,7 @@ import { WatchStatsDto } from './dto/watch-stats.dto';
 import { Response } from 'express';
 import { WatchStatsQueryDto } from './dto/watch-stats-query.dto';
 import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
+import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 
 @Controller('training-admin')
 export class TrainingAdminController {
@@ -26,6 +27,13 @@ export class TrainingAdminController {
   @HttpCode(HttpStatus.ACCEPTED)
   async sendLinks(@Body() sendTrainingLinksDto: SendTrainingLinksDto) {
     await this.trainingAdminService.sendTrainingLinks(sendTrainingLinksDto);
+  }
+
+  @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))
+  @Post('invites/resend')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async resendLinks(@Body() resendTrainingLinksDto: ResendTrainingLinksDto) {
+    await this.trainingAdminService.resendTrainingLinks(resendTrainingLinksDto);
   }
 
   @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))

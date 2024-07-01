@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   Scope,
 } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
@@ -34,6 +35,7 @@ import sanitizeHtml from 'sanitize-html';
 import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
 import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
+import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -43,6 +45,8 @@ const MAX_SECONDS_BETWEEN_PLAYS = 6;
 
 @Injectable({ scope: Scope.REQUEST })
 export class TrainingAdminService {
+  logger = new Logger(TrainingAdminService.name);
+
   constructor(
     @InjectQueue(NOTIFICATIONS_QUEUE_NAME) private notificationsQueue: Queue,
     @Inject(REQUEST) private request: Request,
@@ -68,9 +72,6 @@ export class TrainingAdminService {
 
     // Get training item to make sure it exists and to provide training metadata in emails.
     const trainingItem = await this.itemsService.findOne(trainingItemId);
-    if (!trainingItem) {
-      throw new BadRequestException('Training item not found');
-    }
 
     // Filter down and auto-populate input if possible for users who are not system admins.
     const availableUnitSlugs: string[] = [];
@@ -140,34 +141,13 @@ export class TrainingAdminService {
     });
 
     // Create tokens.
-    const tokenSets =
+    const tokens =
       await this.usersService.createTrainingToken(preparedTokenValues);
 
-    const _buildTrainingLink = (token: string) => {
-      return trainingUrlTemplate.replace('{token}', encodeURIComponent(token));
-    };
-
-    const stripTags = (s?: string | null) =>
-      s && sanitizeHtml(s, { allowedTags: [] });
-
-    // Send out training invite emails.
-    this.notificationsQueue.addBulk(
-      tokenSets.map(({ token, email, value }) => ({
-        name: NotificationsJobNames.SendEmailNotification,
-        data: {
-          to: [email],
-          templateName: this.config.get<string>(
-            'notifications.email.templates.trainingLink',
-          ),
-          context: {
-            firstName: value.firstName,
-            trainingLink: _buildTrainingLink(token),
-            trainingTitle: stripTags(trainingItem.metadata.title),
-            trainingDescription: stripTags(trainingItem.metadata.description),
-            trainingThumbnailUrl: trainingItem.thumbnailUrl,
-          },
-        },
-      })),
+    this.sendTrainingLinkEmails(
+      tokens,
+      new Map([[trainingItem.id, trainingItem]]),
+      trainingUrlTemplate,
     );
   }
 
@@ -178,6 +158,77 @@ export class TrainingAdminService {
     query.organizationSlug = organizationSlugs;
 
     return this.usersService.findTrainingTokens(query);
+  }
+
+  async resendTrainingLinks(data: ResendTrainingLinksDto) {
+    const q = new TrainingTokenQueryDto();
+    q.id = data.trainingTokenIds;
+    q.limit = Number.MAX_SAFE_INTEGER;
+    const tokens = await this.findTrainingLinks(q).then(
+      (d) => d.results as OpaqueToken<TrainingParticipantRepresentationDto>[],
+    );
+
+    const trainingMap = new Map<string, TrainingItem>();
+    for (const token of tokens) {
+      if (!trainingMap.has(token.value.trainingItemId)) {
+        const item = await this.itemsService
+          .findOne(token.value.trainingItemId)
+          .catch((e) => {
+            this.logger.error('Failed to fetch training item', e);
+            return null;
+          });
+        if (item) {
+          trainingMap.set(token.value.trainingItemId, item);
+        }
+      }
+    }
+
+    this.sendTrainingLinkEmails(tokens, trainingMap, data.trainingUrlTemplate);
+  }
+
+  private sendTrainingLinkEmails(
+    tokens: OpaqueToken<TrainingParticipantRepresentationDto>[],
+    trainingMap: Map<string, TrainingItem>,
+    trainingUrlTemplate: string,
+  ) {
+    const _buildTrainingLink = (trainingItemId: string, token: string) => {
+      return trainingUrlTemplate
+        .replace('{trainingItemId}', trainingItemId)
+        .replace('{token}', encodeURIComponent(token));
+    };
+
+    const stripTags = (s?: string | null) =>
+      s && sanitizeHtml(s, { allowedTags: [] });
+
+    // Send out training invite emails.
+    this.notificationsQueue.addBulk(
+      tokens.reduce((acc, { key: token, value }) => {
+        const trainingItem = trainingMap.get(value.trainingItemId);
+
+        if (!trainingItem) {
+          return acc;
+        }
+
+        acc.push({
+          name: NotificationsJobNames.SendEmailNotification,
+          data: {
+            to: [value.email],
+            templateName: this.config.get<string>(
+              'notifications.email.templates.trainingLink',
+            ),
+            context: {
+              firstName: value.firstName,
+              trainingLink: _buildTrainingLink(trainingItem.id, token),
+              trainingTitle: stripTags(trainingItem.metadata.title),
+              trainingDescription: stripTags(trainingItem.metadata.description),
+              trainingThumbnailUrl: trainingItem.thumbnailUrl,
+            },
+          },
+        });
+
+        return acc;
+      }, [] as any[]),
+    );
   }
 
   getWatchStatsQb(query: WatchStatsQueryDto) {

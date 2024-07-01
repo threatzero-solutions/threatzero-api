@@ -1,5 +1,11 @@
 import { Transform, Type } from 'class-transformer';
-import { IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { OpaqueTokenQueryDto } from 'src/auth/dto/opaque-token-query.dto';
 import {
   BaseQueryOrderDto,
@@ -18,21 +24,35 @@ export class ViewingUserTokenQueryOrderDto extends BaseQueryOrderDto {
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
+  lastName?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  firstName?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
   unitSlug?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
   organizationSlug?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  expiresOn?: QueryOrder;
 }
 
 export class ViewingUserTokenQueryDto extends OpaqueTokenQueryDto {
   @IsOptional()
-  @IsString()
-  userId?: string;
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  userId?: string[];
 
   @IsOptional()
-  @IsString()
-  email?: string;
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  email?: string[];
 
   @IsOptional()
   @IsString({ each: true })
