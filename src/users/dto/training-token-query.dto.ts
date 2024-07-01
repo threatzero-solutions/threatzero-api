@@ -15,6 +15,9 @@ export class TrainingTokenQueryOrderDto extends ViewingUserTokenQueryOrderDto {
   trainingItemId?: QueryOrder;
 }
 
+const defaultOrder = new TrainingTokenQueryOrderDto();
+defaultOrder.createdOn = 'DESC';
+
 export class TrainingTokenQueryDto extends ViewingUserTokenQueryDto {
   @IsOptional()
   @IsString()
@@ -23,5 +26,5 @@ export class TrainingTokenQueryDto extends ViewingUserTokenQueryDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => TrainingTokenQueryOrderDto)
-  order: TrainingTokenQueryOrderDto = new TrainingTokenQueryOrderDto();
+  order: TrainingTokenQueryOrderDto = defaultOrder;
 }

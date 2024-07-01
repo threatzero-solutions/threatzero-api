@@ -10,6 +10,7 @@ import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import { BaseQueryOrderDto } from './base-query-order.dto';
 
 const defaultOrder = new BaseQueryOrderDto();
+defaultOrder.createdOn = 'DESC';
 
 export class BaseQueryDto {
   @IsOptional()
