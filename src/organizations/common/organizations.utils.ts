@@ -23,19 +23,18 @@ export const scopeToOrganizationLevel = <
   qb: SelectQueryBuilder<T>,
 ): SelectQueryBuilder<T> => {
   const organizationLevel = getOrganizationLevel(req);
-  const peerUnitsClause = req.user?.peerUnits.length
-    ? ` OR unit.slug IN (${req.user.peerUnits
-        .map((pu) => `'${pu}'`)
-        .join(', ')})`
-    : '';
+  const availableUnits = req.user?.peerUnits ?? [];
+  if (req.user?.unitSlug) {
+    availableUnits.push(req.user?.unitSlug);
+  }
   switch (organizationLevel) {
     case LEVEL.ADMIN:
       return qb;
     case LEVEL.UNIT:
       return qb
         .leftJoin(`${qb.alias}.unit`, 'org_unit')
-        .andWhere(`(unit.slug = :unitSlug${peerUnitsClause})`, {
-          unitSlug: req.user?.unitSlug,
+        .andWhere(`unit.slug IN (:...unitSlugs)`, {
+          unitSlugs: availableUnits,
         });
     case LEVEL.ORGANIZATION:
       return qb

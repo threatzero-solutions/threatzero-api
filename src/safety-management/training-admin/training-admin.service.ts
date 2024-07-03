@@ -454,7 +454,7 @@ export class TrainingAdminService {
       );
 
       if (!unitSlugs.length) {
-        unitSlugs = [this.request.user!.unitSlug!];
+        unitSlugs = availableUnits;
       }
     } else if (
       organizationLevel === LEVEL.ORGANIZATION ||

@@ -56,8 +56,13 @@ export class UnitsService extends BaseEntityService<Unit> {
           });
       default:
         return this.request.user?.unitSlug
-          ? qb.andWhere('unit.slug = :unitSlug', {
-              unitSlug: this.request.user?.unitSlug,
+          ? qb.andWhere('unit.slug IN (:...unitSlug)', {
+              unitSlug: [
+                ...(this.request.user?.unitSlug
+                  ? [this.request.user?.unitSlug]
+                  : []),
+                ...(this.request.user?.peerUnits ?? []),
+              ],
             })
           : qb.where('1 = 0');
     }
