@@ -10,16 +10,6 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
   id?: string[];
 
   @IsOptional()
-  @IsNumber()
-  @Min(1)
-  limit: number = 10;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  offset: number = 0;
-
-  @IsOptional()
   @IsString()
   type?: string;
 
@@ -27,32 +17,60 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
   @IsString()
   batchId?: string;
 
+  getValueFields(): string[] {
+    return [];
+  }
+
   applyToQb<T extends ObjectLiteral>(qb: SelectQueryBuilder<T>) {
     let retQb = qb.skip(this.offset).take(this.limit);
 
+    const VALUE_FIELDS = this.getValueFields();
+    // const META_FIELDS = ['limit', 'offset', 'order', 'search'];
+    const COLUMN_FIELDS = [
+      'id',
+      'createdOn',
+      'updatedOn',
+      'key',
+      'type',
+      'batchId',
+    ];
+
     // Apply order by clauses.
     Object.entries(this.order).forEach(([sort, order]) => {
-      if (['createdOn', 'updatedOn', 'type', 'batchId', 'id'].includes(sort)) {
-        retQb = retQb.addOrderBy(`${retQb.alias}.${sort}`, order);
-      } else {
+      if (VALUE_FIELDS.includes(sort)) {
         retQb = retQb.addOrderBy(`"${retQb.alias}".value->>'${sort}'`, order);
+      } else if (COLUMN_FIELDS.includes(sort)) {
+        retQb = retQb.addOrderBy(`${retQb.alias}.${sort}`, order);
       }
     });
 
-    const query = Object.fromEntries(
-      Object.entries(this).filter(
-        ([key]) =>
-          !['limit', 'offset', 'order', 'type', 'batchId', 'id'].includes(key),
-      ),
+    const containmentQuery: Record<string, any> = {};
+    const containsKeyQueries: [string, any[]][] = [];
+
+    for (const [key, value] of Object.entries(this)) {
+      if (VALUE_FIELDS.includes(key)) {
+        if (Array.isArray(value)) {
+          containsKeyQueries.push([key, value]);
+        } else {
+          containmentQuery[key] = value;
+        }
+      }
+    }
+
+    retQb = retQb.where(
+      `value @> '${JSON.stringify(containmentQuery)}'::jsonb`,
     );
-    retQb = retQb.where(`value @> '${JSON.stringify(query)}'::jsonb`);
+    for (const [key, value] of containsKeyQueries) {
+      retQb = retQb.andWhere(
+        `value -> '${key}' ?| ARRAY(SELECT jsonb_array_elements_text('${JSON.stringify(value)}'))`,
+      );
+    }
 
     const fieldClause = Object.fromEntries(
       Object.entries({
-        type: this.type,
-        batchId: this.batchId,
+        ...this,
         id: this.id ? In(this.id) : undefined,
-      }).filter(([key, value]) => !!value),
+      }).filter(([key, value]) => COLUMN_FIELDS.includes(key) && !!value),
     );
 
     if (Object.keys(fieldClause).length > 0) {

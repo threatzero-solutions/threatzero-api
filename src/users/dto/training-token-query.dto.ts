@@ -27,4 +27,8 @@ export class TrainingTokenQueryDto extends ViewingUserTokenQueryDto {
   @ValidateNested()
   @Type(() => TrainingTokenQueryOrderDto)
   order: TrainingTokenQueryOrderDto = defaultOrder;
+
+  getValueFields(): string[] {
+    return [...super.getValueFields(), 'trainingItemId'];
+  }
 }

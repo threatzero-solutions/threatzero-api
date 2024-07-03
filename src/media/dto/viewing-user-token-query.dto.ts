@@ -68,4 +68,17 @@ export class ViewingUserTokenQueryDto extends OpaqueTokenQueryDto {
   @ValidateNested()
   @Type(() => ViewingUserTokenQueryOrderDto)
   order: ViewingUserTokenQueryOrderDto = new ViewingUserTokenQueryOrderDto();
+
+  getValueFields(): string[] {
+    return [
+      ...super.getValueFields(),
+      'userId',
+      'email',
+      'firstName',
+      'lastName',
+      'unitSlug',
+      'organizationSlug',
+      'expiresOn',
+    ];
+  }
 }
