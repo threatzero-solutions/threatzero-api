@@ -24,11 +24,9 @@ import { DeepPartial, Repository } from 'typeorm';
 import { Request } from 'express';
 import { isIPv4, isIPv6 } from 'net';
 import { OpaqueTokenService } from 'src/auth/opaque-token.service';
-import { ViewingUserRepresentationDto } from './dto/viewing-user-representation.dto';
 import { UsersService } from 'src/users/users.service';
 import { StatelessUser } from 'src/auth/user.factory';
-import { Timeout } from '@nestjs/schedule';
-import { UserRepresentation } from 'src/users/entities/user-representation.entity';
+import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
 
 const DEFAULT_WIDTH = 640;
 
@@ -198,7 +196,7 @@ export class MediaService {
     if (!user && watchId) {
       const viewingUser = await this.opaqueTokenService.validate(
         watchId,
-        ViewingUserRepresentationDto,
+        TrainingParticipantRepresentationDto,
       );
 
       if (viewingUser) {
@@ -214,6 +212,9 @@ export class MediaService {
           viewingUser.organizationSlug,
           viewingUser.unitSlug,
         );
+
+        event.courseId = viewingUser.trainingCourseId;
+        event.itemId = viewingUser.trainingItemId;
       }
     }
 

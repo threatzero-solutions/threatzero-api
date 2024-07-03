@@ -36,6 +36,7 @@ import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
 import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
+import { CoursesService } from 'src/training/courses/courses.service';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -53,6 +54,7 @@ export class TrainingAdminService {
     private readonly dataSource: DataSource,
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
+    private readonly coursesService: CoursesService,
     private readonly itemsService: ItemsService,
     private readonly unitsService: UnitsService,
   ) {}
@@ -63,15 +65,39 @@ export class TrainingAdminService {
    * @param data Data used to build tokens and send training links to given emails.
    */
   async sendTrainingLinks(data: SendTrainingLinksDto) {
-    const { trainingTokenValues, trainingUrlTemplate, trainingItemId } = data;
+    const {
+      trainingTokenValues,
+      trainingUrlTemplate,
+      trainingCourseId,
+      trainingItemId,
+    } = data;
 
     // Ensure user information is available.
     if (!this.request.user) {
       throw new ForbiddenException('User not found');
     }
 
-    // Get training item to make sure it exists and to provide training metadata in emails.
-    const trainingItem = await this.itemsService.findOne(trainingItemId);
+    // Get training course and item to make sure they exist and to provide training metadata in emails.
+    const trainingCourse = await this.coursesService
+      .findOne(trainingCourseId)
+      .catch((e) => {
+        this.logger.error('Failed to fetch training course', e);
+        return null;
+      });
+    const trainingItem = trainingCourse?.sections.reduce(
+      (acc, s) => {
+        if (!acc) {
+          acc = s.items.map((i) => i.item).find((i) => i.id === trainingItemId);
+        }
+
+        return acc;
+      },
+      undefined as TrainingItem | undefined,
+    );
+
+    if (!trainingCourse || !trainingItem) {
+      throw new BadRequestException('Training course or item not found');
+    }
 
     // Filter down and auto-populate input if possible for users who are not system admins.
     const availableUnitSlugs: string[] = [];
@@ -97,6 +123,7 @@ export class TrainingAdminService {
       const preparedValue = {
         ...tokenValue,
         expiresOn: dayjs().add(DEFAULT_TOKEN_EXPIRATION_DAYS, 'day').toDate(),
+        trainingCourseId: trainingCourse.id,
         trainingItemId: trainingItem.id,
         ...tokenAddIns,
       };

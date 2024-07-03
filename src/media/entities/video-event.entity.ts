@@ -59,6 +59,9 @@ export class VideoEvent implements ObjectLiteral {
   sectionId?: string | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
+  courseId?: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
   videoId?: string | null;
 
   @Column({ type: 'jsonb' })

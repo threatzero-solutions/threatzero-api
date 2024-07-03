@@ -5,9 +5,16 @@ import { UsersModule } from 'src/users/users.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { ItemsModule } from 'src/training/items/items.module';
 import { UnitsModule } from 'src/organizations/units/units.module';
+import { CoursesModule } from 'src/training/courses/courses.module';
 
 @Module({
-  imports: [UsersModule, ItemsModule, NotificationsModule, UnitsModule],
+  imports: [
+    UsersModule,
+    ItemsModule,
+    CoursesModule,
+    NotificationsModule,
+    UnitsModule,
+  ],
   providers: [TrainingAdminService],
   controllers: [TrainingAdminController],
 })
