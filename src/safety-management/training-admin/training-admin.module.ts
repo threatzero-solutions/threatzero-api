@@ -6,6 +6,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
 import { ItemsModule } from 'src/training/items/items.module';
 import { UnitsModule } from 'src/organizations/units/units.module';
 import { CoursesModule } from 'src/training/courses/courses.module';
+import { TrainingAdminTasks } from './training-admin-tasks';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { CoursesModule } from 'src/training/courses/courses.module';
     NotificationsModule,
     UnitsModule,
   ],
-  providers: [TrainingAdminService],
+  providers: [TrainingAdminService, TrainingAdminTasks],
   controllers: [TrainingAdminController],
 })
 export class TrainingAdminModule {}

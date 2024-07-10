@@ -32,9 +32,11 @@ import { SafetyManagementModule } from './safety-management/safety-management.mo
 import { LanguagesModule } from './languages/languages.module';
 import helmetConfig from './config/helmet.config';
 import corsConfig from './config/cors.config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,

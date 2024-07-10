@@ -37,6 +37,7 @@ import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
 import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 import { CoursesService } from 'src/training/courses/courses.service';
+import { WatchStat } from './entities/watch-stat.entity';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -184,6 +185,8 @@ export class TrainingAdminService {
     query.unitSlug = unitSlugs;
     query.organizationSlug = organizationSlugs;
 
+    console.log(query);
+
     return this.usersService.findTrainingTokens(query);
   }
 
@@ -259,7 +262,7 @@ export class TrainingAdminService {
   }
 
   getWatchStatsQb(query: WatchStatsQueryDto) {
-    const scopeToOrganizationLevel = (qb: SelectQueryBuilder<VideoEvent>) => {
+    const scopeToOrganizationLevel = (qb: SelectQueryBuilder<WatchStat>) => {
       const [unitSlugs, organizationSlugs] =
         this.parseAvailableOrganizations(query);
 
@@ -286,10 +289,10 @@ export class TrainingAdminService {
             });
           }
 
-          return `video_event."unitSlug" IN (${subQb.getQuery()})`;
+          return `watch_stat."unitSlug" IN (${subQb.getQuery()})`;
         });
       } else if (unitSlugs) {
-        qb = qb.andWhere('video_event."unitSlug" IN (:...unitSlugs)', {
+        qb = qb.andWhere('watch_stat."unitSlug" IN (:...unitSlugs)', {
           unitSlugs,
         });
       }
@@ -297,155 +300,38 @@ export class TrainingAdminService {
       return qb;
     };
 
-    let qb = this.dataSource
-      .createQueryBuilder()
-      .addCommonTableExpression(
-        scopeToOrganizationLevel(
-          this.dataSource
-            .createQueryBuilder()
-            .select('video_event."userId"', 'user_id')
-            .addSelect('video_event."unitSlug"', 'unit_slug')
-            .addSelect('video_event."itemId"', 'item_id')
-            .addSelect('video_event."type"', 'type')
-            .addSelect('video_event."timestamp"', 'timestamp')
-            .addSelect(
-              `(video_event."eventData"->>'loaded')::NUMERIC`,
-              'loaded_pct',
-            )
-            .addSelect(
-              `(video_event."eventData"->>'loadedSeconds')::NUMERIC`,
-              'loaded_seconds',
-            )
-            .addSelect(
-              `(video_event."eventData"->>'playedSeconds')::NUMERIC`,
-              'played_seconds',
-            )
-            .addSelect(
-              `LAG((video_event."eventData"->>'playedSeconds')::NUMERIC) OVER (PARTITION BY video_event."userId", video_event."itemId" ORDER BY (video_event."eventData"->>'playedSeconds')::NUMERIC)`,
-              'lag_played_seconds',
-            )
-            .addSelect(
-              `MAX((video_event."eventData"->>'playedSeconds')::NUMERIC) OVER (PARTITION BY video_event."userId", video_event."itemId" ORDER BY (video_event."eventData"->>'playedSeconds')::NUMERIC)`,
-              'max_played_seconds',
-            )
-            .from(VideoEvent, 'video_event')
-            .where((qb) => {
-              let subQb = qb
-                .subQuery()
-                .select('MIN(section."availableOn")')
-                .from(TrainingSection, 'section')
-                .where('section."courseId" = :courseId', {
-                  courseId: query.courseId,
-                })
-                .andWhere('section."isStart" = true');
-
-              const q = ` COALESCE((${subQb.getQuery()}), CURRENT_TIMESTAMP - INTERVAL '1 YEAR')`;
-
-              return `video_event.timestamp >= ${q} AND video_event.timestamp < (${q} + INTERVAL '1 YEAR')`;
+    let qb = scopeToOrganizationLevel(
+      this.dataSource
+        .createQueryBuilder()
+        .from(WatchStat, 'watch_stat')
+        .where((qb) => {
+          let subQb = qb
+            .subQuery()
+            .select('MIN(section."availableOn")')
+            .from(TrainingSection, 'section')
+            .where('section."courseId" = :courseId', {
+              courseId: query.courseId,
             })
-            .andWhere((qb) => {
-              let subQb = qb
-                .subQuery()
-                .select('item.id::TEXT')
-                .from(TrainingCourse, 'course')
-                .leftJoin('course.sections', 'section')
-                .leftJoin('section.items', 'section_item')
-                .leftJoin('section_item.item', 'item')
-                .where('course.id = :courseId', { courseId: query.courseId });
+            .andWhere('section."isStart" = true');
 
-              return 'video_event."itemId" IN (' + subQb.getQuery() + ')';
-            })
-            .orderBy('played_seconds', 'ASC'),
-        ),
-        'ordered_events',
-      )
-      .addCommonTableExpression(
-        this.dataSource
-          .createQueryBuilder()
-          .select([
-            'user_id',
-            'unit_slug',
-            'item_id',
-            'type',
-            'timestamp',
-            'loaded_seconds',
-            'played_seconds',
-          ])
-          .addSelect(
-            `
-            SUM(
-              CASE
-              WHEN played_seconds >= max_played_seconds AND ABS(played_seconds - lag_played_seconds) < ${MAX_SECONDS_BETWEEN_PLAYS} THEN played_seconds - lag_played_seconds
-              ELSE 0
-                END
-            ) OVER (
-              PARTITION BY user_id, item_id
-              ORDER BY played_seconds
-              ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-            )
-            `,
-            'rolling_sum_seconds_watched',
-          )
-          .from('ordered_events', 'ordered_events'),
-        'rolling_sums',
-      )
-      .addCommonTableExpression(
-        this.dataSource
-          .createQueryBuilder()
-          .select('item_id')
-          .addSelect('MAX(loaded_seconds / loaded_pct)', 'duration')
-          .from('ordered_events', 'ordered_events')
-          .where('loaded_pct > 0')
-          .groupBy('item_id'),
-        'video_duration',
-      )
-      .addCommonTableExpression(
-        this.dataSource
-          .createQueryBuilder()
-          .select(['user_id', 'unit_slug', 'item_id'])
-          .addSelect('MAX(rolling_sum_seconds_watched)', 'total_played_seconds')
-          .from('rolling_sums', 'rolling_sums')
-          .groupBy('user_id')
-          .addGroupBy('item_id')
-          .addGroupBy('unit_slug'),
-        'user_video_progress',
-      )
-      .select('user_video_progress.user_id', 'userId')
-      .addSelect('training_item."metadataTitle"', 'videoTitle')
-      .addSelect(
-        'ROUND(100.0 * user_video_progress.total_played_seconds / video_duration.duration, 2)',
-        'percentWatched',
-      )
-      .addSelect('training_item.id', 'itemId')
-      .addSelect('user_representation."givenName"', 'firstName')
-      .addSelect('user_representation."familyName"', 'lastName')
-      .addSelect('user_representation."email"', 'email')
-      .addSelect('organization.slug', 'organizationSlug')
-      .addSelect('organization.name', 'organizationName')
-      .addSelect('unit.slug', 'unitSlug')
-      .addSelect('unit.name', 'unitName')
-      .from('user_video_progress', 'user_video_progress')
-      .leftJoin(
-        TrainingItem,
-        'training_item',
-        'user_video_progress.item_id = training_item.id::TEXT',
-      )
-      .leftJoin(
-        'video_duration',
-        'video_duration',
-        'video_duration.item_id = training_item.id::TEXT',
-      )
-      .leftJoin(
-        UserRepresentation,
-        'user_representation',
-        'user_representation."externalId" = user_video_progress.user_id',
-      )
-      .leftJoin(
-        Organization,
-        'organization',
-        'organization.slug = user_representation."organizationSlug"',
-      )
-      .leftJoin(Unit, 'unit', 'unit.slug = user_representation."unitSlug"');
+          const q = ` COALESCE((${subQb.getQuery()}), CURRENT_TIMESTAMP - INTERVAL '1 YEAR')`;
+
+          return `watch_stat.timestamp >= ${q} AND video_event.timestamp < (${q} + INTERVAL '1 YEAR')`;
+        })
+        .andWhere((qb) => {
+          let subQb = qb
+            .subQuery()
+            .select('item.id::TEXT')
+            .from(TrainingCourse, 'course')
+            .leftJoin('course.sections', 'section')
+            .leftJoin('section.items', 'section_item')
+            .leftJoin('section_item.item', 'item')
+            .where('course.id = :courseId', { courseId: query.courseId });
+
+          return 'video_event."itemId" IN (' + subQb.getQuery() + ')';
+        })
+        .orderBy('played_seconds', 'ASC'),
+    );
 
     qb.skip(query.offset).take(query.limit);
 
