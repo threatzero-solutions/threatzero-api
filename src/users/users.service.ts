@@ -179,6 +179,11 @@ export class UsersService {
     return await this.opaqueTokenService.findAll(query);
   }
 
+  getTrainingTokensQb(query: TrainingTokenQueryDto) {
+    query.type = 'training';
+    return this.opaqueTokenService.getQb(query);
+  }
+
   async createTrainingToken(
     trainingParticipantRepresentationDto: TrainingParticipantRepresentationDto,
   ): Promise<OpaqueToken<TrainingParticipantRepresentationDto>>;

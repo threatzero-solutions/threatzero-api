@@ -42,6 +42,27 @@ export class TrainingAdminController {
     return this.trainingAdminService.findTrainingLinks(query);
   }
 
+  @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))
+  @Get('invites/csv/')
+  async viewLinksCsv(
+    @Res() res: Response,
+    @Query() query: TrainingTokenQueryDto,
+    @Query('trainingUrlTemplate') trainingUrlTemplate: string,
+  ) {
+    // Make sure to get entire results.
+    query.offset = 0;
+    query.limit = Number.MAX_SAFE_INTEGER;
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="training-links.csv"',
+    );
+    this.trainingAdminService
+      .findTrainingLinksCsv(query, trainingUrlTemplate)
+      .then((stream) => stream.pipe(res));
+  }
+
   @CheckPolicies(new EntityAbilityChecker(WatchStatsDto))
   @Get('watch-stats')
   async getWatchStats(@Query() query: WatchStatsQueryDto) {

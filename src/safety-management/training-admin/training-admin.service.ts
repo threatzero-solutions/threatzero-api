@@ -187,6 +187,32 @@ export class TrainingAdminService {
     return this.usersService.findTrainingTokens(query);
   }
 
+  async findTrainingLinksCsv(
+    query: TrainingTokenQueryDto,
+    trainingUrlTemplate: string,
+  ) {
+    const [unitSlugs, organizationSlugs] =
+      this.parseAvailableOrganizations(query);
+    query.unitSlug = unitSlugs;
+    query.organizationSlug = organizationSlugs;
+
+    const qb = this.usersService.getTrainingTokensQb(query);
+
+    const al = qb.alias;
+    return qb
+      .select(`${al}.value ->> 'trainingItemId'`, 'training_item_id')
+      .addSelect(`${al}.value ->> 'firstName'`, 'first_name')
+      .addSelect(`${al}.value ->> 'lastName'`, 'last_name')
+      .addSelect(`${al}.value ->> 'email'`, 'email')
+      .addSelect(
+        `REPLACE(REPLACE(:urlTemplate, '{token}', ${al}.key), '{trainingItemId}', ${al}.value ->> 'trainingItemId')`,
+        'training_link',
+      )
+      .setParameter('urlTemplate', trainingUrlTemplate)
+      .stream()
+      .then((stream) => stream.pipe(csvFormat({ headers: true })));
+  }
+
   async resendTrainingLinks(data: ResendTrainingLinksDto) {
     const q = new TrainingTokenQueryDto();
     q.id = data.trainingTokenIds;
@@ -218,12 +244,6 @@ export class TrainingAdminService {
     trainingMap: Map<string, TrainingItem>,
     trainingUrlTemplate: string,
   ) {
-    const _buildTrainingLink = (trainingItemId: string, token: string) => {
-      return trainingUrlTemplate
-        .replace('{trainingItemId}', trainingItemId)
-        .replace('{token}', encodeURIComponent(token));
-    };
-
     const stripTags = (s?: string | null) =>
       s && sanitizeHtml(s, { allowedTags: [] });
 
@@ -245,7 +265,11 @@ export class TrainingAdminService {
             ),
             context: {
               firstName: value.firstName,
-              trainingLink: _buildTrainingLink(trainingItem.id, token),
+              trainingLink: this.buildTrainingLink(
+                trainingUrlTemplate,
+                trainingItem.id,
+                token,
+              ),
               trainingTitle: stripTags(trainingItem.metadata.title),
               trainingDescription: stripTags(trainingItem.metadata.description),
               trainingThumbnailUrl: trainingItem.thumbnailUrl,
@@ -257,6 +281,16 @@ export class TrainingAdminService {
       }, [] as any[]),
     );
   }
+
+  private buildTrainingLink = (
+    trainingUrlTemplate: string,
+    trainingItemId: string,
+    token: string,
+  ) => {
+    return trainingUrlTemplate
+      .replace('{trainingItemId}', trainingItemId)
+      .replace('{token}', encodeURIComponent(token));
+  };
 
   getWatchStatsQb(query: WatchStatsQueryDto) {
     const scopeToOrganizationLevel = (qb: SelectQueryBuilder<VideoEvent>) => {
