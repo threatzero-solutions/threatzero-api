@@ -73,10 +73,16 @@ export class OpaqueTokenService {
     return await this.opaqueTokenRepository.findOneBy({ key });
   }
 
-  async findAll(query: OpaqueTokenQueryDto): Promise<Page<OpaqueToken>> {
+  getQb(query?: OpaqueTokenQueryDto) {
     let qb = this.opaqueTokenRepository.createQueryBuilder();
-    qb = query.applyToQb(qb);
-    return Paginated.fromQb(qb, query);
+    if (query) {
+      qb = query.applyToQb(qb);
+    }
+    return qb;
+  }
+
+  async findAll(query: OpaqueTokenQueryDto): Promise<Page<OpaqueToken>> {
+    return Paginated.fromQb(this.getQb(), query);
   }
 
   async validate<T extends object>(

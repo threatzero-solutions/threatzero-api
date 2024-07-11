@@ -23,6 +23,10 @@ export class CreateVideoEventDto {
 
   @IsOptional()
   @MaxLength(50)
+  courseId?: string | null;
+
+  @IsOptional()
+  @MaxLength(50)
   videoId?: string | null;
 
   @IsObject()
