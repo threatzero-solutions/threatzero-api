@@ -7,9 +7,12 @@ import { ItemsModule } from 'src/training/items/items.module';
 import { UnitsModule } from 'src/organizations/units/units.module';
 import { CoursesModule } from 'src/training/courses/courses.module';
 import { TrainingAdminTasks } from './training-admin-tasks';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { WatchStat } from './entities/watch-stat.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([WatchStat]),
     UsersModule,
     ItemsModule,
     CoursesModule,

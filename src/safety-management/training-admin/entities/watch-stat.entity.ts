@@ -1,6 +1,7 @@
 import { VideoEvent } from 'src/media/entities/video-event.entity';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { UserRepresentation } from 'src/users/entities/user-representation.entity';
 import { DataSource, Index, ViewColumn, ViewEntity } from 'typeorm';
@@ -20,6 +21,7 @@ const MAX_SECONDS_BETWEEN_PLAYS = 6;
           .select('video_event."userId"', 'user_id')
           .addSelect('video_event."unitSlug"', 'unit_slug')
           .addSelect('video_event."itemId"', 'item_id')
+          .addSelect('video_event."courseId"', 'course_id')
           .addSelect('video_event."type"', 'type')
           .addSelect('video_event."timestamp"', 'timestamp')
           .addSelect(
@@ -42,7 +44,25 @@ const MAX_SECONDS_BETWEEN_PLAYS = 6;
             `MAX((video_event."eventData"->>'playedSeconds')::NUMERIC) OVER (PARTITION BY video_event."userId", video_event."itemId" ORDER BY (video_event."eventData"->>'playedSeconds')::NUMERIC)`,
             'max_played_seconds',
           )
+          .addSelect(
+            `
+            CASE
+              WHEN EXTRACT(MONTH FROM video_event."timestamp") > COALESCE(course."startMonth", 1) OR (
+                EXTRACT(MONTH FROM video_event."timestamp") = COALESCE(course."startMonth", 1) AND
+                EXTRACT(DAY FROM video_event."timestamp") >= COALESCE(course."startDay", 1)
+              )
+            THEN EXTRACT(YEAR FROM video_event."timestamp")
+            ELSE EXTRACT(YEAR FROM video_event."timestamp") - 1
+            END
+            `,
+            'year',
+          )
           .from(VideoEvent, 'video_event')
+          .leftJoin(
+            TrainingCourse,
+            'course',
+            'course.id::TEXT = video_event."courseId"',
+          )
           .orderBy('played_seconds', 'ASC'),
         'ordered_events',
       )
@@ -57,6 +77,8 @@ const MAX_SECONDS_BETWEEN_PLAYS = 6;
             'timestamp',
             'loaded_seconds',
             'played_seconds',
+            'year',
+            'course_id',
           ])
           .addSelect(
             `
@@ -89,20 +111,24 @@ const MAX_SECONDS_BETWEEN_PLAYS = 6;
       .addCommonTableExpression(
         dataSource
           .createQueryBuilder()
-          .select(['user_id', 'unit_slug', 'item_id'])
+          .select(['user_id', 'unit_slug', 'item_id', 'year', 'course_id'])
           .addSelect('MAX(rolling_sum_seconds_watched)', 'total_played_seconds')
           .from('rolling_sums', 'rolling_sums')
           .groupBy('user_id')
           .addGroupBy('item_id')
+          .addGroupBy('year')
+          .addGroupBy('course_id')
           .addGroupBy('unit_slug'),
         'user_video_progress',
       )
       .select('training_item."id"', 'trainingItemId')
+      .addSelect('user_video_progress."course_id"', 'trainingCourseId')
       .addSelect('training_item."metadataTitle"', 'trainingItemTitle')
       .addSelect(
         'ROUND(100.0 * user_video_progress.total_played_seconds / video_duration.duration, 2)',
         'percentWatched',
       )
+      .addSelect('user_video_progress.year', 'year')
       .addSelect('user_representation."id"', 'userId')
       .addSelect('user_representation."externalId"', 'userExternalId')
       .addSelect('user_representation."givenName"', 'firstName')

@@ -30,6 +30,12 @@ export class TrainingCourse extends Base {
   })
   visibility: TrainingVisibility;
 
+  @Column({ type: 'smallint', nullable: true })
+  startMonth: number | null;
+
+  @Column({ type: 'smallint', nullable: true })
+  startDay: number | null;
+
   @OneToMany(() => TrainingSection, (section) => section.course, {
     eager: true,
     cascade: true,

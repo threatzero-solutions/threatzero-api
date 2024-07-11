@@ -28,9 +28,6 @@ export class TrainingSection extends Base {
   @Column({ type: 'integer', default: 0 })
   order: number;
 
-  @Column({ default: false })
-  isStart: boolean;
-
   @Column({ type: 'timestamptz', default: () => 'NOW()' })
   availableOn: Date;
 

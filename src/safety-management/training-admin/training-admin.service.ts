@@ -20,30 +20,22 @@ import { plainToInstance } from 'class-transformer';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 import { LEVEL } from 'src/auth/permissions';
-import { DataSource, In, SelectQueryBuilder } from 'typeorm';
-import { VideoEvent } from 'src/media/entities/video-event.entity';
+import { DataSource, In, Repository, SelectQueryBuilder } from 'typeorm';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { getOrganizationLevel } from 'src/organizations/common/organizations.utils';
-import { UserRepresentation } from 'src/users/entities/user-representation.entity';
-import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { format as csvFormat } from '@fast-csv/format';
 import { WatchStatsQueryDto } from './dto/watch-stats-query.dto';
-import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { UnitsService } from 'src/organizations/units/units.service';
 import sanitizeHtml from 'sanitize-html';
-import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
 import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 import { CoursesService } from 'src/training/courses/courses.service';
 import { WatchStat } from './entities/watch-stat.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
-
-// Determines maximum distance between watch events that are still considered
-// continous play.
-const MAX_SECONDS_BETWEEN_PLAYS = 6;
 
 @Injectable({ scope: Scope.REQUEST })
 export class TrainingAdminService {
@@ -52,6 +44,8 @@ export class TrainingAdminService {
   constructor(
     @InjectQueue(NOTIFICATIONS_QUEUE_NAME) private notificationsQueue: Queue,
     @Inject(REQUEST) private request: Request,
+    @InjectRepository(WatchStat)
+    private watchStatsRepository: Repository<WatchStat>,
     private readonly dataSource: DataSource,
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
@@ -335,36 +329,11 @@ export class TrainingAdminService {
     };
 
     let qb = scopeToOrganizationLevel(
-      this.dataSource
-        .createQueryBuilder()
-        .from(WatchStat, 'watch_stat')
-        .where((qb) => {
-          let subQb = qb
-            .subQuery()
-            .select('MIN(section."availableOn")')
-            .from(TrainingSection, 'section')
-            .where('section."courseId" = :courseId', {
-              courseId: query.courseId,
-            })
-            .andWhere('section."isStart" = true');
-
-          const q = ` COALESCE((${subQb.getQuery()}), CURRENT_TIMESTAMP - INTERVAL '1 YEAR')`;
-
-          return `watch_stat.timestamp >= ${q} AND video_event.timestamp < (${q} + INTERVAL '1 YEAR')`;
-        })
-        .andWhere((qb) => {
-          let subQb = qb
-            .subQuery()
-            .select('item.id::TEXT')
-            .from(TrainingCourse, 'course')
-            .leftJoin('course.sections', 'section')
-            .leftJoin('section.items', 'section_item')
-            .leftJoin('section_item.item', 'item')
-            .where('course.id = :courseId', { courseId: query.courseId });
-
-          return 'video_event."itemId" IN (' + subQb.getQuery() + ')';
-        })
-        .orderBy('played_seconds', 'ASC'),
+      this.watchStatsRepository
+        .createQueryBuilder('watch_stat')
+        .where('watch_stat."trainingCourseId" = :courseId', {
+          courseId: query.courseId,
+        }),
     );
 
     qb.skip(query.offset).take(query.limit);

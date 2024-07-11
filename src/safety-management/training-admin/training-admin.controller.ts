@@ -53,14 +53,17 @@ export class TrainingAdminController {
     query.offset = 0;
     query.limit = Number.MAX_SAFE_INTEGER;
 
+    const stream = await this.trainingAdminService.findTrainingLinksCsv(
+      query,
+      trainingUrlTemplate,
+    );
+
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader(
       'Content-Disposition',
       'attachment; filename="training-links.csv"',
     );
-    this.trainingAdminService
-      .findTrainingLinksCsv(query, trainingUrlTemplate)
-      .then((stream) => stream.pipe(res));
+    stream.pipe(res);
   }
 
   @CheckPolicies(new EntityAbilityChecker(WatchStatsDto))
@@ -71,18 +74,21 @@ export class TrainingAdminController {
 
   @CheckPolicies(new EntityAbilityChecker(WatchStatsDto))
   @Get('watch-stats/csv/')
-  getWatchStatsCsv(@Res() res: Response, @Query() query: WatchStatsQueryDto) {
+  async getWatchStatsCsv(
+    @Res() res: Response,
+    @Query() query: WatchStatsQueryDto,
+  ) {
     // Make sure to get entire results.
     query.offset = 0;
     query.limit = Number.MAX_SAFE_INTEGER;
+
+    const stream = await this.trainingAdminService.getWatchStatsCsv(query);
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader(
       'Content-Disposition',
       'attachment; filename="watch-stats.csv"',
     );
-    this.trainingAdminService
-      .getWatchStatsCsv(query)
-      .then((stream) => stream.pipe(res));
+    stream.pipe(res);
   }
 }
