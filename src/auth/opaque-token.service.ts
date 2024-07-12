@@ -82,7 +82,7 @@ export class OpaqueTokenService {
   }
 
   async findAll(query: OpaqueTokenQueryDto): Promise<Page<OpaqueToken>> {
-    return Paginated.fromQb(this.getQb(), query);
+    return Paginated.fromQb(this.getQb(query), query);
   }
 
   async validate<T extends object>(

@@ -1,13 +1,11 @@
-import { Transform } from 'class-transformer';
-import { IsOptional, IsNumber, Min, IsString, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { In, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
 export class OpaqueTokenQueryDto extends BaseQueryDto {
   @IsOptional()
   @IsUUID('4', { each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
-  id?: string[];
+  id?: string | string[];
 
   @IsOptional()
   @IsString()
@@ -22,6 +20,7 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
   }
 
   applyToQb<T extends ObjectLiteral>(qb: SelectQueryBuilder<T>) {
+    console.debug(this);
     let retQb = qb.skip(this.offset).take(this.limit);
 
     const VALUE_FIELDS = this.getValueFields();
@@ -67,10 +66,9 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
     }
 
     const fieldClause = Object.fromEntries(
-      Object.entries({
-        ...this,
-        id: this.id ? In(this.id) : undefined,
-      }).filter(([key, value]) => COLUMN_FIELDS.includes(key) && !!value),
+      Object.entries(this)
+        .filter(([key, value]) => COLUMN_FIELDS.includes(key) && !!value)
+        .map(([key, value]) => [key, Array.isArray(value) ? In(value) : value]),
     );
 
     if (Object.keys(fieldClause).length > 0) {

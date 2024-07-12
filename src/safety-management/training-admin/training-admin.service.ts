@@ -180,8 +180,6 @@ export class TrainingAdminService {
     query.unitSlug = unitSlugs;
     query.organizationSlug = organizationSlugs;
 
-    console.log(query);
-
     return this.usersService.findTrainingTokens(query);
   }
 
@@ -313,13 +311,21 @@ export class TrainingAdminService {
   }
 
   private parseAvailableOrganizations(query: {
-    unitSlug?: string[];
-    organizationSlug?: string[];
+    unitSlug?: string | string[];
+    organizationSlug?: string | string[];
   }) {
     const organizationLevel = getOrganizationLevel(this.request);
 
-    let unitSlugs = query.unitSlug;
-    let organizationSlugs = query.organizationSlug;
+    let unitSlugs = Array.isArray(query.unitSlug)
+      ? query.unitSlug
+      : query.unitSlug
+        ? [query.unitSlug]
+        : [];
+    let organizationSlugs = Array.isArray(query.organizationSlug)
+      ? query.organizationSlug
+      : query.organizationSlug
+        ? [query.organizationSlug]
+        : [];
 
     if (organizationLevel === LEVEL.UNIT) {
       const availableUnits = [
@@ -343,6 +349,9 @@ export class TrainingAdminService {
       organizationSlugs = [this.request.user.organizationSlug];
     }
 
-    return [unitSlugs, organizationSlugs];
+    return [
+      unitSlugs.length > 1 ? unitSlugs : unitSlugs[0],
+      organizationSlugs.length > 1 ? organizationSlugs : organizationSlugs[0],
+    ];
   }
 }

@@ -61,13 +61,11 @@ const defaultOrder = new WatchStatsQueryOrderDto();
 export class WatchStatsQueryDto extends BaseQueryDto {
   @IsOptional()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
-  unitSlug?: string[];
+  unitSlug?: string | string[];
 
   @IsOptional()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
-  organizationSlug?: string[];
+  organizationSlug?: string | string[];
 
   @IsOptional()
   @IsString()
