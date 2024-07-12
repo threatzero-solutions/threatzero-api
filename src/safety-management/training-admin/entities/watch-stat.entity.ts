@@ -175,6 +175,9 @@ export class WatchStat {
   @ViewColumn()
   percentWatched: number;
 
+  @ViewColumn()
+  year: number;
+
   @Index('watch_stat_user_id_idx')
   @ViewColumn()
   userId: string;
