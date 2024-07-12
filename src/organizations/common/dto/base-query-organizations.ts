@@ -5,8 +5,8 @@ import { BaseOrganizationsQueryOrderDto } from './base-organizations-query-order
 
 export class BaseQueryOrganizationsDto extends BaseQueryDto {
   @IsOptional()
-  @IsString()
-  slug?: string;
+  @IsString({ each: true })
+  slug?: string | string[];
 
   @IsOptional()
   @ValidateNested()

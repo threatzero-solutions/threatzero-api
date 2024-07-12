@@ -10,10 +10,10 @@ export class QueryUnitsDto extends BaseQueryOrganizationsDto {
   order: UnitsQueryOrderDto = new UnitsQueryOrderDto();
 
   @IsOptional()
-  @IsUUID()
-  ['organization.id']?: string;
+  @IsUUID('4', { each: true })
+  ['organization.id']?: string | string[];
 
   @IsOptional()
-  @IsString()
-  ['organization.slug']?: string;
+  @IsString({ each: true })
+  ['organization.slug']?: string | string[];
 }
