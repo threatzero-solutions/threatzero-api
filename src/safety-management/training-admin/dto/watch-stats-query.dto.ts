@@ -1,14 +1,64 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import {
+  BaseQueryOrderDto,
+  QueryOrder,
+  QueryOrderOptions,
+} from 'src/common/dto/base-query-order.dto';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 
-export class WatchStatsQueryDto {
+export class WatchStatsQueryOrderDto extends BaseQueryOrderDto {
+  @Transform(() => undefined)
+  createdOn?: QueryOrder = undefined;
+
+  @Transform(() => undefined)
+  updatedOn?: QueryOrder = undefined;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  unitName?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  organizationName?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  trainingItemTitle?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  percentWatched?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  lastName?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  firstName?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  email?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  year?: QueryOrder;
+}
+
+const defaultOrder = new WatchStatsQueryOrderDto();
+
+export class WatchStatsQueryDto extends BaseQueryDto {
   @IsOptional()
   @IsString({ each: true })
   @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
@@ -19,18 +69,26 @@ export class WatchStatsQueryDto {
   @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
   organizationSlug?: string[];
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   @IsUUID()
-  courseId: string;
+  trainingItemId?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(1)
-  limit: number = 100;
+  @IsString()
+  @IsUUID()
+  trainingCourseId?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  offset: number = 0;
+  @IsString()
+  year?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WatchStatsQueryOrderDto)
+  order: WatchStatsQueryOrderDto = defaultOrder;
 }

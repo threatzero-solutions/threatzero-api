@@ -34,6 +34,7 @@ import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 import { CoursesService } from 'src/training/courses/courses.service';
 import { WatchStat } from './entities/watch-stat.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Paginated } from 'src/common/dto/paginated.dto';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -290,59 +291,19 @@ export class TrainingAdminService {
   };
 
   getWatchStatsQb(query: WatchStatsQueryDto) {
-    const scopeToOrganizationLevel = (qb: SelectQueryBuilder<WatchStat>) => {
-      const [unitSlugs, organizationSlugs] =
-        this.parseAvailableOrganizations(query);
+    const [unitSlugs, organizationSlugs] =
+      this.parseAvailableOrganizations(query);
 
-      if (!organizationSlugs && !unitSlugs) {
-        throw new BadRequestException(
-          'Please provide at least one organization or unit slug.',
-        );
-      }
+    query.unitSlug = unitSlugs ?? undefined;
+    query.organizationSlug = organizationSlugs ?? undefined;
 
-      if (organizationSlugs) {
-        qb = qb.andWhere((_qb) => {
-          let subQb = _qb
-            .subQuery()
-            .select('unit.slug')
-            .from(Unit, 'unit')
-            .innerJoin('unit.organization', 'organization')
-            .where('organization.slug IN (:...organizationSlugs)', {
-              organizationSlugs,
-            });
-
-          if (unitSlugs) {
-            subQb = subQb.andWhere('unit.slug IN (:...unitSlugs)', {
-              unitSlugs,
-            });
-          }
-
-          return `watch_stat."unitSlug" IN (${subQb.getQuery()})`;
-        });
-      } else if (unitSlugs) {
-        qb = qb.andWhere('watch_stat."unitSlug" IN (:...unitSlugs)', {
-          unitSlugs,
-        });
-      }
-
-      return qb;
-    };
-
-    let qb = scopeToOrganizationLevel(
-      this.watchStatsRepository
-        .createQueryBuilder('watch_stat')
-        .where('watch_stat."trainingCourseId" = :courseId', {
-          courseId: query.courseId,
-        }),
-    );
-
-    qb.skip(query.offset).take(query.limit);
-
+    let qb = this.watchStatsRepository.createQueryBuilder('watch_stat');
+    qb = query.applyToQb(qb);
     return qb;
   }
 
   async getWatchStats(query: WatchStatsQueryDto) {
-    return this.getWatchStatsQb(query).getRawMany();
+    return Paginated.fromQb(this.getWatchStatsQb(query), query);
   }
 
   async getWatchStatsCsv(query: WatchStatsQueryDto) {

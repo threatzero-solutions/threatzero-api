@@ -173,6 +173,9 @@ export class WatchStat {
   trainingItemTitle: string;
 
   @ViewColumn()
+  trainingCourseId: string;
+
+  @ViewColumn()
   percentWatched: number;
 
   @ViewColumn()

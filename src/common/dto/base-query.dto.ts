@@ -43,6 +43,7 @@ export class BaseQueryDto {
 
     // Apply order by clauses.
     Object.entries(this.order).forEach(([sort, order]) => {
+      if (!order) return;
       const [_qb, tableAlias, columnName] = this.applyJoins<T>(retQb, sort);
       retQb = _qb.addOrderBy(`${tableAlias}.${columnName}`, order);
       if (_qb.alias !== tableAlias) {
@@ -52,15 +53,26 @@ export class BaseQueryDto {
 
     // Apply where clauses for all remaining fields.
     Object.entries(this).forEach(([fieldName, fieldValue]) => {
+      if (fieldValue === undefined) return;
       if (['limit', 'offset', 'order', 'search'].includes(fieldName)) return;
       const [_qb, tableAlias, columnName] = this.applyJoins<T>(
         retQb,
         fieldName,
       );
       const fieldAlias = `${tableAlias}_${columnName}`;
-      retQb = _qb.andWhere(`${tableAlias}.${columnName} = :${fieldAlias}`, {
-        [fieldAlias]: fieldValue,
-      });
+
+      if (Array.isArray(fieldValue)) {
+        retQb = _qb.andWhere(
+          `${tableAlias}.${columnName} IN (:...${fieldAlias})`,
+          {
+            [fieldAlias]: fieldValue,
+          },
+        );
+      } else {
+        retQb = _qb.andWhere(`${tableAlias}.${columnName} = :${fieldAlias}`, {
+          [fieldAlias]: fieldValue,
+        });
+      }
     });
 
     return retQb;
