@@ -10,8 +10,8 @@ export class ViolentIncidentReportQueryDto extends BaseQueryDto {
   status?: ViolentIncidentReportStatus;
 
   @IsOptional()
-  @IsString()
-  unitSlug?: string;
+  @IsString({ each: true })
+  unitSlug?: string | string[];
 
   @IsOptional()
   @ValidateNested()

@@ -41,6 +41,14 @@ export class QueryLocationsDto extends BaseQueryDto {
   @IsString({ each: true })
   ['unit.slug']?: string | string[];
 
+  @IsOptional()
+  @IsUUID('4', { each: true })
+  ['unit.organization.id']?: string | string[];
+
+  @IsOptional()
+  @IsString({ each: true })
+  ['unit.organization.slug']?: string | string[];
+
   protected getSearchFields() {
     return ['name', 'locationId'];
   }

@@ -10,8 +10,8 @@ export class ThreatAssessmentQueryDto extends BaseQueryDto {
   status?: AssessmentStatus;
 
   @IsOptional()
-  @IsString()
-  unitSlug?: string;
+  @IsString({ each: true })
+  unitSlug?: string | string[];
 
   @IsOptional()
   @ValidateNested()

@@ -21,10 +21,10 @@ export class CourseQueryDto extends BaseQueryTrainingDto {
   order: CourseQueryOrderDto = new CourseQueryOrderDto();
 
   @IsOptional()
-  @IsUUID()
-  ['organizations.id']?: string;
+  @IsUUID('4', { each: true })
+  ['organizations.id']?: string | string[];
 
   @IsOptional()
-  @IsString()
-  ['organizations.slug']?: string;
+  @IsString({ each: true })
+  ['organizations.slug']?: string | string[];
 }
