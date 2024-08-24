@@ -156,12 +156,12 @@ const MAX_SECONDS_BETWEEN_PLAYS = 6;
         'user_representation',
         'user_representation."externalId" = user_video_progress.user_id',
       )
+      .leftJoin(Unit, 'unit', 'unit.slug = unit_slug')
       .leftJoin(
         Organization,
         'organization',
-        'organization.slug = user_representation."organizationSlug"',
-      )
-      .leftJoin(Unit, 'unit', 'unit.slug = user_representation."unitSlug"'),
+        'organization.id = unit."organizationId"',
+      ),
 })
 @Index(['organizationSlug', 'unitSlug', 'trainingItemId'])
 @Index(['organizationId', 'unitId', 'trainingItemId'])
