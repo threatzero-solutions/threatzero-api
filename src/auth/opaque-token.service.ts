@@ -74,7 +74,7 @@ export class OpaqueTokenService {
   }
 
   getQb(query?: OpaqueTokenQueryDto) {
-    let qb = this.opaqueTokenRepository.createQueryBuilder();
+    let qb = this.opaqueTokenRepository.createQueryBuilder('opaque_token');
     if (query) {
       qb = query.applyToQb(qb);
     }

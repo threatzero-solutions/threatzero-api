@@ -174,25 +174,42 @@ export class TrainingAdminService {
     );
   }
 
-  async findTrainingLinks(query: TrainingTokenQueryDto) {
+  findTrainingLinksQb(query: TrainingTokenQueryDto) {
     const [unitSlugs, organizationSlugs] =
       this.parseAvailableOrganizations(query);
     query.unitSlug = unitSlugs;
     query.organizationSlug = organizationSlugs;
 
-    return this.usersService.findTrainingTokens(query);
+    let qb = this.usersService.getTrainingTokensQb(query);
+    const al = qb.alias;
+    qb.leftJoinAndMapOne(
+      `${al}.watchStat`,
+      WatchStat,
+      'watch_stat',
+      `watch_stat."trainingItemId"::TEXT = ${al}.value ->> 'trainingItemId'
+    AND watch_stat."userExternalId"::TEXT = ${al}.value ->> 'userId'
+    AND watch_stat."year" = EXTRACT(YEAR FROM ${al}."createdOn")`,
+    );
+
+    if (query.order['watchStat.percentWatched']) {
+      qb.addSelect('watch_stat."percentWatched"', 'percent_watched').orderBy(
+        'percent_watched',
+        query.order['watchStat.percentWatched'],
+      );
+    }
+
+    return qb;
+  }
+
+  async findTrainingLinks(query: TrainingTokenQueryDto) {
+    return Paginated.fromQb(this.findTrainingLinksQb(query), query);
   }
 
   async findTrainingLinksCsv(
     query: TrainingTokenQueryDto,
     trainingUrlTemplate: string,
   ) {
-    const [unitSlugs, organizationSlugs] =
-      this.parseAvailableOrganizations(query);
-    query.unitSlug = unitSlugs;
-    query.organizationSlug = organizationSlugs;
-
-    const qb = this.usersService.getTrainingTokensQb(query);
+    const qb = this.findTrainingLinksQb(query);
 
     const al = qb.alias;
     return qb
@@ -204,6 +221,7 @@ export class TrainingAdminService {
         `REPLACE(REPLACE(:urlTemplate, '{token}', ${al}.key), '{trainingItemId}', ${al}.value ->> 'trainingItemId')`,
         'training_link',
       )
+      .addSelect(`watch_stat."percentWatched"', 'percent_watched')`)
       .setParameter('urlTemplate', trainingUrlTemplate)
       .stream()
       .then((stream) => stream.pipe(csvFormat({ headers: true })));

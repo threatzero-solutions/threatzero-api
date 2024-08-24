@@ -13,6 +13,10 @@ export class TrainingTokenQueryOrderDto extends ViewingUserTokenQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
   trainingItemId?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  ['watchStat.percentWatched']: QueryOrder;
 }
 
 const defaultOrder = new TrainingTokenQueryOrderDto();
@@ -20,8 +24,8 @@ defaultOrder.createdOn = 'DESC';
 
 export class TrainingTokenQueryDto extends ViewingUserTokenQueryDto {
   @IsOptional()
-  @IsString()
-  trainingItemId?: string;
+  @IsString({ each: true })
+  trainingItemId?: string | string[];
 
   @IsOptional()
   @ValidateNested()

@@ -20,7 +20,6 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
   }
 
   applyToQb<T extends ObjectLiteral>(qb: SelectQueryBuilder<T>) {
-    console.debug(this);
     let retQb = qb.skip(this.offset).take(this.limit);
 
     const VALUE_FIELDS = this.getValueFields();
@@ -37,7 +36,10 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
     // Apply order by clauses.
     Object.entries(this.order).forEach(([sort, order]) => {
       if (VALUE_FIELDS.includes(sort)) {
-        retQb = retQb.addOrderBy(`"${retQb.alias}".value->>'${sort}'`, order);
+        const columnAlias = `${retQb.alias}_value_${sort.toLowerCase()}`;
+        retQb = retQb
+          .addSelect(`${retQb.alias}.value->>'${sort}'`, columnAlias)
+          .addOrderBy(columnAlias, order);
       } else if (COLUMN_FIELDS.includes(sort)) {
         retQb = retQb.addOrderBy(`${retQb.alias}.${sort}`, order);
       }
