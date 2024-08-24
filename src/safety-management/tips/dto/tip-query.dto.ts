@@ -1,23 +1,13 @@
-import {
-  IsOptional,
-  IsEnum,
-  ValidateNested,
-  IsString,
-  IsUUID,
-} from 'class-validator';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { IsOptional, IsEnum, ValidateNested, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TipQueryOrderDto } from './tip-query-order.dto';
 import { TipStatus } from '../entities/tip.entity';
+import { SafetyResourceBaseQueryDto } from 'src/safety-management/common/safety-resource-base-query';
 
-export class TipQueryDto extends BaseQueryDto {
+export class TipQueryDto extends SafetyResourceBaseQueryDto {
   @IsOptional()
   @IsEnum(TipStatus)
   status?: TipStatus;
-
-  @IsOptional()
-  @IsString({ each: true })
-  unitSlug?: string | string[];
 
   @IsOptional()
   @IsUUID('4', { each: true })
@@ -27,8 +17,4 @@ export class TipQueryDto extends BaseQueryDto {
   @ValidateNested()
   @Type(() => TipQueryOrderDto)
   order: TipQueryOrderDto = new TipQueryOrderDto();
-
-  protected getSearchFields(): string[] {
-    return ['tag'];
-  }
 }

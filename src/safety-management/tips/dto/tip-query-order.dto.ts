@@ -1,19 +1,11 @@
 import { IsIn, IsOptional } from 'class-validator';
 import {
-  BaseQueryOrderDto,
   QueryOrder,
   QueryOrderOptions,
 } from 'src/common/dto/base-query-order.dto';
+import { SafetyResourceBaseQueryOrderDto } from 'src/safety-management/common/safety-resource-base-query';
 
-export class TipQueryOrderDto extends BaseQueryOrderDto {
-  @IsOptional()
-  @IsIn(QueryOrderOptions)
-  tag: QueryOrder;
-
-  @IsOptional()
-  @IsIn(QueryOrderOptions)
-  ['unit.name']: QueryOrder;
-
+export class TipQueryOrderDto extends SafetyResourceBaseQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
   ['location.name']: QueryOrder;

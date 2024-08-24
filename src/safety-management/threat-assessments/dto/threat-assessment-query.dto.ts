@@ -1,24 +1,16 @@
-import { IsOptional, IsEnum, ValidateNested, IsString } from 'class-validator';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { IsOptional, IsEnum, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ThreatAssessmentQueryOrderDto } from './threat-assessment-query-order.dto';
 import { AssessmentStatus } from '../entities/threat-assessment.entity';
+import { SafetyResourceBaseQueryDto } from 'src/safety-management/common/safety-resource-base-query';
 
-export class ThreatAssessmentQueryDto extends BaseQueryDto {
+export class ThreatAssessmentQueryDto extends SafetyResourceBaseQueryDto {
   @IsOptional()
   @IsEnum(AssessmentStatus)
   status?: AssessmentStatus;
 
   @IsOptional()
-  @IsString({ each: true })
-  unitSlug?: string | string[];
-
-  @IsOptional()
   @ValidateNested()
   @Type(() => ThreatAssessmentQueryOrderDto)
   order: ThreatAssessmentQueryOrderDto = new ThreatAssessmentQueryOrderDto();
-
-  protected getSearchFields(): string[] {
-    return ['tag'];
-  }
 }
