@@ -39,9 +39,17 @@ export class OpaqueTokenQueryDto extends BaseQueryDto {
         const columnAlias = `${retQb.alias}_value_${sort.toLowerCase()}`;
         retQb = retQb
           .addSelect(`${retQb.alias}.value->>'${sort}'`, columnAlias)
-          .addOrderBy(columnAlias, order);
+          .addOrderBy(
+            columnAlias,
+            order,
+            order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
+          );
       } else if (COLUMN_FIELDS.includes(sort)) {
-        retQb = retQb.addOrderBy(`${retQb.alias}.${sort}`, order);
+        retQb = retQb.addOrderBy(
+          `${retQb.alias}.${sort}`,
+          order,
+          order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
+        );
       }
     });
 

@@ -45,9 +45,16 @@ export class BaseQueryDto {
     Object.entries(this.order).forEach(([sort, order]) => {
       if (!order) return;
       const [_qb, tableAlias, columnName] = this.applyJoins<T>(retQb, sort);
-      retQb = _qb.addOrderBy(`${tableAlias}.${columnName}`, order);
+      retQb = _qb.addOrderBy(
+        `${tableAlias}.${columnName}`,
+        order,
+        order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
+      );
       if (_qb.alias !== tableAlias) {
-        retQb = _qb.addSelect(`${tableAlias}.${columnName}`);
+        retQb = _qb.addSelect(
+          `${tableAlias}.${columnName}`,
+          order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
+        );
       }
     });
 
