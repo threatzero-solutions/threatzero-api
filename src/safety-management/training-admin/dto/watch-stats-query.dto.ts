@@ -68,14 +68,12 @@ export class WatchStatsQueryDto extends BaseQueryDto {
   organizationSlug?: string | string[];
 
   @IsOptional()
-  @IsString()
-  @IsUUID()
-  trainingItemId?: string;
+  @IsUUID('4', { each: true })
+  trainingItemId?: string | string[];
 
   @IsOptional()
-  @IsString()
-  @IsUUID()
-  trainingCourseId?: string;
+  @IsUUID('4', { each: true })
+  trainingCourseId?: string | string[];
 
   @IsOptional()
   @IsString()

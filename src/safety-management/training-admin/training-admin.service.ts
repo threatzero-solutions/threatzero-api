@@ -192,9 +192,11 @@ export class TrainingAdminService {
     );
 
     if (query.order['watchStat.percentWatched']) {
-      qb.addSelect('watch_stat."percentWatched"', 'percent_watched').orderBy(
+      const order = query.order['watchStat.percentWatched'];
+      qb.addSelect('watch_stat."percentWatched"', 'percent_watched').addOrderBy(
         'percent_watched',
-        query.order['watchStat.percentWatched'],
+        order,
+        order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
       );
     }
 
