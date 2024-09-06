@@ -27,6 +27,12 @@ export class Organization extends OrganizationBase {
   })
   policiesAndProcedures: Relation<OrganizationPolicyFile>[];
 
+  @Column({ nullable: true, type: 'jsonb' })
+  idpSlugs: string[] | null;
+
+  @Column({ nullable: true, type: 'jsonb' })
+  allowedRoleGroups: string[] | null;
+
   sign(signer: (k: string) => string) {
     if (this.policiesAndProcedures?.length) {
       this.policiesAndProcedures = this.policiesAndProcedures.map((p) => {

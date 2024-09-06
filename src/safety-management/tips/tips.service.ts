@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Scope } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { Tip } from './entities/tip.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
@@ -11,16 +11,15 @@ import { LocationsService } from 'src/organizations/locations/locations.service'
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { FormSubmissionsServiceMixin } from 'src/forms/forms/mixins/form-submission.service.mixin';
 import { NotesServiceMixin } from 'src/users/mixins/notes.service.mixin';
-import { REQUEST } from '@nestjs/core';
 import { FormsService } from 'src/forms/forms/forms.service';
 import { UsersService } from 'src/users/users.service';
-import { Request } from 'express';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { scopeToOrganizationLevel } from 'src/organizations/common/organizations.utils';
 import { GetPresignedUploadUrlsDto } from 'src/forms/forms/dto/get-presigned-upload-urls.dto';
 import { Location } from 'src/organizations/locations/entities/location.entity';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 
-@Injectable({ scope: Scope.REQUEST })
 export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
   NotesServiceMixin<Tip>()(BaseEntityService<Tip>),
 ) {
@@ -34,8 +33,8 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
     private locationsService: LocationsService,
     private eventEmitter: EventEmitter2,
     readonly usersService: UsersService,
-    @Inject(REQUEST) readonly request: Request,
     readonly formsService: FormsService,
+    private readonly cls: ClsService<CommonClsStore>,
   ) {
     super();
   }
@@ -45,7 +44,8 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
   }
 
   getQb(query?: BaseQueryDto) {
-    return scopeToOrganizationLevel(this.request, super.getQb(query))
+    const user = this.cls.get('user');
+    return scopeToOrganizationLevel(user, super.getQb(query))
       .leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit')
       .leftJoinAndSelect(`${super.getQb().alias}.location`, 'location')
       .leftJoinAndSelect(`${super.getQb().alias}.pocFiles`, 'pocFiles');
@@ -57,6 +57,7 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
     },
     locationId?: string,
   ) {
+    const user = this.cls.get('user');
     const [unitSlug, location] =
       await this.getUnitSlugAndLocationForTip(locationId);
     const submittedTip = await super.create({
@@ -64,9 +65,9 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
       // Add user unit slug to tip.
       unitSlug,
       location: location ?? undefined,
-      informantFirstName: this.request.user?.firstName,
-      informantLastName: this.request.user?.lastName,
-      informantEmail: this.request.user?.email,
+      informantFirstName: user?.firstName,
+      informantLastName: user?.lastName,
+      informantEmail: user?.email,
     });
 
     // Emit tip submitted event.
@@ -95,7 +96,8 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
    * @returns the unit slug
    */
   private async getUnitSlugAndLocationForTip(locationId?: string) {
-    let unitSlug = this.request.user?.unitSlug ?? null;
+    const user = this.cls.get('user');
+    let unitSlug = user?.unitSlug ?? null;
     let location: Location | null = null;
 
     if (locationId) {

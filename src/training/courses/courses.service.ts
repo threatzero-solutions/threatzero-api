@@ -1,20 +1,18 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TrainingCourse } from './entities/course.entity';
-import { DeepPartial, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { filterTraining } from '../common/training.utils';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { MediaService } from 'src/media/media.service';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 
-@Injectable({ scope: Scope.REQUEST })
 export class CoursesService extends BaseEntityService<TrainingCourse> {
   alias = 'course';
 
   constructor(
-    @Inject(REQUEST) private request: Request,
+    private readonly cls: ClsService<CommonClsStore>,
     @InjectRepository(TrainingCourse)
     private coursesRepository: Repository<TrainingCourse>,
     private mediaService: MediaService,
@@ -27,12 +25,13 @@ export class CoursesService extends BaseEntityService<TrainingCourse> {
   }
 
   getQb(query?: BaseQueryDto) {
+    const user = this.cls.get('user');
     let qb = super
       .getQb(query)
       .leftJoinAndSelect('course.audiences', 'audience')
       .leftJoinAndSelect('course.presentableBy', 'presentableBy');
 
-    qb = filterTraining(this.request, qb);
+    qb = filterTraining(user, qb);
 
     return qb;
   }

@@ -1,28 +1,21 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Scope,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { POCFile } from './entities/poc-file.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
 import { UnitsService } from 'src/organizations/units/units.service';
 import { LEVEL } from 'src/auth/permissions';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { getOrganizationLevel } from 'src/organizations/common/organizations.utils';
 import { ThreatAssessmentsService } from '../threat-assessments/threat-assessments.service';
 import { TipsService } from '../tips/tips.service';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 
-@Injectable({ scope: Scope.REQUEST })
 export class POCFilesService extends BaseEntityService<POCFile> {
   constructor(
     @InjectRepository(POCFile) private pocFilesRepository: Repository<POCFile>,
-    @Inject(REQUEST) private request: Request,
+    private readonly cls: ClsService<CommonClsStore>,
     private unitsService: UnitsService,
     private assessmentsService: ThreatAssessmentsService,
     private tipsService: TipsService,
@@ -35,6 +28,7 @@ export class POCFilesService extends BaseEntityService<POCFile> {
   }
 
   getQb(query?: BaseQueryDto) {
+    const user = this.cls.get('user');
     let qb = super
       .getQb(query)
       .leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit')
@@ -42,21 +36,21 @@ export class POCFilesService extends BaseEntityService<POCFile> {
       .leftJoinAndSelect(`${super.getQb().alias}.assessments`, 'assessments')
       .leftJoinAndSelect(`${super.getQb().alias}.tips`, 'tips');
 
-    switch (getOrganizationLevel(this.request)) {
+    switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:
         return qb;
       case LEVEL.UNIT:
         return qb.andWhere(
           '(unit.slug = :unitSlug OR peerUnit.slug = :unitSlug)',
           {
-            unitSlug: this.request.user?.unitSlug,
+            unitSlug: user?.unitSlug,
           },
         );
       case LEVEL.ORGANIZATION:
         return qb
           .leftJoinAndSelect(`${qb.alias}.organization`, 'org_organization')
           .andWhere('org_organization.slug = :organizationSlug', {
-            organizationSlug: this.request.user?.organizationSlug,
+            organizationSlug: user?.organizationSlug,
           });
       default:
         return qb.where('1 = 0');

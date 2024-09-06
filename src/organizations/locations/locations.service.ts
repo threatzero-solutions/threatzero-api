@@ -1,25 +1,24 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Location } from './entities/location.entity';
 import { ConfigService } from '@nestjs/config';
 import { GenerateQrCodeQueryDto } from './dto/generate-qr-code-query.dto';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import QRCode from 'qrcode';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { REQUEST } from '@nestjs/core';
 import { getOrganizationLevel } from '../common/organizations.utils';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { LEVEL } from 'src/auth/permissions';
+import { ClsService } from 'nestjs-cls';
 
-@Injectable({ scope: Scope.REQUEST })
 export class LocationsService extends BaseEntityService<Location> {
   alias = 'location';
 
   constructor(
     @InjectRepository(Location)
     private locationsRepository: Repository<Location>,
-    @Inject(REQUEST) private request: Request,
+    private readonly cls: ClsService<CommonClsStore>,
     private readonly config: ConfigService,
   ) {
     super();
@@ -30,20 +29,21 @@ export class LocationsService extends BaseEntityService<Location> {
   }
 
   getQb(query?: BaseQueryDto) {
+    const user = this.cls.get('user');
     let qb = super.getQb(query).leftJoinAndSelect('location.unit', 'unit');
 
-    switch (getOrganizationLevel(this.request)) {
+    switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:
         return qb;
       case LEVEL.ORGANIZATION:
         return qb
           .leftJoinAndSelect('unit.organization', 'organization')
           .andWhere('organization.slug = :organizationSlug', {
-            organizationSlug: this.request.user?.organizationSlug,
+            organizationSlug: user?.organizationSlug,
           });
       case LEVEL.UNIT:
         return qb.andWhere('unit.slug = :unitSlug', {
-          unitSlug: this.request.user?.unitSlug,
+          unitSlug: user?.unitSlug,
         });
       default:
         return qb.where('1 = 0');

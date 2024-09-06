@@ -1,12 +1,5 @@
-import {
-  Inject,
-  Injectable,
-  Scope,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { Request } from 'express';
+import { UnauthorizedException } from '@nestjs/common';
 import { TrainingItem } from './entities/item.entity';
-import { REQUEST } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { filterTraining } from '../common/training.utils';
@@ -16,13 +9,14 @@ import { MediaService } from 'src/media/media.service';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { OpaqueTokenService } from 'src/auth/opaque-token.service';
 import { TrainingParticipantRepresentationDto } from './dto/training-participant-representation.dto';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 
-@Injectable({ scope: Scope.REQUEST })
 export class ItemsService extends BaseEntityService<TrainingItem> {
   alias = 'item';
 
   constructor(
-    @Inject(REQUEST) private request: Request,
+    private readonly cls: ClsService<CommonClsStore>,
     @InjectRepository(TrainingItem)
     private itemsRepository: Repository<TrainingItem>,
     private mediaService: MediaService,
@@ -36,13 +30,14 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
   }
 
   getQb(query?: BaseQueryDto) {
+    const user = this.cls.get('user');
     let qb = super
       .getQb(query)
       .leftJoin('item.sectionItems', 'section_item')
       .leftJoin('section_item.section', 'section')
       .leftJoin('section.course', 'course');
 
-    qb = filterTraining(this.request, qb);
+    qb = filterTraining(user, qb);
 
     return qb;
   }

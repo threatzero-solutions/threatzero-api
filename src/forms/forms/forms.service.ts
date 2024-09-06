@@ -20,13 +20,14 @@ import { CopyObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { S3Service } from 'src/aws/s3/s3.service';
 import { MediaService } from 'src/media/media.service';
 import { FieldGroupsService } from '../field-groups/field-groups.service';
-import { Request } from 'express';
 import { FormsPdfService } from './forms-pdf.service';
 import { GetPresignedUploadUrlsDto } from './dto/get-presigned-upload-urls.dto';
 import { v4 as uuidv4 } from 'uuid';
 import mime from 'mime';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 
 @Injectable()
 export class FormsService extends BaseEntityService<Form> {
@@ -42,6 +43,7 @@ export class FormsService extends BaseEntityService<Form> {
     private s3: S3Service,
     private mediaService: MediaService,
     private formsPdfService: FormsPdfService,
+    private readonly cls: ClsService<CommonClsStore>,
   ) {
     super();
   }
@@ -132,14 +134,9 @@ export class FormsService extends BaseEntityService<Form> {
     }
   }
 
-  async createSubmission(
-    formSubmissionDto: DeepPartial<FormSubmission>,
-    request: Request,
-  ) {
-    const validatedSubmission = await this.validateSubmission(
-      formSubmissionDto,
-      request,
-    );
+  async createSubmission(formSubmissionDto: DeepPartial<FormSubmission>) {
+    const validatedSubmission =
+      await this.validateSubmission(formSubmissionDto);
 
     return await this.dataSource.transaction(async (manager) => {
       // Save once to ensure submission gets saved, even if persist uploads fails.
@@ -155,11 +152,8 @@ export class FormsService extends BaseEntityService<Form> {
     });
   }
 
-  async updateSubmission(
-    formSubmissionDto: DeepPartial<FormSubmission>,
-    request: Request,
-  ) {
-    return await this.createSubmission(formSubmissionDto, request);
+  async updateSubmission(formSubmissionDto: DeepPartial<FormSubmission>) {
+    return await this.createSubmission(formSubmissionDto);
   }
 
   async getSubmission(id: FormSubmission['id']) {
@@ -171,10 +165,7 @@ export class FormsService extends BaseEntityService<Form> {
     return submission;
   }
 
-  async validateSubmission(
-    formSubmissionDto: DeepPartial<FormSubmission>,
-    request: Request,
-  ) {
+  async validateSubmission(formSubmissionDto: DeepPartial<FormSubmission>) {
     const formId = formSubmissionDto.formId || formSubmissionDto.form?.id;
 
     if (!formId) {
@@ -182,9 +173,12 @@ export class FormsService extends BaseEntityService<Form> {
     }
 
     const form = await this.getFormBy({ id: formId });
+    const user = this.cls.get('user');
+    const ip = this.cls.get('ip');
     const validatedSubmission = form.validateSubmission(
       formSubmissionDto,
-      request,
+      user,
+      ip,
     );
     return this.formSubmissionsRepository.create(validatedSubmission);
   }

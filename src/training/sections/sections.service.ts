@@ -1,20 +1,19 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
 import { TrainingSection } from './entities/section.entity';
-import { REQUEST } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { filterTraining } from '../common/training.utils';
-import { Request } from 'express';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { MediaService } from 'src/media/media.service';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { StatelessUser } from 'src/auth/user.factory';
 
-@Injectable({ scope: Scope.REQUEST })
 export class SectionsService extends BaseEntityService<TrainingSection> {
   alias = 'section';
 
   constructor(
-    @Inject(REQUEST) private request: Request,
+    private readonly cls: ClsService<CommonClsStore>,
     @InjectRepository(TrainingSection)
     private sectionsRepository: Repository<TrainingSection>,
     private mediaService: MediaService,
@@ -27,13 +26,14 @@ export class SectionsService extends BaseEntityService<TrainingSection> {
   }
 
   getQb(query?: BaseQueryDto) {
+    const user = this.cls.get('user');
     let qb = super
       .getQb(query)
       .leftJoin('section.course', 'course')
       .leftJoinAndSelect('section.items', 'sectionItems')
       .leftJoinAndSelect('sectionItems.item', 'item');
 
-    qb = filterTraining(this.request, qb);
+    qb = filterTraining(user, qb);
 
     return qb;
   }

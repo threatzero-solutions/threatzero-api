@@ -1,11 +1,9 @@
-import { BadRequestException, Inject, Injectable, Scope } from '@nestjs/common';
+import { BadRequestException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, DeepPartial, EntityTarget, Repository } from 'typeorm';
 import { UserRepresentation } from './entities/user-representation.entity';
 import { StatelessUser } from 'src/auth/user.factory';
 import { Note } from './entities/note.entity';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { NotableEntity } from './interfaces/notable-entity.interface';
@@ -18,14 +16,15 @@ import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/tra
 import { OpaqueTokenService } from 'src/auth/opaque-token.service';
 import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { TrainingTokenQueryDto } from './dto/training-token-query.dto';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 
-@Injectable({ scope: Scope.REQUEST })
 export class UsersService {
   constructor(
     @InjectRepository(UserRepresentation)
     private usersRepository: Repository<UserRepresentation>,
     @InjectRepository(Note) private notesRepository: Repository<Note>,
-    @Inject(REQUEST) private request: Request,
+    private readonly cls: ClsService<CommonClsStore>,
     private dataSource: DataSource,
     private opaqueTokenService: OpaqueTokenService,
   ) {}
@@ -88,6 +87,11 @@ export class UsersService {
     noteId: Note['id'],
     updateNoteDto: UpdateNoteDto,
   ) {
+    const user = this.cls.get('user');
+    if (!user) {
+      throw new BadRequestException('User not found.');
+    }
+
     const note = await this.prepareNote(
       foreignKeyColumn,
       entityId,
@@ -95,7 +99,7 @@ export class UsersService {
     );
     await this.notesQb()
       .update(note)
-      .where({ id: noteId, userExternalId: this.request.user!.id })
+      .where({ id: noteId, userExternalId: user.id })
       .execute();
     return await this.notesQb().andWhere({ id: noteId }).getOne();
   }
@@ -105,14 +109,15 @@ export class UsersService {
     entityId: E['id'],
     noteId: Note['id'],
   ) {
-    if (!this.request.user) {
+    const user = this.cls.get('user');
+    if (!user) {
       throw new BadRequestException('User not found.');
     }
 
     return await this.notesQb()
       .andWhere({
         id: noteId,
-        userExternalId: this.request.user!.id,
+        userExternalId: user!.id,
         [foreignKeyColumn]: entityId,
       })
       .delete()
@@ -124,15 +129,16 @@ export class UsersService {
     entityId: E['id'],
     partialNote: DeepPartial<Note>,
   ) {
-    if (!this.request.user) {
+    const user = this.cls.get('user');
+    if (!user) {
       throw new BadRequestException('User not found.');
     }
 
-    await this.updateRepresentation(this.request.user);
+    await this.updateRepresentation(user);
 
     return {
       ...partialNote,
-      userExternalId: this.request.user.id,
+      userExternalId: user.id,
       [foreignKeyColumn]: entityId,
     };
   }

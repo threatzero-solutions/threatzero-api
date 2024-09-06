@@ -1,7 +1,6 @@
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { DeepPartial, SelectQueryBuilder } from 'typeorm';
 import { FormsService } from 'src/forms/forms/forms.service';
-import { Request } from 'express';
 import { CreateFormSubmissionDto } from '../dto/create-form-submission.dto';
 import { GetSubmissionCountsQueryDto } from '../dto/get-submission-counts-query.dto';
 import dayjs from 'dayjs';
@@ -11,7 +10,6 @@ import { SubmittableEntity } from '../interfaces/submittable-entity.interface';
 export interface FormSubmissionServiceMixinRequiredProperties {
   formsService: FormsService;
   formSlug: string;
-  request: Request;
 }
 
 type Constructor<E extends SubmittableEntity> = new (
@@ -23,7 +21,6 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
     return class extends Base {
       formsService: FormsService;
       formSlug: string;
-      request: Request;
 
       getQbSingle(
         id: NonNullable<E['id']>,
@@ -68,7 +65,6 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
         // First, validate & create submission.
         const savedSubmission = await this.formsService.createSubmission(
           createSubmissionEntityDto.submission,
-          this.request,
         );
 
         // Then, create the entity with saved submission.
@@ -87,10 +83,7 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
         ...args: any[]
       ) {
         if (updateEntityDto.submission) {
-          await this.formsService.updateSubmission(
-            updateEntityDto.submission,
-            this.request,
-          );
+          await this.formsService.updateSubmission(updateEntityDto.submission);
         }
         return super.update(id, updateEntityDto, ...args);
       }

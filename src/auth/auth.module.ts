@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthGuard } from './auth.guard';
@@ -18,12 +18,19 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OpaqueToken } from './entities/opaque-token.entity';
 import { OpaqueTokenService } from './opaque-token.service';
+import { ClsModule } from 'nestjs-cls';
 
+@Global()
 @Module({
   imports: [
     JwtModule.register({}),
     CaslModule,
     TypeOrmModule.forFeature([OpaqueToken]),
+    ClsModule.forRoot({
+      middleware: {
+        mount: true,
+      },
+    }),
   ],
   providers: [
     {
@@ -47,6 +54,6 @@ import { OpaqueTokenService } from './opaque-token.service';
     KeycloakAdminClientService,
     OpaqueTokenService,
   ],
-  exports: [KeycloakAdminClientService, OpaqueTokenService],
+  exports: [KeycloakAdminClientService, OpaqueTokenService, ClsModule],
 })
 export class AuthModule {}

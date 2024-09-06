@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  Scope,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { ThreatAssessment } from './entities/threat-assessment.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
@@ -13,13 +8,12 @@ import { NotesServiceMixin } from 'src/users/mixins/notes.service.mixin';
 import { UsersService } from 'src/users/users.service';
 import { FormSubmissionsServiceMixin } from 'src/forms/forms/mixins/form-submission.service.mixin';
 import { BaseEntityService } from 'src/common/base-entity.service';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
 import { FormsService } from 'src/forms/forms/forms.service';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { scopeToOrganizationLevel } from 'src/organizations/common/organizations.utils';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 
-@Injectable({ scope: Scope.REQUEST })
 export class ThreatAssessmentsService extends FormSubmissionsServiceMixin<ThreatAssessment>()(
   NotesServiceMixin<ThreatAssessment>()(BaseEntityService<ThreatAssessment>),
 ) {
@@ -32,7 +26,7 @@ export class ThreatAssessmentsService extends FormSubmissionsServiceMixin<Threat
     @InjectRepository(ThreatAssessment)
     private assessmentsRepository: Repository<ThreatAssessment>,
     readonly usersService: UsersService,
-    @Inject(REQUEST) readonly request: Request,
+    private readonly cls: ClsService<CommonClsStore>,
     readonly formsService: FormsService,
   ) {
     super();
@@ -43,7 +37,8 @@ export class ThreatAssessmentsService extends FormSubmissionsServiceMixin<Threat
   }
 
   getQb(query?: BaseQueryDto) {
-    return scopeToOrganizationLevel(this.request, super.getQb(query))
+    const user = this.cls.get('user');
+    return scopeToOrganizationLevel(user, super.getQb(query))
       .leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit')
       .leftJoinAndSelect(`${super.getQb().alias}.pocFiles`, 'pocFiles');
   }
@@ -53,12 +48,13 @@ export class ThreatAssessmentsService extends FormSubmissionsServiceMixin<Threat
       submission: CreateFormSubmissionDto;
     },
   ) {
-    if (!this.request.user?.unitSlug) {
+    const user = this.cls.get('user');
+    if (!user?.unitSlug) {
       throw new UnauthorizedException('User is not associated with a unit.');
     }
     return super.create({
       ...createSubmissionEntityDto,
-      unitSlug: this.request.user.unitSlug,
+      unitSlug: user.unitSlug,
     });
   }
 }

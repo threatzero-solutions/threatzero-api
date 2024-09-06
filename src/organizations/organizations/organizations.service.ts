@@ -1,4 +1,3 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
@@ -9,21 +8,26 @@ import {
 } from '../listeners/organization-change.listener';
 import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { getOrganizationLevel } from '../common/organizations.utils';
 import { LEVEL } from 'src/auth/permissions';
 import { MediaService } from 'src/media/media.service';
+import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
+import { IdpProtocol } from 'src/auth/dto/create-idp.dto';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 
-@Injectable({ scope: Scope.REQUEST })
 export class OrganizationsService extends BaseEntityService<Organization> {
   constructor(
     @InjectRepository(Organization)
     private organizationsRepository: Repository<Organization>,
-    @Inject(REQUEST) private request: Request,
+    private readonly cls: ClsService<CommonClsStore>,
     private eventEmitter: EventEmitter2,
     private media: MediaService,
+    private keycloakClient: KeycloakAdminClientService,
   ) {
     super();
   }
@@ -33,6 +37,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   }
 
   getQb(query?: BaseQueryDto) {
+    const user = this.cls.get('user');
     let qb = super.getQb(query);
 
     qb = qb
@@ -42,22 +47,23 @@ export class OrganizationsService extends BaseEntityService<Organization> {
         'policyOrProcedure',
       );
 
-    switch (getOrganizationLevel(this.request)) {
+    switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:
         return qb;
       default:
-        return this.request.user?.organizationSlug
+        return user?.organizationSlug
           ? qb.andWhere(`${qb.alias}.slug = :organizationSlug`, {
-              organizationSlug: this.request.user.organizationSlug,
+              organizationSlug: user.organizationSlug,
             })
           : qb.where('1 = 0');
     }
   }
 
   getQbSingle(id: string) {
+    const user = this.cls.get('user');
     let qb = super.getQbSingle(id);
 
-    switch (getOrganizationLevel(this.request)) {
+    switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:
         return qb
           .leftJoinAndSelect(`${qb.alias}.courses`, 'course')
@@ -93,7 +99,114 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     );
   }
 
+  async importIdpConfig(
+    input:
+      | FormData
+      | {
+          fromUrl: string;
+          providerId: IdpProtocol;
+        },
+  ) {
+    return await this.keycloakClient.client.identityProviders.importFromUrl(
+      input,
+    );
+  }
+
+  async createIdp(
+    id: Organization['id'],
+    createOrganizationIdpDto: CreateOrganizationIdpDto,
+  ) {
+    const organization = await this.getForIdp(id);
+
+    if (organization.idpSlugs?.includes(createOrganizationIdpDto.slug)) {
+      throw new BadRequestException(
+        `Identity provider already exists with slug ${createOrganizationIdpDto.slug}`,
+      );
+    }
+
+    const newIdp = await this.keycloakClient.createIdentityProvider(
+      createOrganizationIdpDto.build(organization),
+    );
+
+    await this.update(id, {
+      idpSlugs: [...(organization.idpSlugs ?? []), newIdp.slug],
+    });
+
+    return new CreateOrganizationIdpDto().parse(newIdp, organization);
+  }
+
+  async updateIdp(
+    id: Organization['id'],
+    idpSlug: string,
+    updateOrganizationIdpDto: CreateOrganizationIdpDto,
+  ) {
+    const organization = await this.getForIdp(id);
+
+    // IMPORTANT: This protects users from accessing IDPs they don't have access to.
+    if (organization.idpSlugs?.includes(idpSlug)) {
+      const updatedIdp = await this.keycloakClient.updateIdentityProvider(
+        idpSlug,
+        updateOrganizationIdpDto.build(organization),
+      );
+
+      if (updatedIdp) {
+        const newlyUpdatedIdp = new CreateOrganizationIdpDto().parse(
+          updatedIdp,
+          organization,
+        );
+
+        await this.update(id, {
+          idpSlugs: [
+            ...(organization.idpSlugs ?? []).filter((slug) => slug !== idpSlug),
+            newlyUpdatedIdp.slug,
+          ],
+        });
+
+        return newlyUpdatedIdp;
+      }
+    }
+
+    throw new NotFoundException(`Identity provider ${idpSlug} not found`);
+  }
+
+  async getIdp(id: Organization['id'], idpSlug: string) {
+    const organization = await this.getForIdp(id);
+
+    // IMPORTANT: This protects users from accessing IDPs they don't have access to.
+    if (organization.idpSlugs?.includes(idpSlug)) {
+      const idp = await this.keycloakClient.getIdentityProvider(idpSlug);
+
+      if (idp) {
+        return new CreateOrganizationIdpDto().parse(idp, organization);
+      }
+    }
+
+    throw new NotFoundException(`Identity provider ${idpSlug} not found`);
+  }
+
+  async deleteIdp(id: Organization['id'], idpSlug: string) {
+    const organization = await this.getForIdp(id);
+    if (organization.idpSlugs?.includes(idpSlug)) {
+      await this.keycloakClient.deleteIdentityProvider(idpSlug);
+      await this.update(id, {
+        idpSlugs: (organization.idpSlugs ?? []).filter(
+          (slug) => slug !== idpSlug,
+        ),
+      });
+      return;
+    }
+
+    throw new NotFoundException(`Identity provider ${idpSlug} not found`);
+  }
+
   private getCloudFrontUrlSigner() {
     return this.media.getCloudFrontUrlSigner('organization-policies');
+  }
+
+  private async getForIdp(id: Organization['id']) {
+    const qb = this.getQbSingle(id);
+    return await qb
+      .leftJoinAndSelect(`${qb.alias}.units`, 'unit')
+      .getOneOrFail();
   }
 }

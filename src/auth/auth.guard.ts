@@ -13,6 +13,7 @@ import { expressJwtSecret } from 'jwks-rsa';
 import { UserFactory } from './user.factory';
 import { Reflector } from '@nestjs/core';
 import { Jwt } from 'jsonwebtoken';
+import { ClsService } from 'nestjs-cls';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
@@ -26,6 +27,7 @@ export class AuthGuard implements CanActivate {
     private config: ConfigService,
     private userFactory: UserFactory,
     private reflector: Reflector,
+    private cls: ClsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -70,6 +72,8 @@ export class AuthGuard implements CanActivate {
       });
 
       request.user = this.userFactory.fromJwtPayload(payload);
+      this.cls.set('user', request.user);
+      this.cls.set('ip', request.ip);
     } catch (e) {
       this.logger.error('Error validating JWT token', e);
 

@@ -1,10 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
-  Injectable,
   Logger,
-  Scope,
 } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import { SendTrainingLinksDto } from './dto/send-training-links.dto';
@@ -17,13 +14,10 @@ import { ConfigService } from '@nestjs/config';
 import { ItemsService } from 'src/training/items/items.service';
 import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
 import { plainToInstance } from 'class-transformer';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
 import { LEVEL } from 'src/auth/permissions';
-import { DataSource, In, Repository, SelectQueryBuilder } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { getOrganizationLevel } from 'src/organizations/common/organizations.utils';
-import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { format as csvFormat } from '@fast-csv/format';
 import { WatchStatsQueryDto } from './dto/watch-stats-query.dto';
 import { UnitsService } from 'src/organizations/units/units.service';
@@ -35,24 +29,24 @@ import { CoursesService } from 'src/training/courses/courses.service';
 import { WatchStat } from './entities/watch-stat.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Paginated } from 'src/common/dto/paginated.dto';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
-@Injectable({ scope: Scope.REQUEST })
 export class TrainingAdminService {
   logger = new Logger(TrainingAdminService.name);
 
   constructor(
     @InjectQueue(NOTIFICATIONS_QUEUE_NAME) private notificationsQueue: Queue,
-    @Inject(REQUEST) private request: Request,
     @InjectRepository(WatchStat)
     private watchStatsRepository: Repository<WatchStat>,
-    private readonly dataSource: DataSource,
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
     private readonly coursesService: CoursesService,
     private readonly itemsService: ItemsService,
     private readonly unitsService: UnitsService,
+    private readonly cls: ClsService<CommonClsStore>,
   ) {}
 
   /**
@@ -61,6 +55,8 @@ export class TrainingAdminService {
    * @param data Data used to build tokens and send training links to given emails.
    */
   async sendTrainingLinks(data: SendTrainingLinksDto) {
+    const user = this.cls.get('user');
+
     const {
       trainingTokenValues,
       trainingUrlTemplate,
@@ -69,7 +65,7 @@ export class TrainingAdminService {
     } = data;
 
     // Ensure user information is available.
-    if (!this.request.user) {
+    if (!user) {
       throw new ForbiddenException('User not found');
     }
 
@@ -100,17 +96,17 @@ export class TrainingAdminService {
 
     let tokenAddIns: Partial<TrainingParticipantRepresentationDto> = {};
     if (
-      this.request.user.hasPermission(LEVEL.ORGANIZATION) ||
-      this.request.user.hasPermission(LEVEL.UNIT)
+      user.hasPermission(LEVEL.ORGANIZATION) ||
+      user.hasPermission(LEVEL.UNIT)
     ) {
-      if (!this.request.user.unitSlug) {
+      if (!user.unitSlug) {
         throw new ForbiddenException('Missing user information.');
       }
 
       availableUnitSlugs.push(
         ...(await this.unitsService.findAll()).map((u) => u.slug),
       );
-    } else if (!this.request.user.hasPermission(LEVEL.ADMIN)) {
+    } else if (!user.hasPermission(LEVEL.ADMIN)) {
       throw new ForbiddenException();
     }
 
@@ -124,7 +120,7 @@ export class TrainingAdminService {
         ...tokenAddIns,
       };
 
-      if (!this.request.user?.hasPermission(LEVEL.ADMIN)) {
+      if (!user?.hasPermission(LEVEL.ADMIN)) {
         if (!availableUnitSlugs.includes(preparedValue.unitSlug)) {
           throw new BadRequestException('Invalid unit provided.');
         }
@@ -334,7 +330,8 @@ export class TrainingAdminService {
     unitSlug?: string | string[];
     organizationSlug?: string | string[];
   }) {
-    const organizationLevel = getOrganizationLevel(this.request);
+    const user = this.cls.get('user');
+    const organizationLevel = getOrganizationLevel(user);
 
     let unitSlugs = Array.isArray(query.unitSlug)
       ? query.unitSlug
@@ -348,10 +345,7 @@ export class TrainingAdminService {
         : [];
 
     if (organizationLevel === LEVEL.UNIT) {
-      const availableUnits = [
-        this.request.user!.unitSlug!,
-        ...(this.request.user?.peerUnits ?? []),
-      ];
+      const availableUnits = [user!.unitSlug!, ...(user?.peerUnits ?? [])];
       unitSlugs = (unitSlugs ?? []).filter((slug) =>
         availableUnits.includes(slug),
       );
@@ -363,10 +357,10 @@ export class TrainingAdminService {
       organizationLevel === LEVEL.ORGANIZATION ||
       organizationLevel === LEVEL.UNIT
     ) {
-      if (!this.request.user?.organizationSlug) {
+      if (!user?.organizationSlug) {
         throw new ForbiddenException('Missing user information.');
       }
-      organizationSlugs = [this.request.user.organizationSlug];
+      organizationSlugs = [user.organizationSlug];
     }
 
     return [

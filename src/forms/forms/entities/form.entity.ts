@@ -17,10 +17,10 @@ import {
   ManyToOne,
 } from 'typeorm';
 import { FormSubmission } from './form-submission.entity';
-import { Request } from 'express';
 import { isIPv4, isIPv6 } from 'net';
 import { BadRequestException } from '@nestjs/common';
 import { Language } from 'src/languages/entities/language.entity';
+import { StatelessUser } from 'src/auth/user.factory';
 
 export enum FormState {
   DRAFT = 'draft',
@@ -140,7 +140,8 @@ export class Form extends Base {
 
   validateSubmission(
     submission: DeepPartial<FormSubmission>,
-    request?: Request,
+    user?: StatelessUser,
+    ip?: string,
   ) {
     submission.form = this;
 
@@ -180,16 +181,13 @@ export class Form extends Base {
 
     submission.fieldResponses = validFieldResponses;
 
-    if (request) {
-      submission.userId = request.user?.id ?? null;
+    submission.userId = user?.id ?? null;
 
-      // Add IP address if possible.
-      const ip = request.ip;
-      if (ip && isIPv4(ip)) {
-        submission.ipv4 = ip;
-      } else if (ip && isIPv6(ip)) {
-        submission.ipv6 = ip;
-      }
+    // Add IP address if possible.
+    if (ip && isIPv4(ip)) {
+      submission.ipv4 = ip;
+    } else if (ip && isIPv6(ip)) {
+      submission.ipv6 = ip;
     }
 
     return submission;

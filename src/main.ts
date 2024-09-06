@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import { HelmetConfig } from './config/helmet.config';
 import { ConfigService } from '@nestjs/config';
 import { CorsConfig } from './config/cors.config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 declare global {
   namespace Express {
@@ -17,7 +18,7 @@ declare global {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Get config service.
   const configService = app.get(ConfigService);

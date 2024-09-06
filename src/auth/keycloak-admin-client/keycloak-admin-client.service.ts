@@ -1,11 +1,23 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { KeycloakAdminClientConfig } from 'src/config/keycloak.config';
 import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
 import type GroupRepresentation from '@keycloak/keycloak-admin-client/lib/defs/groupRepresentation';
 import merge from 'deepmerge';
+import { CreateIdpDto } from '../dto/create-idp.dto';
 
 export const KEYCLOAK_ADMIN_CLIENT = 'keycloak-admin-client';
+
+type SyncAttributeType =
+  | 'map-attribute'
+  | 'match-attribute-to-group'
+  | 'default-group'
+  | 'default-attribute';
 
 const refreshAuth = async (
   client: KeycloakAdminClient,
@@ -97,5 +109,151 @@ export class KeycloakAdminClientService {
     }
 
     return newGroup as GroupRepresentation & { id: string };
+  }
+
+  async createIdentityProvider(createIdpDto: CreateIdpDto) {
+    await this.client.identityProviders
+      .create(createIdpDto.build())
+      .catch((e) => {
+        if (e.response) {
+          if (e.response.status === 409) {
+            throw new BadRequestException(
+              `Identity provider already exists with slug ${createIdpDto.slug}`,
+            );
+          }
+
+          throw new Error(
+            `Failed to create IDP [Status ${e.response.status}]: ${e.response.statusText}`,
+          );
+        }
+        throw e;
+      });
+
+    try {
+      // Create mappers.
+      await Promise.all(
+        createIdpDto.buildMappers().map(async (mapper) =>
+          this.client.identityProviders.createMapper({
+            alias: createIdpDto.slug,
+            identityProviderMapper: mapper,
+          }),
+        ),
+      );
+    } catch (e) {
+      // Undo creation of IDP if creating mappers fails.
+      await this.client.identityProviders.del({ alias: createIdpDto.slug });
+      throw e;
+    }
+
+    const newIdp = await this.getIdentityProvider(createIdpDto.slug);
+
+    if (!newIdp) {
+      throw new Error('Failed to create IDP');
+    }
+
+    return newIdp;
+  }
+
+  async updateIdentityProvider(slug: string, updateIdpDto: CreateIdpDto) {
+    await this.client.identityProviders
+      .update({ alias: slug }, updateIdpDto.build())
+      .catch((e) => {
+        if (e.response) {
+          if (e.response.status === 409) {
+            throw new BadRequestException(
+              `Identity provider already exists with slug ${updateIdpDto.slug}`,
+            );
+          } else if (e.response.status === 404) {
+            throw new NotFoundException(
+              `Identity provider not found with slug ${slug}`,
+            );
+          }
+
+          throw new Error(
+            `Failed to update IDP [Status ${e.response.status}]: ${e.response.statusText}`,
+          );
+        }
+        throw e;
+      });
+
+    const existingMappers = await this.client.identityProviders.findMappers({
+      alias: updateIdpDto.slug,
+    });
+    const newMappers = updateIdpDto.buildMappers();
+    const toDelete = existingMappers
+      .filter(
+        (existingMapper) =>
+          !newMappers.some((newMapper) => newMapper.id === existingMapper.id),
+      )
+      .map((mapper) => mapper.id)
+      .filter((id) => !!id) as string[];
+    const toCreate = newMappers
+      .filter(
+        (newMapper) =>
+          !existingMappers.some(
+            (existingMapper) => newMapper.id === existingMapper.id,
+          ),
+      )
+      .map((mapper) => mapper);
+    const toUpdate = newMappers
+      .filter((newMapper) =>
+        existingMappers.some(
+          (existingMapper) => newMapper.id === existingMapper.id,
+        ),
+      )
+      .map((mapper) => mapper);
+
+    if (toDelete.length > 0) {
+      await Promise.all(
+        toDelete.map((id) =>
+          this.client.identityProviders.delMapper({ alias: slug, id }),
+        ),
+      );
+    }
+
+    if (toCreate.length > 0) {
+      await Promise.all(
+        toCreate.map((mapper) =>
+          this.client.identityProviders.createMapper({
+            alias: slug,
+            identityProviderMapper: mapper,
+          }),
+        ),
+      );
+    }
+
+    if (toUpdate.length > 0) {
+      await Promise.all(
+        toUpdate.map(
+          (mapper) =>
+            mapper.id &&
+            this.client.identityProviders.updateMapper(
+              { alias: slug, id: mapper.id },
+              mapper,
+            ),
+        ),
+      );
+    }
+
+    return await this.getIdentityProvider(updateIdpDto.slug);
+  }
+
+  async getIdentityProvider(slug: string) {
+    const [newIdp, newMappers] = await Promise.all([
+      this.client.identityProviders.findOne({
+        alias: slug,
+      }),
+      this.client.identityProviders.findMappers({ alias: slug }),
+    ]);
+
+    if (!newIdp) {
+      return;
+    }
+
+    return new CreateIdpDto().parse(newIdp, newMappers);
+  }
+
+  async deleteIdentityProvider(slug: string) {
+    await this.client.identityProviders.del({ alias: slug });
   }
 }

@@ -1,4 +1,3 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Unit } from './entities/unit.entity';
@@ -10,19 +9,18 @@ import {
   UNIT_CHANGED_EVENT,
   UNIT_REMOVED_EVENT,
 } from '../listeners/organization-change.listener';
-import { Request } from 'express';
-import { REQUEST } from '@nestjs/core';
 import { getOrganizationLevel } from '../common/organizations.utils';
 import { LEVEL } from 'src/auth/permissions';
 import { MediaService } from 'src/media/media.service';
+import { ClsService } from 'nestjs-cls';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
 
-@Injectable({ scope: Scope.REQUEST })
 export class UnitsService extends BaseEntityService<Unit> {
   alias = 'unit';
 
   constructor(
     @InjectRepository(Unit) private unitsRepository: Repository<Unit>,
-    @Inject(REQUEST) private request: Request,
+    private readonly cls: ClsService<CommonClsStore>,
     private eventEmitter: EventEmitter2,
     private media: MediaService,
   ) {
@@ -34,6 +32,7 @@ export class UnitsService extends BaseEntityService<Unit> {
   }
 
   getQb(query?: BaseQueryDto) {
+    const user = this.cls.get('user');
     let qb = super
       .getQb(query)
       .leftJoinAndSelect('unit.organization', 'organization');
@@ -45,23 +44,21 @@ export class UnitsService extends BaseEntityService<Unit> {
         'policiesAndProcedure',
       );
 
-    switch (getOrganizationLevel(this.request)) {
+    switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:
         return qb;
       case LEVEL.ORGANIZATION:
         return qb
           .leftJoinAndSelect(`${qb.alias}.organization`, 'org_organization')
           .andWhere('org_organization.slug = :organizationSlug', {
-            organizationSlug: this.request.user?.organizationSlug,
+            organizationSlug: user?.organizationSlug,
           });
       default:
-        return this.request.user?.unitSlug
+        return user?.unitSlug
           ? qb.andWhere('unit.slug IN (:...unitSlug)', {
               unitSlug: [
-                ...(this.request.user?.unitSlug
-                  ? [this.request.user?.unitSlug]
-                  : []),
-                ...(this.request.user?.peerUnits ?? []),
+                ...(user?.unitSlug ? [user?.unitSlug] : []),
+                ...(user?.peerUnits ?? []),
               ],
             })
           : qb.where('1 = 0');
@@ -69,12 +66,14 @@ export class UnitsService extends BaseEntityService<Unit> {
   }
 
   getUserUnit() {
-    if (!this.request.user?.unitSlug) {
+    const user = this.cls.get('user');
+
+    if (!user?.unitSlug) {
       return Promise.resolve(null);
     }
 
     return this.getRepository().findOneBy({
-      slug: this.request.user.unitSlug,
+      slug: user.unitSlug,
     });
   }
 
