@@ -29,17 +29,6 @@ async function bootstrap() {
   // Configure Helmet, for CSP and other headers.
   app.use(helmet(configService.getOrThrow<HelmetConfig>('helmet')));
 
-  // Validate all data and queries from incoming requests.
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
-
   // Filter and translate TypeORM errors.
   app.useGlobalFilters(new TypeORMErrorsFilter());
 

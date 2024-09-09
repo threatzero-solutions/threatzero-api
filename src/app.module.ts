@@ -19,7 +19,7 @@ import { FormsModule } from './forms/forms.module';
 import { MediaModule } from './media/media.module';
 import { UsersModule } from './users/users.module';
 import { AwsModule } from './aws/aws.module';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import Redis from 'ioredis';
 import { BullModule } from '@nestjs/bullmq';
 import { ConnectionOptions as BullMQConnectionOptions } from 'bullmq';
@@ -33,6 +33,7 @@ import { LanguagesModule } from './languages/languages.module';
 import helmetConfig from './config/helmet.config';
 import corsConfig from './config/cors.config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ScopedValidationPipe } from './common/scoped-validation.pipe';
 
 @Module({
   imports: [
@@ -117,6 +118,11 @@ import { ScheduleModule } from '@nestjs/schedule';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_PIPE,
+      // Validate all data and queries from incoming requests.
+      useClass: ScopedValidationPipe,
     },
   ],
 })

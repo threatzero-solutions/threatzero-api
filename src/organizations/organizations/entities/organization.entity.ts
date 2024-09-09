@@ -30,6 +30,8 @@ export class Organization extends OrganizationBase {
   @Column({ nullable: true, type: 'jsonb' })
   idpSlugs: string[] | null;
 
+  // TODO: This is not being used yet. Could be used to control which role groups
+  // organizations can access.
   @Column({ nullable: true, type: 'jsonb' })
   allowedRoleGroups: string[] | null;
 

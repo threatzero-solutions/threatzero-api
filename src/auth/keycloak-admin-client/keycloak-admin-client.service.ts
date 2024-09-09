@@ -10,14 +10,10 @@ import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
 import type GroupRepresentation from '@keycloak/keycloak-admin-client/lib/defs/groupRepresentation';
 import merge from 'deepmerge';
 import { CreateIdpDto } from '../dto/create-idp.dto';
+import { type NetworkError } from '@keycloak/keycloak-admin-client';
 
 export const KEYCLOAK_ADMIN_CLIENT = 'keycloak-admin-client';
-
-type SyncAttributeType =
-  | 'map-attribute'
-  | 'match-attribute-to-group'
-  | 'default-group'
-  | 'default-attribute';
+let KCNetworkError: typeof NetworkError | undefined;
 
 const refreshAuth = async (
   client: KeycloakAdminClient,
@@ -36,13 +32,21 @@ const refreshAuth = async (
   });
 };
 
-export async function loadKeycloakAdminClient() {
+async function loadKeycloakModule() {
   try {
-    return (await eval("import('@keycloak/keycloak-admin-client')"))
-      .default as typeof import('@keycloak/keycloak-admin-client').default;
+    return (await eval(
+      "import('@keycloak/keycloak-admin-client')",
+    )) as typeof import('@keycloak/keycloak-admin-client');
   } catch (error) {
-    return (await import('@keycloak/keycloak-admin-client')).default;
+    return await import('@keycloak/keycloak-admin-client');
   }
+}
+
+export async function loadKeycloakAdminClient() {
+  const { default: KeycloakAdminClient, NetworkError } =
+    await loadKeycloakModule();
+  KCNetworkError = NetworkError;
+  return KeycloakAdminClient;
 }
 
 export const keycloakAdminClientFactory = async (config: ConfigService) => {
@@ -243,7 +247,16 @@ export class KeycloakAdminClientService {
       this.client.identityProviders.findOne({
         alias: slug,
       }),
-      this.client.identityProviders.findMappers({ alias: slug }),
+      this.client.identityProviders.findMappers({ alias: slug }).catch((e) => {
+        if (
+          KCNetworkError &&
+          e instanceof KCNetworkError &&
+          e.response.status === 404
+        ) {
+          return [];
+        }
+        throw e;
+      }),
     ]);
 
     if (!newIdp) {
