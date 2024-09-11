@@ -62,6 +62,10 @@ export class CreateOrganizationIdpDto {
   @Expose({ groups: ['admin'] })
   defaultRoleGroups?: string[];
 
+  @IsString()
+  @IsOptional()
+  defaultAudience?: string | null;
+
   @IsObject()
   @IsNotEmpty()
   importedConfig: Record<string, string>;
@@ -152,6 +156,14 @@ export class CreateOrganizationIdpDto {
       }),
     );
 
+    if (this.defaultAudience && allowedAudiences.has(this.defaultAudience)) {
+      defaultGroups.push(
+        plainToInstance(SyncDefaultGroupDto, {
+          groupPath: `/Audiences/${this.defaultAudience}`,
+        }),
+      );
+    }
+
     return plainToInstance(CreateIdpDto, {
       slug: this.slug,
       name: this.name,
@@ -213,6 +225,12 @@ export class CreateOrganizationIdpDto {
       )
       .map((defaultGroup) => defaultGroup.groupPath.split('/').pop())
       .filter((v) => !!v) as string[];
+    this.defaultAudience = createIdpDto.defaultGroups
+      .filter((defaultGroup) =>
+        defaultGroup.groupPath.startsWith('/Audiences/'),
+      )
+      .map((defaultGroup) => defaultGroup.groupPath.split('/').pop())
+      .filter((v) => !!v)[0];
     this.importedConfig = createIdpDto.importedConfig;
 
     return this;
