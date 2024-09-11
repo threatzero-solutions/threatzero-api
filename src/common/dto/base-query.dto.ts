@@ -51,10 +51,7 @@ export class BaseQueryDto {
         order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
       );
       if (_qb.alias !== tableAlias) {
-        retQb = _qb.addSelect(
-          `${tableAlias}.${columnName}`,
-          order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
-        );
+        retQb = _qb.addSelect(`${tableAlias}.${columnName}`);
       }
     });
 
