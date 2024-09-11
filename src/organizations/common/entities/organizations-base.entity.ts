@@ -1,14 +1,6 @@
 import { Base } from 'src/common/base.entity';
 import { SafetyContact } from 'src/safety-management/common/entities/safety-contact.entity';
-import { OrganizationPolicyFile } from 'src/safety-management/common/entities/organization-policy-file.entity';
-import {
-  Index,
-  Column,
-  Relation,
-  OneToOne,
-  JoinColumn,
-  OneToMany,
-} from 'typeorm';
+import { Index, Column, Relation, OneToOne, JoinColumn } from 'typeorm';
 
 export class OrganizationBase extends Base {
   @Index()

@@ -34,6 +34,7 @@ import helmetConfig from './config/helmet.config';
 import corsConfig from './config/cors.config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ScopedValidationPipe } from './common/scoped-validation.pipe';
+import { ScopedClassSerializerInterceptor } from './common/scoped-class-serializer.interceptor';
 
 @Module({
   imports: [
@@ -113,7 +114,7 @@ import { ScopedValidationPipe } from './common/scoped-validation.pipe';
     AppService,
     {
       provide: APP_INTERCEPTOR,
-      useClass: ClassSerializerInterceptor,
+      useClass: ScopedClassSerializerInterceptor,
     },
     {
       provide: APP_GUARD,

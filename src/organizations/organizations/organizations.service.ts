@@ -17,17 +17,21 @@ import { IdpProtocol } from 'src/auth/dto/create-idp.dto';
 import { ClsService } from 'nestjs-cls';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
+import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { KeycloakConfig } from 'src/config/keycloak.config';
 
 export class OrganizationsService extends BaseEntityService<Organization> {
+  private logger = new Logger(OrganizationsService.name);
+
   constructor(
     @InjectRepository(Organization)
     private organizationsRepository: Repository<Organization>,
     private readonly cls: ClsService<CommonClsStore>,
-    private eventEmitter: EventEmitter2,
-    private media: MediaService,
-    private keycloakClient: KeycloakAdminClientService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly media: MediaService,
+    private readonly keycloakClient: KeycloakAdminClientService,
+    private readonly config: ConfigService,
   ) {
     super();
   }
@@ -67,6 +71,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       case LEVEL.ADMIN:
         return qb
           .leftJoinAndSelect(`${qb.alias}.courses`, 'course')
+          .leftJoinAndSelect(`course.audiences`, 'audience')
           .leftJoinAndSelect(`${qb.alias}.resources`, 'resource');
       default:
         return qb;
@@ -141,12 +146,15 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     updateOrganizationIdpDto: CreateOrganizationIdpDto,
   ) {
     const organization = await this.getForIdp(id);
+    const existingIdp = await this.getIdp(id, idpSlug);
+
+    existingIdp.merge(updateOrganizationIdpDto);
 
     // IMPORTANT: This protects users from accessing IDPs they don't have access to.
     if (organization.idpSlugs?.includes(idpSlug)) {
       const updatedIdp = await this.keycloakClient.updateIdentityProvider(
         idpSlug,
-        updateOrganizationIdpDto.build(organization),
+        existingIdp.build(organization),
       );
 
       if (updatedIdp) {
@@ -197,6 +205,36 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     }
 
     throw new NotFoundException(`Identity provider ${idpSlug} not found`);
+  }
+
+  async getRoleGroups(id: Organization['id']) {
+    const user = this.cls.get('user');
+    if (!user) {
+      return [];
+    }
+
+    if (getOrganizationLevel(user) === LEVEL.ADMIN) {
+      const parentRoleGroupsGroupId =
+        this.config.getOrThrow<KeycloakConfig>(
+          'keycloak',
+        ).parentRoleGroupsGroupId;
+
+      if (!parentRoleGroupsGroupId) {
+        this.logger.error(
+          'Failed to find Role Groups parent group: Missing parent role groups group id',
+        );
+        return [];
+      }
+
+      return await this.keycloakClient.client.groups
+        .listSubGroups({ parentId: parentRoleGroupsGroupId })
+        .then((subgroups) =>
+          subgroups.map((subgroup) => subgroup.name ?? 'Unknown'),
+        );
+    }
+
+    const organization = await this.getForIdp(id);
+    return organization.allowedRoleGroups ?? [];
   }
 
   private getCloudFrontUrlSigner() {

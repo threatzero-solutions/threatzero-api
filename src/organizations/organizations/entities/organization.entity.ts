@@ -1,3 +1,4 @@
+import { Expose } from 'class-transformer';
 import { OrganizationBase } from 'src/organizations/common/entities/organizations-base.entity';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
@@ -44,5 +45,15 @@ export class Organization extends OrganizationBase {
     }
 
     return this;
+  }
+
+  @Expose()
+  get allowedAudiences() {
+    return (
+      this.courses?.reduce((acc, course) => {
+        course.audiences?.forEach((audience) => acc.add(audience.slug));
+        return acc;
+      }, new Set<string>()) || new Set<string>()
+    );
   }
 }

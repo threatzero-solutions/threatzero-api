@@ -15,6 +15,7 @@ import { SyncDefaultGroupDto } from './idp-mappers/sync-default-group.dto';
 import { SyncDefaultAttributeDto } from './idp-mappers/sync-default-attribute.dto';
 import IdentityProviderRepresentation from '@keycloak/keycloak-admin-client/lib/defs/identityProviderRepresentation';
 import IdentityProviderMapperRepresentation from '@keycloak/keycloak-admin-client/lib/defs/identityProviderMapperRepresentation';
+import { DeepPartial } from 'typeorm';
 
 export const IdpProtocols = ['oidc', 'saml'] as const;
 export type IdpProtocol = (typeof IdpProtocols)[number];
@@ -72,6 +73,8 @@ export class CreateIdpDto {
         ['home.idp.discovery.domains']: this.domains.join('##'),
         syncMode: 'FORCE',
         hideOnLoginPage: true,
+        entityId: 'https://auth.threatzero.org/realms/threatzero',
+        allowCreate: 'true',
       },
     };
   }
@@ -97,6 +100,15 @@ export class CreateIdpDto {
     }
 
     return this;
+  }
+
+  public merge(other: Partial<CreateIdpDto>) {
+    const originalConfig = this.importedConfig;
+    Object.assign(this, other);
+    this.importedConfig = {
+      ...originalConfig,
+      ...(other.importedConfig ?? {}),
+    };
   }
 
   public buildMappers(): IdentityProviderMapperRepresentation[] {

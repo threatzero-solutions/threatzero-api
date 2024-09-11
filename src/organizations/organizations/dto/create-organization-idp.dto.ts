@@ -1,4 +1,4 @@
-import { plainToInstance, Type } from 'class-transformer';
+import { Expose, plainToInstance, Type } from 'class-transformer';
 import {
   Matches,
   Length,
@@ -7,6 +7,7 @@ import {
   IsIn,
   IsObject,
   ValidateNested,
+  IsOptional,
 } from 'class-validator';
 import {
   CreateIdpDto,
@@ -20,10 +21,8 @@ import { BadRequestException } from '@nestjs/common';
 import { SyncGroupFromAttributeDto } from 'src/auth/dto/idp-mappers/sync-group-from-attribute.dto';
 import { SyncDefaultAttributeDto } from 'src/auth/dto/idp-mappers/sync-default-attribute.dto';
 import { SyncDefaultGroupDto } from 'src/auth/dto/idp-mappers/sync-default-group.dto';
-
-export const ALLOWED_DEFAULT_ROLE_GROUPS = ['Training Participant'] as const;
-export type AllowedDefaultRoleGroups =
-  (typeof ALLOWED_DEFAULT_ROLE_GROUPS)[number];
+import { AudienceMatcherDto } from './audience-matcher.dto';
+import { RoleGroupMatcherDto } from './role-group-matcher.dto';
 
 export class CreateOrganizationIdpDto {
   @Matches(/^[a-z0-9-]+$/)
@@ -47,14 +46,31 @@ export class CreateOrganizationIdpDto {
   @Type(() => UnitMatcherDto)
   unitMatchers: UnitMatcherDto[];
 
+  @ValidateNested()
+  @Type(() => AudienceMatcherDto)
+  audienceMatchers: AudienceMatcherDto[];
+
+  @ValidateNested()
+  @Type(() => RoleGroupMatcherDto)
+  @IsOptional()
+  @Expose({ groups: ['admin'] })
+  roleGroupMatchers?: RoleGroupMatcherDto[];
+
   @IsString({ each: true })
   @IsNotEmpty({ each: true })
-  @IsIn(ALLOWED_DEFAULT_ROLE_GROUPS, { each: true })
-  defaultRoleGroups: string[];
+  @IsOptional()
+  @Expose({ groups: ['admin'] })
+  defaultRoleGroups?: string[];
 
   @IsObject()
   @IsNotEmpty()
   importedConfig: Record<string, string>;
+
+  public merge(other: CreateOrganizationIdpDto) {
+    const originalConfig = this.importedConfig;
+    Object.assign(this, other);
+    this.importedConfig = { ...originalConfig, ...other.importedConfig };
+  }
 
   public build(organization: Organization): CreateIdpDto {
     const syncAttributes: SyncAttributeDto[] = [];
@@ -80,8 +96,9 @@ export class CreateOrganizationIdpDto {
       );
     }
 
-    const syncGroupsFromAttributes: SyncGroupFromAttributeDto[] =
-      this.unitMatchers.map((unitMatcher) => {
+    const allowedAudiences = organization.allowedAudiences;
+    const syncGroupsFromAttributes: SyncGroupFromAttributeDto[] = [
+      ...this.unitMatchers.map((unitMatcher) => {
         const unit = organization.units.find(
           (u) => u.slug === unitMatcher.unitSlug,
         );
@@ -97,7 +114,28 @@ export class CreateOrganizationIdpDto {
           pattern: unitMatcher.pattern,
           groupPath: `/Organizations/${organization.name}/${unit.name}`,
         });
-      });
+      }),
+      ...this.audienceMatchers
+        .filter((audienceMatcher) =>
+          allowedAudiences.has(audienceMatcher.audience),
+        )
+        .map((audienceMatcher) => {
+          return plainToInstance(SyncGroupFromAttributeDto, {
+            id: audienceMatcher.attributeId,
+            externalName: audienceMatcher.externalName,
+            pattern: audienceMatcher.pattern,
+            groupPath: `/Audiences/${audienceMatcher.audience}`,
+          });
+        }),
+      ...(this.roleGroupMatchers ?? []).map((roleGroupMatcher) => {
+        return plainToInstance(SyncGroupFromAttributeDto, {
+          id: roleGroupMatcher.attributeId,
+          externalName: roleGroupMatcher.externalName,
+          pattern: roleGroupMatcher.pattern,
+          groupPath: `/Role Groups/${roleGroupMatcher.roleGroup}`,
+        });
+      }),
+    ];
 
     const defaultAttributes: SyncDefaultAttributeDto[] = [
       plainToInstance(SyncDefaultAttributeDto, {
@@ -106,11 +144,12 @@ export class CreateOrganizationIdpDto {
       }),
     ];
 
-    const defaultGroups: SyncDefaultGroupDto[] = this.defaultRoleGroups.map(
-      (defaultRoleGroup) =>
-        plainToInstance(SyncDefaultGroupDto, {
-          groupPath: `/Role Groups/${defaultRoleGroup}`,
-        }),
+    const defaultGroups: SyncDefaultGroupDto[] = (
+      this.defaultRoleGroups ?? []
+    ).map((defaultRoleGroup) =>
+      plainToInstance(SyncDefaultGroupDto, {
+        groupPath: `/Role Groups/${defaultRoleGroup}`,
+      }),
     );
 
     return plainToInstance(CreateIdpDto, {
@@ -132,6 +171,7 @@ export class CreateOrganizationIdpDto {
     this.protocol = createIdpDto.protocol;
     this.domains = createIdpDto.domains;
     this.unitMatchers = createIdpDto.syncGroupsFromAttributes
+      .filter((attribute) => attribute.groupPath.startsWith('/Organizations/'))
       .map((attribute) => {
         const unit = organization.units.find(
           (u) => u.name === attribute.groupPath.split('/').pop(),
@@ -147,7 +187,30 @@ export class CreateOrganizationIdpDto {
         }
       })
       .filter((v) => !!v) as UnitMatcherDto[];
+    this.audienceMatchers = createIdpDto.syncGroupsFromAttributes
+      .filter((attribute) => attribute.groupPath.startsWith('/Audiences/'))
+      .map((attribute) =>
+        plainToInstance(AudienceMatcherDto, {
+          audience: attribute.groupPath.split('/').pop(),
+          externalName: attribute.externalName,
+          pattern: attribute.pattern,
+          attributeId: attribute.id,
+        }),
+      );
+    this.roleGroupMatchers = createIdpDto.syncGroupsFromAttributes
+      .filter((attribute) => attribute.groupPath.startsWith('/Role Groups/'))
+      .map((attribute) =>
+        plainToInstance(RoleGroupMatcherDto, {
+          roleGroup: attribute.groupPath.split('/').pop(),
+          externalName: attribute.externalName,
+          pattern: attribute.pattern,
+          attributeId: attribute.id,
+        }),
+      );
     this.defaultRoleGroups = createIdpDto.defaultGroups
+      .filter((defaultGroup) =>
+        defaultGroup.groupPath.startsWith('/Role Groups/'),
+      )
       .map((defaultGroup) => defaultGroup.groupPath.split('/').pop())
       .filter((v) => !!v) as string[];
     this.importedConfig = createIdpDto.importedConfig;

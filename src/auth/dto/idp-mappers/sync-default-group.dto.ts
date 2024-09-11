@@ -13,7 +13,7 @@ export class SyncDefaultGroupDto extends BaseMapperDto {
     return BaseMapperDto.mergeMappers(baseMapper, {
       // Same for both saml and oidc
       identityProviderMapper: 'oidc-hardcoded-group-idp-mapper',
-      name: `Default Group ${this.groupPath.split('/').pop()} Mapper`,
+      name: `Default Group ${this.groupPath.replace(/\//g, ' ')} Mapper`,
       config: {
         group: this.groupPath,
       },

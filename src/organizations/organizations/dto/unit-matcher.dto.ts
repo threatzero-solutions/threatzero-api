@@ -1,18 +1,7 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { BaseMatcherDto } from './base-matcher.dto';
 
-export class UnitMatcherDto {
-  @IsString()
-  @IsOptional()
-  attributeId?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  externalName: string;
-
-  @IsString()
-  @IsNotEmpty()
-  pattern: string;
-
+export class UnitMatcherDto extends BaseMatcherDto {
   @IsString()
   @IsNotEmpty()
   unitSlug: string;

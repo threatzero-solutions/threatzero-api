@@ -69,6 +69,10 @@ export class KeycloakConfig {
   @IsString()
   @IsNotEmpty()
   parentAudiencesGroupId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  parentRoleGroupsGroupId: string;
 }
 
 export default registerAs('keycloak', () =>
@@ -90,5 +94,6 @@ export default registerAs('keycloak', () =>
     parentOrganizationsGroupId:
       process.env.KEYCLOAK_PARENT_ORGANIZATIONS_GROUP_ID,
     parentAudiencesGroupId: process.env.KEYCLOAK_PARENT_AUDIENCES_GROUP_ID,
+    parentRoleGroupsGroupId: process.env.KEYCLOAK_PARENT_ROLE_GROUPS_GROUP_ID,
   }),
 );
