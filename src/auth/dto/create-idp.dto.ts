@@ -69,7 +69,10 @@ export class CreateIdpDto {
       config: {
         ...this.importedConfig,
         // Imported config overrides
-        loginHint: 'true',
+
+        // Disable login hint. Many IDPs don't support it, some even
+        // failing to work when set to true.
+        loginHint: 'false',
         ['home.idp.discovery.domains']: this.domains.join('##'),
         syncMode: 'FORCE',
         hideOnLoginPage: true,
