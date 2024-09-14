@@ -1,5 +1,5 @@
 # Builder image
-FROM node:20 as builder
+FROM node:22 as builder
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -18,7 +18,7 @@ COPY . .
 RUN npm run build
 
 # Final image
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
