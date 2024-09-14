@@ -1,5 +1,5 @@
 # Builder image
-FROM node:22 as builder
+FROM node:22 AS builder
 
 # Create app directory
 WORKDIR /usr/src/app

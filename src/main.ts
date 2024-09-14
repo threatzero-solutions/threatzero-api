@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { CorsConfig } from './config/cors.config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
-declare module 'Express' {
+declare module 'express' {
   export interface Request {
     user?: StatelessUser;
   }
