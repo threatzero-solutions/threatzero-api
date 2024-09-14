@@ -5,17 +5,16 @@ import {
   IsString,
   registerDecorator,
   ValidationOptions,
-  ValidationArguments,
 } from 'class-validator';
 export function IsNotExpired(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'isNotExpired',
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,
       validator: {
-        validate(value: any, args: ValidationArguments) {
+        validate(value: any) {
           return value > new Date();
         },
       },

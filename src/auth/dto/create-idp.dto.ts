@@ -2,7 +2,6 @@ import {
   IsIn,
   IsNotEmpty,
   IsObject,
-  IsOptional,
   IsString,
   Length,
   Matches,
@@ -15,7 +14,6 @@ import { SyncDefaultGroupDto } from './idp-mappers/sync-default-group.dto';
 import { SyncDefaultAttributeDto } from './idp-mappers/sync-default-attribute.dto';
 import IdentityProviderRepresentation from '@keycloak/keycloak-admin-client/lib/defs/identityProviderRepresentation';
 import IdentityProviderMapperRepresentation from '@keycloak/keycloak-admin-client/lib/defs/identityProviderMapperRepresentation';
-import { DeepPartial } from 'typeorm';
 
 export const IdpProtocols = ['oidc', 'saml'] as const;
 export type IdpProtocol = (typeof IdpProtocols)[number];

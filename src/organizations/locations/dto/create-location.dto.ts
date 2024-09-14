@@ -4,7 +4,6 @@ import {
   MaxLength,
   IsString,
   IsNotEmpty,
-  IsEmpty,
   IsOptional,
 } from 'class-validator';
 import { SaveByIdDto } from 'src/common/dto.utils';

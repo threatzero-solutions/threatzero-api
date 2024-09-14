@@ -12,15 +12,15 @@ export class Paginated<T> {
     query: BaseQueryDto,
     mapResults: (e: T[]) => Promise<T[]> = (r) => Promise.resolve(r),
   ) {
-    let [results, count] = await qb.getManyAndCount();
+    const [results, count] = await qb.getManyAndCount();
 
-    results = await mapResults(results);
+    const mappedResults = await mapResults(results);
 
     const p = new Paginated<T>();
 
-    p.results = results;
+    p.results = mappedResults;
     p.count = count;
-    p.limit = results.length;
+    p.limit = mappedResults.length;
     p.offset = query.offset;
 
     return p;

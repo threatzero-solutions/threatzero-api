@@ -25,7 +25,7 @@ export class ResourcesService extends BaseEntityService<ResourceItem> {
 
   getQb(query?: BaseQueryDto) {
     const user = this.cls.get('user');
-    let qb = super.getQb(query);
+    const qb = super.getQb(query);
 
     switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:

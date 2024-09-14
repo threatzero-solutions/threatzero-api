@@ -14,7 +14,6 @@ import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { Unit } from './entities/unit.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
-import { BaseQueryOrganizationsDto } from '../common/dto/base-query-organizations';
 import { QueryUnitsDto } from './dto/query-units.dto';
 
 @Controller('organizations/units')

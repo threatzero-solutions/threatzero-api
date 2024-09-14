@@ -11,7 +11,9 @@ describe('ViolentIncidentReportsController', () => {
       providers: [ViolentIncidentReportsService],
     }).compile();
 
-    controller = module.get<ViolentIncidentReportsController>(ViolentIncidentReportsController);
+    controller = module.get<ViolentIncidentReportsController>(
+      ViolentIncidentReportsController,
+    );
   });
 
   it('should be defined', () => {

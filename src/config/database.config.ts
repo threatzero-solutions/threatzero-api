@@ -4,7 +4,6 @@ import {
   IsIn,
   IsNotEmpty,
   IsOptional,
-  IsPort,
   IsPositive,
   IsString,
   ValidateNested,
@@ -28,7 +27,7 @@ class DatabaseTlsOptions implements TlsOptions {
 export class DatabaseConfig implements PostgresConnectionOptions {
   @IsIn(['postgres'])
   @IsOptional()
-  type: 'postgres' = 'postgres';
+  type: 'postgres' = 'postgres' as const;
 
   @IsString()
   @IsOptional()

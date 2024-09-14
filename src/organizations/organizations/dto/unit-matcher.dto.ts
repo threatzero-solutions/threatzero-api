@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 import { BaseMatcherDto } from './base-matcher.dto';
 
 export class UnitMatcherDto extends BaseMatcherDto {

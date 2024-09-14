@@ -144,6 +144,7 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
 
       async getPresignedUploadUrls(
         getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         ...args: any[]
       ) {
         return this.formsService.getPresignedUploadUrls(

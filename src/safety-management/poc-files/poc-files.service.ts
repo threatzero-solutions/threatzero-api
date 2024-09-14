@@ -29,7 +29,7 @@ export class POCFilesService extends BaseEntityService<POCFile> {
 
   getQb(query?: BaseQueryDto) {
     const user = this.cls.get('user');
-    let qb = super
+    const qb = super
       .getQb(query)
       .leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit')
       .leftJoinAndSelect(`${super.getQb().alias}.peerUnits`, 'peerUnit')

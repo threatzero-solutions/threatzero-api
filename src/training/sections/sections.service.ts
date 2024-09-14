@@ -7,7 +7,6 @@ import { MediaService } from 'src/media/media.service';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { ClsService } from 'nestjs-cls';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
-import { StatelessUser } from 'src/auth/user.factory';
 
 export class SectionsService extends BaseEntityService<TrainingSection> {
   alias = 'section';

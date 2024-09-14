@@ -94,7 +94,7 @@ export class TrainingAdminService {
     // Filter down and auto-populate input if possible for users who are not system admins.
     const availableUnitSlugs: string[] = [];
 
-    let tokenAddIns: Partial<TrainingParticipantRepresentationDto> = {};
+    const tokenAddIns: Partial<TrainingParticipantRepresentationDto> = {};
     if (
       user.hasPermission(LEVEL.ORGANIZATION) ||
       user.hasPermission(LEVEL.UNIT)
@@ -176,7 +176,7 @@ export class TrainingAdminService {
     query.unitSlug = unitSlugs;
     query.organizationSlug = organizationSlugs;
 
-    let qb = this.usersService.getTrainingTokensQb(query);
+    const qb = this.usersService.getTrainingTokensQb(query);
     const al = qb.alias;
     qb.leftJoinAndMapOne(
       `${al}.watchStat`,

@@ -30,6 +30,7 @@ export class BaseEntityService<E extends ObjectLiteral> {
     return Promise.all(entities.map((e) => this.mapResult(e)));
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getQb(query?: BaseQueryDto, ...args: unknown[]): SelectQueryBuilder<E> {
     let qb = this.getRepository().createQueryBuilder(this.alias);
 
@@ -104,10 +105,16 @@ export class BaseEntityService<E extends ObjectLiteral> {
     return Paginated.fromQb(qb, query, (r) => this.mapResults(r));
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async beforeCreate(createEntityDto: DeepPartial<E>, ...args: unknown[]) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async afterCreate(entity: E, ...args: unknown[]) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async beforeUpdate(entity: E, ...args: unknown[]) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async afterUpdate(entity: E, ...args: unknown[]) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async beforeRemove(id: E['id'], ...args: unknown[]) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async afterRemove(id: E['id'], ...args: unknown[]) {}
 }

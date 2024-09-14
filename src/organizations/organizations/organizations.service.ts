@@ -65,7 +65,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
 
   getQbSingle(id: string) {
     const user = this.cls.get('user');
-    let qb = super.getQbSingle(id);
+    const qb = super.getQbSingle(id);
 
     switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:

@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
 import { type StatelessUser } from './auth/user.factory';
 import { TypeORMErrorsFilter } from './common/typeorm-errors.filter';
 import helmet from 'helmet';
@@ -9,11 +8,9 @@ import { ConfigService } from '@nestjs/config';
 import { CorsConfig } from './config/cors.config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
-declare global {
-  namespace Express {
-    export interface Request {
-      user?: StatelessUser;
-    }
+declare module 'Express' {
+  export interface Request {
+    user?: StatelessUser;
   }
 }
 

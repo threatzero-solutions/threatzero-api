@@ -30,7 +30,7 @@ export class LocationsService extends BaseEntityService<Location> {
 
   getQb(query?: BaseQueryDto) {
     const user = this.cls.get('user');
-    let qb = super.getQb(query).leftJoinAndSelect('location.unit', 'unit');
+    const qb = super.getQb(query).leftJoinAndSelect('location.unit', 'unit');
 
     switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:

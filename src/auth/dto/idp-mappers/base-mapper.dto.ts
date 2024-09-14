@@ -9,6 +9,7 @@ export class BaseMapperDto {
 
   public build(
     alias: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     protocol: IdpProtocol,
   ): IdentityProviderMapperRepresentation {
     return {

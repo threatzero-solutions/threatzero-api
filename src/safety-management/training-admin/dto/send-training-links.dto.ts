@@ -5,7 +5,6 @@ import {
   IsUUID,
   Validate,
   ValidateNested,
-  ValidationArguments,
   ValidatorConstraint,
   ValidatorConstraintInterface,
 } from 'class-validator';
@@ -13,11 +12,11 @@ import { ViewingUserRepresentationDto } from 'src/media/dto/viewing-user-represe
 
 @ValidatorConstraint({ name: 'ContainsTokenPlaceholder', async: false })
 export class ContainsTokenPlaceholder implements ValidatorConstraintInterface {
-  validate(text: string, args: ValidationArguments) {
+  validate(text: string) {
     return text.includes('{trainingItemId}') && text.includes('{token}');
   }
 
-  defaultMessage(args: ValidationArguments) {
+  defaultMessage() {
     return "Missing either training item placeholder '{trainingItemId}' or token placeholder '{token}' in training link template.";
   }
 }

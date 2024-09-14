@@ -11,7 +11,9 @@ describe('ThreatAssessmentsController', () => {
       providers: [ThreatAssessmentsService],
     }).compile();
 
-    controller = module.get<ThreatAssessmentsController>(ThreatAssessmentsController);
+    controller = module.get<ThreatAssessmentsController>(
+      ThreatAssessmentsController,
+    );
   });
 
   it('should be defined', () => {

@@ -36,7 +36,7 @@ export class FieldsService extends BaseEntityService<Field> {
   }
 
   async beforeRemove(id: string): Promise<void> {
-    const [existingField, form] = await this.getFieldAndForm(id);
+    const form = (await this.getFieldAndForm(id))[1];
     if (form && form.state === FormState.PUBLISHED) {
       throw new BadRequestException('Cannot delete field from published form.');
     }

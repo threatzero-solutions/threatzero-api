@@ -25,7 +25,7 @@ class KeycloakAdminClientConnectionConfig implements ConnectionConfig {
 class KeycloakAdminClientAuthConfig implements Credentials {
   @IsIn(['client_credentials'])
   @IsOptional()
-  grantType: 'client_credentials' = 'client_credentials';
+  grantType: 'client_credentials' = 'client_credentials' as const;
 
   @IsString()
   @IsNotEmpty()

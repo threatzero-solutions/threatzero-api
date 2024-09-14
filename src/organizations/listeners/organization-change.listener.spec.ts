@@ -9,7 +9,9 @@ describe('OrganizationChangeListener', () => {
       providers: [OrganizationChangeListener],
     }).compile();
 
-    provider = module.get<OrganizationChangeListener>(OrganizationChangeListener);
+    provider = module.get<OrganizationChangeListener>(
+      OrganizationChangeListener,
+    );
   });
 
   it('should be defined', () => {

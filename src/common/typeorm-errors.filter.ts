@@ -1,5 +1,5 @@
 import { ExceptionFilter, Catch, ArgumentsHost, Logger } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { EntityNotFoundError, QueryFailedError, TypeORMError } from 'typeorm';
 import { DatabaseError } from 'pg';
 
@@ -10,7 +10,6 @@ export class TypeORMErrorsFilter implements ExceptionFilter {
   catch(exception: TypeORMError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
 
     let status = 500;
     let message = 'Internal server error';

@@ -38,7 +38,7 @@ export class FieldGroupsService extends BaseEntityService<FieldGroup> {
   }
 
   async beforeRemove(id: string): Promise<void> {
-    const [existingGroup, form] = await this.getGroupAndForm(id);
+    const form = (await this.getGroupAndForm(id))[1];
     if (form && form.state === FormState.PUBLISHED) {
       throw new BadRequestException('Cannot delete group from published form.');
     }

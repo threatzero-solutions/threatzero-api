@@ -1,12 +1,9 @@
 import { Transform, Type } from 'class-transformer';
 import {
   IsIn,
-  IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  Min,
   ValidateNested,
 } from 'class-validator';
 import {

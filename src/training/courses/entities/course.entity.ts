@@ -1,4 +1,3 @@
-import { Exclude } from 'class-transformer';
 import { Base } from 'src/common/base.entity';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Audience } from 'src/training/audiences/entities/audience.entity';

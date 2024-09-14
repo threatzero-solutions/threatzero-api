@@ -18,14 +18,14 @@ import { firstValueFrom, map } from 'rxjs';
 
 const PDF_TABLE_LAYOUTS: { [key: string]: CustomTableLayout } = {
   valueBox: {
-    paddingTop: (i, node) => 7,
-    paddingRight: (i, node) => 7,
-    paddingBottom: (i, node) => 7,
-    paddingLeft: (i, node) => 7,
-    hLineColor: (i, node) => '#888',
-    vLineColor: (i, node) => '#888',
-    hLineWidth: (i, node) => 0.5,
-    vLineWidth: (i, node) => 0.5,
+    paddingTop: () => 7,
+    paddingRight: () => 7,
+    paddingBottom: () => 7,
+    paddingLeft: () => 7,
+    hLineColor: () => '#888',
+    vLineColor: () => '#888',
+    hLineWidth: () => 0.5,
+    vLineWidth: () => 0.5,
   },
 };
 
