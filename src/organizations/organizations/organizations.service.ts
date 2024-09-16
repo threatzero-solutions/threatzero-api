@@ -72,6 +72,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
         return qb
           .leftJoinAndSelect(`${qb.alias}.courses`, 'course')
           .leftJoinAndSelect(`course.audiences`, 'audience')
+          .leftJoinAndSelect(`course.presentableBy`, 'presentableBy')
           .leftJoinAndSelect(`${qb.alias}.resources`, 'resource');
       default:
         return qb;
