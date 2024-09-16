@@ -52,6 +52,7 @@ export class Organization extends OrganizationBase {
     return (
       this.courses?.reduce((acc, course) => {
         course.audiences?.forEach((audience) => acc.add(audience.slug));
+        course.presentableBy?.forEach((audience) => acc.add(audience.slug));
         return acc;
       }, new Set<string>()) || new Set<string>()
     );
