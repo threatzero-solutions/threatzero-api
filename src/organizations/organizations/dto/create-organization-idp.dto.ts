@@ -23,6 +23,10 @@ import { SyncDefaultAttributeDto } from 'src/auth/dto/idp-mappers/sync-default-a
 import { SyncDefaultGroupDto } from 'src/auth/dto/idp-mappers/sync-default-group.dto';
 import { AudienceMatcherDto } from './audience-matcher.dto';
 import { RoleGroupMatcherDto } from './role-group-matcher.dto';
+import {
+  ALLOWED_IMPORTED_ATTRIBUTES,
+  AllowedImportedAttribute,
+} from '../constants';
 
 export class CreateOrganizationIdpDto {
   @Matches(/^[a-z0-9-]+$/)
@@ -56,6 +60,11 @@ export class CreateOrganizationIdpDto {
   @Expose({ groups: ['admin'] })
   roleGroupMatchers?: RoleGroupMatcherDto[];
 
+  @ValidateNested()
+  @Type(() => SyncAttributeDto)
+  @IsOptional()
+  syncAttributes?: SyncAttributeDto[];
+
   @IsString({ each: true })
   @IsNotEmpty({ each: true })
   @IsOptional()
@@ -77,28 +86,42 @@ export class CreateOrganizationIdpDto {
   }
 
   public build(organization: Organization): CreateIdpDto {
-    const syncAttributes: SyncAttributeDto[] = [];
-    if (this.protocol === 'saml') {
-      syncAttributes.push(
-        plainToInstance(SyncAttributeDto, {
-          externalName: 'lastname',
-          internalName: 'lastName',
-        }),
-      );
-      syncAttributes.push(
-        plainToInstance(SyncAttributeDto, {
-          externalName: 'firstname',
-          internalName: 'firstName',
-        }),
-      );
-    } else {
-      syncAttributes.push(
-        plainToInstance(SyncAttributeDto, {
-          externalName: 'picture',
-          internalName: 'picture',
-        }),
-      );
-    }
+    // Prepare default sync attributes.
+    const defaultSyncAttributes: SyncAttributeDto[] =
+      this.protocol === 'saml'
+        ? [
+            plainToInstance(SyncAttributeDto, {
+              externalName: 'lastname',
+              internalName: 'lastName',
+            }),
+            plainToInstance(SyncAttributeDto, {
+              externalName: 'firstname',
+              internalName: 'firstName',
+            }),
+          ]
+        : [
+            plainToInstance(SyncAttributeDto, {
+              externalName: 'picture',
+              internalName: 'picture',
+            }),
+          ];
+
+    // Allow only certain sync attributes.
+    const syncAttributes: SyncAttributeDto[] = (
+      this.syncAttributes ?? []
+    )?.filter((attribute) =>
+      ALLOWED_IMPORTED_ATTRIBUTES.includes(
+        attribute.internalName as AllowedImportedAttribute,
+      ),
+    );
+
+    defaultSyncAttributes.forEach((attribute) => {
+      if (
+        !syncAttributes.find((a) => a.internalName === attribute.internalName)
+      ) {
+        syncAttributes.push(attribute);
+      }
+    });
 
     const allowedAudiences = organization.allowedAudiences;
     const syncGroupsFromAttributes: SyncGroupFromAttributeDto[] = [
@@ -182,6 +205,7 @@ export class CreateOrganizationIdpDto {
     this.name = createIdpDto.name;
     this.protocol = createIdpDto.protocol;
     this.domains = createIdpDto.domains;
+    this.syncAttributes = createIdpDto.syncAttributes;
     this.unitMatchers = createIdpDto.syncGroupsFromAttributes
       .filter((attribute) => attribute.groupPath.startsWith('/Organizations/'))
       .map((attribute) => {
