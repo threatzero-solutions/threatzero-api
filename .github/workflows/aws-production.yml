@@ -6,7 +6,7 @@ on:
 jobs:
   deploy-production:
     name: Deploy / Production
-    uses: ./.github/workflows/.deploy-aws.yml
+    uses: threatzero-solutions/github-workflows/.github/workflows/deploy-aws.yml@main
     with:
       environment: production
       image_tag_suffix: '-prod'

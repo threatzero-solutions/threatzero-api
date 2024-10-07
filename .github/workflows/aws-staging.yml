@@ -7,7 +7,7 @@ on:
 jobs:
   deploy-staging:
     name: Deploy / Staging
-    uses: ./.github/workflows/.deploy-aws.yml
+    uses: threatzero-solutions/github-workflows/.github/workflows/deploy-aws.yml@main
     with:
       environment: staging
     secrets: inherit
