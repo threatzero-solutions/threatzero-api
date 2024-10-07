@@ -4,24 +4,10 @@ on:
   push:
     branches: ['main']
 
-env:
-  ECR_REPOSITORY: threatzero-api
-  ECS_SERVICE: threatzero-api
-  ECS_CLUSTER: staging
-  ECS_TASK_DEFINITION_FAMILY: threatzero-api-staging
-  CONTAINER_NAME: threatzero-api
-
 jobs:
   deploy-staging:
     name: Deploy / Staging
     uses: ./.github/workflows/.deploy-aws.yml
     with:
       environment: staging
-      ecr_repository: ${{ env.ECR_REPOSITORY }}
-      ecs_service: ${{ env.ECS_SERVICE }}
-      ecs_cluster: ${{ env.ECS_CLUSTER }}
-      ecs_task_definition_family: ${{ env.ECS_TASK_DEFINITION_FAMILY }}
-      container_name: ${{ env.CONTAINER_NAME }}
-    secrets:
-      aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    secrets: inherit

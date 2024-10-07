@@ -37,36 +37,10 @@ on:
         description: Environment to deploy to
         type: string
         required: true
-      aws_region:
-        type: string
-        required: false
-        default: us-west-2
-      ecr_repository:
-        type: string
-        required: true
-      ecs_service:
-        type: string
-        required: true
-      ecs_cluster:
-        type: string
-        required: true
-      ecs_task_definition_family:
-        type: string
-        required: true
       image_tag_suffix:
         type: string
         required: false
         default: ''
-      container_name:
-        type: string
-        required: true
-    secrets:
-      aws_access_key_id:
-        type: string
-        required: true
-      aws_secret_access_key:
-        type: string
-        required: true
 
 permissions:
   contents: read
@@ -84,9 +58,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.aws_access_key_id }}
-          aws-secret-access-key: ${{ secrets.aws_secret_access_key }}
-          aws-region: ${{ inputs.aws_region }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -109,14 +83,14 @@ jobs:
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition-family: ${{ inputs.ecs_task_definition_family }}
-          container-name: ${{ inputs.container_name }}
+          task-definition-family: ${{ env.ECS_TASK_DEFINITION_FAMILY }}
+          container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.build-image.outputs.image }}
 
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ inputs.ecs_service }}
-          cluster: ${{ inputs.ecs_cluster }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
