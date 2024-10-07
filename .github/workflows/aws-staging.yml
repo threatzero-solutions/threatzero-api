@@ -1,4 +1,4 @@
-name: Deploy to Amazon ECS
+name: AWS Deploy / Staging
 
 on:
   push:
@@ -12,12 +12,11 @@ env:
   CONTAINER_NAME: threatzero-api
 
 jobs:
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    environment: production
+  deploy-staging:
+    name: Deploy / Staging
     uses: ./.github/workflows/.deploy-aws.yml
     with:
+      environment: staging
       ecr_repository: ${{ env.ECR_REPOSITORY }}
       ecs_service: ${{ env.ECS_SERVICE }}
       ecs_cluster: ${{ env.ECS_CLUSTER }}

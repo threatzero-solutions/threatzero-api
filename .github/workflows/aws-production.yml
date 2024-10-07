@@ -1,4 +1,4 @@
-name: Deploy to Amazon ECS
+name: AWS Deploy / Production
 
 on:
   workflow_dispatch:
@@ -11,12 +11,11 @@ env:
   CONTAINER_NAME: threatzero-api
 
 jobs:
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    environment: production
+  deploy-production:
+    name: Deploy / Production
     uses: ./.github/workflows/.deploy-aws.yml
     with:
+      environment: production
       ecr_repository: ${{ env.ECR_REPOSITORY }}
       ecs_service: ${{ env.ECS_SERVICE }}
       ecs_cluster: ${{ env.ECS_CLUSTER }}
