@@ -30,7 +30,7 @@
     "@aws-sdk/s3-request-presigner": "^3.534.0",
     "@casl/ability": "^6.7.0",
     "@fast-csv/format": "^5.0.0",
-    "@keycloak/keycloak-admin-client": "^24.0.1",
+    "@keycloak/keycloak-admin-client": "^26.0.0",
     "@nestjs/axios": "^3.0.2",
     "@nestjs/bullmq": "^10.1.0",
     "@nestjs/cache-manager": "^2.2.1",

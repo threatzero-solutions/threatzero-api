@@ -1,7 +1,7 @@
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import {
   ORGANIZATION_CHANGED_EVENT,
   ORGANIZATION_REMOVED_EVENT,
@@ -20,6 +20,9 @@ import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
 import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { KeycloakConfig } from 'src/config/keycloak.config';
+import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
+import { plainToInstance } from 'class-transformer';
+import { OrganizationUserDto } from './dto/organization-user.dto';
 
 export class OrganizationsService extends BaseEntityService<Organization> {
   private logger = new Logger(OrganizationsService.name);
@@ -64,24 +67,28 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   }
 
   getQbSingle(id: string) {
-    const user = this.cls.get('user');
-    const qb = super.getQbSingle(id);
+    return this.prepareQbSingle(super.getQbSingle(id));
+  }
 
-    switch (getOrganizationLevel(user)) {
-      case LEVEL.ADMIN:
-        return qb
-          .leftJoinAndSelect(`${qb.alias}.courses`, 'course')
-          .leftJoinAndSelect(`course.audiences`, 'audience')
-          .leftJoinAndSelect(`course.presentableBy`, 'presentableBy')
-          .leftJoinAndSelect(`${qb.alias}.resources`, 'resource');
-      default:
-        return qb;
-    }
+  prepareQbSingle(qb: SelectQueryBuilder<Organization>) {
+    return qb
+      .leftJoinAndSelect(`${qb.alias}.courses`, 'course')
+      .leftJoinAndSelect(`course.audiences`, 'audience')
+      .leftJoinAndSelect(`course.presentableBy`, 'presentableBy')
+      .leftJoinAndSelect(`${qb.alias}.resources`, 'resource');
   }
 
   async mapResult(organization: Organization) {
     organization = organization.sign(this.getCloudFrontUrlSigner());
     return organization;
+  }
+
+  async findOneBySlug(slug: Organization['slug']) {
+    const r = await this.prepareQbSingle(
+      this.getQb().andWhere({ slug }),
+    ).getOneOrFail();
+
+    return await this.mapResult(r);
   }
 
   async afterCreate(organization: Organization) {
@@ -236,6 +243,40 @@ export class OrganizationsService extends BaseEntityService<Organization> {
 
     const organization = await this.getForIdp(id);
     return organization.allowedRoleGroups ?? [];
+  }
+
+  async getOrganizationUsers(
+    id: Organization['id'],
+    query: OrganizationUserQueryDto,
+  ) {
+    const organization = await this.getQbSingle(id).getOneOrFail();
+    const q = `organization:${organization.slug}`;
+
+    const [count, users] = await Promise.all([
+      this.keycloakClient.client.users.count({
+        q,
+      }),
+      this.keycloakClient.client.users
+        .find({
+          q,
+          max: query.limit,
+          first: query.offset,
+        })
+        .then((users) =>
+          users.map((user) =>
+            plainToInstance(OrganizationUserDto, user, {
+              excludeExtraneousValues: true,
+            }),
+          ),
+        ),
+    ]);
+
+    return {
+      results: users,
+      count,
+      limit: query.limit,
+      offset: query.offset,
+    };
   }
 
   private getCloudFrontUrlSigner() {

@@ -22,6 +22,7 @@ import { BaseQueryOrganizationsDto } from '../common/dto/base-query-organization
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { IdpProtocol, IdpProtocols } from 'src/auth/dto/create-idp.dto';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
+// import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
 
 @Controller('organizations/organizations')
 @CheckPolicies(new EntityAbilityChecker(Organization))
@@ -36,6 +37,11 @@ export class OrganizationsController {
   @Get()
   findAll(@Query() query: BaseQueryOrganizationsDto) {
     return this.organizationsService.findAll(query);
+  }
+
+  @Get('slug/:slug')
+  findOneBySlug(@Param('slug') slug: string) {
+    return this.organizationsService.findOneBySlug(slug);
   }
 
   @Get(':id')
@@ -55,6 +61,11 @@ export class OrganizationsController {
   remove(@Param('id') id: string) {
     return this.organizationsService.remove(id);
   }
+
+  // @Get(':id/users')
+  // getUsers(@Param('id') id: string, @Query() query: OrganizationUserQueryDto) {
+  //   return this.organizationsService.getOrganizationUsers(id, query);
+  // }
 
   @Post(':id/idps/load-imported-config/:protocol')
   @UseInterceptors(AnyFilesInterceptor())
