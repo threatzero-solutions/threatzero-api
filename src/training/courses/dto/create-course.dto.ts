@@ -1,4 +1,5 @@
 import {
+  IsDateString,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -20,6 +21,14 @@ export class CreateCourseDto {
   @IsOptional()
   @IsEnum(TrainingVisibility)
   visibility: TrainingVisibility;
+
+  @IsNotEmpty()
+  @IsDateString()
+  startDate: string;
+
+  @IsNotEmpty()
+  @IsDateString()
+  endDate: string;
 
   @Type(() => SaveByIdDto<Audience>)
   @IsOptional()

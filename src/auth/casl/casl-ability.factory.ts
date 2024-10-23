@@ -28,6 +28,7 @@ import { ViolentIncidentReport } from 'src/safety-management/violent-incident-re
 import { Language } from 'src/languages/entities/language.entity';
 import { SendTrainingLinksDto } from 'src/safety-management/training-admin/dto/send-training-links.dto';
 import { WatchStatsDto } from 'src/safety-management/training-admin/dto/watch-stats.dto';
+import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 
@@ -53,6 +54,7 @@ const SafetyManagementSubjects = [
   POCFile,
   ViolentIncidentReport,
   WatchStatsDto,
+  ItemCompletion,
   SendTrainingLinksDto,
 ];
 type SafetyManagementSubjectTypes = InferSubjects<
@@ -118,7 +120,7 @@ export class CaslAbilityFactory {
 
     // --------- SAFETY MANAGEMENT ---------
     if (user.hasPermission(READ.TRAINING_STATS)) {
-      can(Action.Read, WatchStatsDto);
+      can(Action.Read, [WatchStatsDto, ItemCompletion]);
     }
 
     if (user.hasPermission(WRITE.TRAINING_LINKS)) {

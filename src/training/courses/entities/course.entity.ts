@@ -29,11 +29,20 @@ export class TrainingCourse extends Base {
   })
   visibility: TrainingVisibility;
 
+  // Keep start month and start day to not break watch stats.
+  // TODO: Once watch stats are transferred over completely to "ItemCompletion", we can remove
+  // both watch stats and start month and start day.
   @Column({ type: 'smallint', nullable: true })
   startMonth: number | null;
 
   @Column({ type: 'smallint', nullable: true })
   startDay: number | null;
+
+  @Column({ type: 'date', nullable: true })
+  startDate: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  endDate: string | null;
 
   @OneToMany(() => TrainingSection, (section) => section.course, {
     eager: true,

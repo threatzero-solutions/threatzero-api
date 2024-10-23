@@ -19,6 +19,6 @@ import { memoryStorage } from 'multer';
   ],
   controllers: [OrganizationsController],
   providers: [OrganizationsService],
-  exports: [TypeOrmModule],
+  exports: [TypeOrmModule, OrganizationsService],
 })
 export class OrganizationsModule {}

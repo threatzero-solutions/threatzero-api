@@ -2,6 +2,8 @@ import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import { Unit } from '../units/entities/unit.entity';
 import { LEVEL } from 'src/auth/permissions';
 import { StatelessUser } from 'src/auth/user.factory';
+import { ForbiddenException } from '@nestjs/common';
+import { asArray, collapseArray } from 'src/common/utils';
 
 export const getOrganizationLevel = (user: StatelessUser | undefined) => {
   if (user?.hasPermission(LEVEL.ADMIN)) {
@@ -14,6 +16,46 @@ export const getOrganizationLevel = (user: StatelessUser | undefined) => {
   } else if (user?.hasPermission(LEVEL.UNIT) && user?.unitSlug) {
     return LEVEL.UNIT;
   }
+};
+
+export const getAllowedOrganizationUnits = (
+  user: StatelessUser | undefined | null,
+  query?: {
+    unitSlug?: string | string[];
+    organizationSlug?: string | string[];
+  },
+) => {
+  const organizationLevel = getOrganizationLevel(user ?? undefined);
+
+  let requestedUnitSlugs = asArray(query?.unitSlug);
+  let requestedOrganizationSlugs = asArray(query?.organizationSlug);
+
+  if (organizationLevel === LEVEL.UNIT) {
+    const availableUnits = [user!.unitSlug!, ...(user?.peerUnits ?? [])];
+    requestedUnitSlugs = (requestedUnitSlugs ?? []).filter((slug) =>
+      availableUnits.includes(slug),
+    );
+
+    if (!requestedUnitSlugs.length) {
+      requestedUnitSlugs = availableUnits;
+    }
+  }
+
+  if (
+    organizationLevel === LEVEL.ORGANIZATION ||
+    organizationLevel === LEVEL.UNIT
+  ) {
+    if (!user?.organizationSlug) {
+      throw new ForbiddenException('Missing user information.');
+    }
+    requestedOrganizationSlugs = [user.organizationSlug];
+  }
+
+  return {
+    unitSlugs: collapseArray(requestedUnitSlugs),
+    organizationSlugs: collapseArray(requestedOrganizationSlugs),
+    level: organizationLevel,
+  };
 };
 
 export const scopeToOrganizationLevel = <

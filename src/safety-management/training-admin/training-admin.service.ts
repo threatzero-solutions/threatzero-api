@@ -17,7 +17,7 @@ import { plainToInstance } from 'class-transformer';
 import { LEVEL } from 'src/auth/permissions';
 import { In, Repository } from 'typeorm';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
-import { getOrganizationLevel } from 'src/organizations/common/organizations.utils';
+import { getAllowedOrganizationUnits } from 'src/organizations/common/organizations.utils';
 import { format as csvFormat } from '@fast-csv/format';
 import { WatchStatsQueryDto } from './dto/watch-stats-query.dto';
 import { UnitsService } from 'src/organizations/units/units.service';
@@ -171,8 +171,10 @@ export class TrainingAdminService {
   }
 
   findTrainingLinksQb(query: TrainingTokenQueryDto) {
-    const [unitSlugs, organizationSlugs] =
-      this.parseAvailableOrganizations(query);
+    const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
+      this.cls.get('user'),
+      query,
+    );
     query.unitSlug = unitSlugs;
     query.organizationSlug = organizationSlugs;
 
@@ -305,8 +307,10 @@ export class TrainingAdminService {
   };
 
   getWatchStatsQb(query: WatchStatsQueryDto) {
-    const [unitSlugs, organizationSlugs] =
-      this.parseAvailableOrganizations(query);
+    const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
+      this.cls.get('user'),
+      query,
+    );
 
     query.unitSlug = unitSlugs ?? undefined;
     query.organizationSlug = organizationSlugs ?? undefined;
@@ -324,48 +328,5 @@ export class TrainingAdminService {
     return this.getWatchStatsQb(query)
       .stream()
       .then((stream) => stream.pipe(csvFormat({ headers: true })));
-  }
-
-  private parseAvailableOrganizations(query: {
-    unitSlug?: string | string[];
-    organizationSlug?: string | string[];
-  }) {
-    const user = this.cls.get('user');
-    const organizationLevel = getOrganizationLevel(user);
-
-    let unitSlugs = Array.isArray(query.unitSlug)
-      ? query.unitSlug
-      : query.unitSlug
-        ? [query.unitSlug]
-        : [];
-    let organizationSlugs = Array.isArray(query.organizationSlug)
-      ? query.organizationSlug
-      : query.organizationSlug
-        ? [query.organizationSlug]
-        : [];
-
-    if (organizationLevel === LEVEL.UNIT) {
-      const availableUnits = [user!.unitSlug!, ...(user?.peerUnits ?? [])];
-      unitSlugs = (unitSlugs ?? []).filter((slug) =>
-        availableUnits.includes(slug),
-      );
-
-      if (!unitSlugs.length) {
-        unitSlugs = availableUnits;
-      }
-    } else if (
-      organizationLevel === LEVEL.ORGANIZATION ||
-      organizationLevel === LEVEL.UNIT
-    ) {
-      if (!user?.organizationSlug) {
-        throw new ForbiddenException('Missing user information.');
-      }
-      organizationSlugs = [user.organizationSlug];
-    }
-
-    return [
-      unitSlugs.length > 1 ? unitSlugs : unitSlugs[0],
-      organizationSlugs.length > 1 ? organizationSlugs : organizationSlugs[0],
-    ];
   }
 }
