@@ -8,7 +8,7 @@ import {
 import { SaveByIdDto } from 'src/common/dto.utils';
 import { TrainingItem } from '../entities/item.entity';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
-import { TrainingCourse } from 'src/training/courses/entities/course.entity';
+import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
 
 export class CreateItemCompletionDto {
   @IsNotEmpty()
@@ -23,8 +23,8 @@ export class CreateItemCompletionDto {
 
   @IsNotEmpty()
   @ValidateNested()
-  @Type(() => SaveByIdDto<TrainingCourse>)
-  course: SaveByIdDto<TrainingCourse>;
+  @Type(() => SaveByIdDto<CourseEnrollment>)
+  enrollment: SaveByIdDto<CourseEnrollment>;
 
   @IsNotEmpty()
   @IsString()

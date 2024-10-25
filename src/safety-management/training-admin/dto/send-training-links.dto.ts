@@ -33,7 +33,7 @@ export class SendTrainingLinksDto {
 
   @IsNotEmpty()
   @IsUUID()
-  trainingCourseId: string;
+  courseEnrollmentId: string;
 
   @IsNotEmpty()
   @IsUUID()

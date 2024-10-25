@@ -4,7 +4,7 @@ import { ViewingUserRepresentationDto } from 'src/media/dto/viewing-user-represe
 export class TrainingParticipantRepresentationDto extends ViewingUserRepresentationDto {
   @IsNotEmpty()
   @IsString()
-  trainingCourseId: string;
+  enrollmentId: string;
 
   @IsNotEmpty()
   @IsString()

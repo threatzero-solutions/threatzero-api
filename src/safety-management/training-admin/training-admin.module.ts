@@ -8,6 +8,7 @@ import { UnitsModule } from 'src/organizations/units/units.module';
 import { CoursesModule } from 'src/training/courses/courses.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WatchStat } from './entities/watch-stat.entity';
+import { OrganizationsModule } from 'src/organizations/organizations/organizations.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { WatchStat } from './entities/watch-stat.entity';
     CoursesModule,
     NotificationsModule,
     UnitsModule,
+    OrganizationsModule,
   ],
   providers: [TrainingAdminService],
   controllers: [TrainingAdminController],

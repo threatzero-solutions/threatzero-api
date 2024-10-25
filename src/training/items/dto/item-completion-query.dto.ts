@@ -18,7 +18,15 @@ export class ItemCompletionQueryOrderDto extends BaseQueryOrderDto {
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  ['course.metadataTitle']?: QueryOrder;
+  ['enrollment.startDate']?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  ['enrollment.endDate']?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  ['enrollment.course.metadataTitle']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
@@ -44,7 +52,11 @@ export class ItemCompletionQueryDto extends BaseQueryDto {
 
   @IsOptional()
   @IsString({ each: true })
-  ['course.id']?: string | string[];
+  ['enrollment.id']?: string | string[];
+
+  @IsOptional()
+  @IsString({ each: true })
+  ['enrollment.course.id']?: string | string[];
 
   @IsOptional()
   @IsString({ each: true })

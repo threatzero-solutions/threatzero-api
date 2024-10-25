@@ -93,7 +93,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     const { user, decodedToken } = await this.getWatcher(watchId);
 
     if (decodedToken) {
-      createItemCompletionDto.course.id = decodedToken.trainingCourseId;
+      createItemCompletionDto.enrollment.id = decodedToken.enrollmentId;
       createItemCompletionDto.item.id = decodedToken.trainingItemId;
     } else {
       // Make sure user has access to item.
@@ -204,7 +204,8 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       .leftJoinAndSelect(`${qb.alias}.item`, 'item')
       .leftJoinAndSelect(`${qb.alias}.organization`, 'organization')
       .leftJoinAndSelect(`${qb.alias}.unit`, 'unit')
-      .leftJoinAndSelect(`${qb.alias}.course`, 'course');
+      .leftJoinAndSelect(`${qb.alias}.enrollment`, 'enrollment')
+      .leftJoinAndSelect(`enrollment.course`, 'course');
 
     const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
       this.cls.get('user'),

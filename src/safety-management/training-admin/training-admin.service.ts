@@ -31,6 +31,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Paginated } from 'src/common/dto/paginated.dto';
 import { ClsService } from 'nestjs-cls';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -46,6 +47,7 @@ export class TrainingAdminService {
     private readonly coursesService: CoursesService,
     private readonly itemsService: ItemsService,
     private readonly unitsService: UnitsService,
+    private readonly organizationsService: OrganizationsService,
     private readonly cls: ClsService<CommonClsStore>,
   ) {}
 
@@ -60,7 +62,7 @@ export class TrainingAdminService {
     const {
       trainingTokenValues,
       trainingUrlTemplate,
-      trainingCourseId,
+      courseEnrollmentId,
       trainingItemId,
     } = data;
 
@@ -69,13 +71,21 @@ export class TrainingAdminService {
       throw new ForbiddenException('User not found');
     }
 
-    // Get training course and item to make sure they exist and to provide training metadata in emails.
-    const trainingCourse = await this.coursesService
-      .findOne(trainingCourseId)
+    // Get enrollment, training course and item to make sure they exist and to provide training metadata in emails.
+    const courseEnrollment = await this.organizationsService
+      .findOneEnrollment(courseEnrollmentId)
       .catch((e) => {
-        this.logger.error('Failed to fetch training course', e);
+        this.logger.error('Failed to fetch course enrollment', e);
         return null;
       });
+
+    const trainingCourse =
+      courseEnrollment &&
+      (await this.coursesService.findOne(courseEnrollment.id).catch((e) => {
+        this.logger.error('Failed to fetch training course', e);
+        return null;
+      }));
+
     const trainingItem = trainingCourse?.sections.reduce(
       (acc, s) => {
         if (!acc) {
@@ -112,10 +122,10 @@ export class TrainingAdminService {
 
     // Prepare token values.
     let preparedTokenValues = trainingTokenValues.map((tokenValue) => {
-      const preparedValue = {
+      const preparedValue: TrainingParticipantRepresentationDto = {
         ...tokenValue,
         expiresOn: dayjs().add(DEFAULT_TOKEN_EXPIRATION_DAYS, 'day').toDate(),
-        trainingCourseId: trainingCourse.id,
+        enrollmentId: courseEnrollmentId,
         trainingItemId: trainingItem.id,
         ...tokenAddIns,
       };

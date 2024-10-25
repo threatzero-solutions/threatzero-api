@@ -17,12 +17,18 @@ import { IdpProtocol } from 'src/auth/dto/create-idp.dto';
 import { ClsService } from 'nestjs-cls';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
-import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { KeycloakConfig } from 'src/config/keycloak.config';
 import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
 import { plainToInstance } from 'class-transformer';
 import { OrganizationUserDto } from './dto/organization-user.dto';
+import { CourseEnrollment } from './entities/course-enrollment.entity';
 
 export class OrganizationsService extends BaseEntityService<Organization> {
   private logger = new Logger(OrganizationsService.name);
@@ -30,6 +36,8 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   constructor(
     @InjectRepository(Organization)
     private organizationsRepository: Repository<Organization>,
+    @InjectRepository(CourseEnrollment)
+    private courseEnrollmentsRepository: Repository<CourseEnrollment>,
     private readonly cls: ClsService<CommonClsStore>,
     private readonly eventEmitter: EventEmitter2,
     private readonly media: MediaService,
@@ -119,6 +127,26 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       ORGANIZATION_REMOVED_EVENT,
       new BaseOrganizationChangeEvent(id),
     );
+  }
+
+  async findOneEnrollment(id: CourseEnrollment['id']) {
+    const qb = this.getEnrollmentsQb().andWhere({ id });
+    return qb.leftJoinAndSelect(`${qb.alias}.course`, 'course').getOneOrFail();
+  }
+
+  private getEnrollmentsQb() {
+    const user = this.cls.get('user');
+
+    if (!user || !user.organizationSlug) {
+      throw new ForbiddenException('Missing user information.');
+    }
+
+    const qb = this.courseEnrollmentsRepository.createQueryBuilder();
+    return qb
+      .leftJoin(`${qb.alias}.organization`, 'organization')
+      .where('organization.slug = :organizationSlug', {
+        organizationSlug: user.organizationSlug,
+      });
   }
 
   async importIdpConfig(

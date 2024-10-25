@@ -213,7 +213,7 @@ export class MediaService {
           viewingUser.unitSlug,
         );
 
-        event.courseId = viewingUser.trainingCourseId;
+        // event.courseId = viewingUser.trainingCourseId;
         event.itemId = viewingUser.trainingItemId;
       }
     }
