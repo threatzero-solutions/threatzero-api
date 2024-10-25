@@ -7,10 +7,11 @@ import { MediaModule } from 'src/media/media.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { CourseEnrollment } from './entities/course-enrollment.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Organization]),
+    TypeOrmModule.forFeature([Organization, CourseEnrollment]),
     MediaModule,
     AuthModule,
     MulterModule.register({

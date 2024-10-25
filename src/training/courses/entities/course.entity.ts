@@ -1,7 +1,9 @@
 import { Base } from 'src/common/base.entity';
+import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Audience } from 'src/training/audiences/entities/audience.entity';
 import { TrainingMetadata } from 'src/training/common/entities/training-metadata.entity';
+import { TrainingVisibility } from 'src/training/common/training.types';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import {
   Entity,
@@ -11,11 +13,6 @@ import {
   ManyToMany,
   JoinTable,
 } from 'typeorm';
-
-export enum TrainingVisibility {
-  VISIBLE = 'visible',
-  HIDDEN = 'hidden',
-}
 
 @Entity()
 export class TrainingCourse extends Base {
@@ -38,12 +35,6 @@ export class TrainingCourse extends Base {
   @Column({ type: 'smallint', nullable: true })
   startDay: number | null;
 
-  @Column({ type: 'date', nullable: true })
-  startDate: string | null;
-
-  @Column({ type: 'date', nullable: true })
-  endDate: string | null;
-
   @OneToMany(() => TrainingSection, (section) => section.course, {
     eager: true,
     cascade: true,
@@ -62,11 +53,8 @@ export class TrainingCourse extends Base {
   @JoinTable()
   presentableBy: Relation<Audience>[];
 
-  @ManyToMany(() => Organization, (organization) => organization.courses, {
-    eager: true,
-  })
-  @JoinTable()
-  organizations: Relation<Organization>[];
+  @OneToMany(() => CourseEnrollment, (enrollment) => enrollment.course)
+  enrollments: Relation<Organization>[];
 
   async loadVideoThumbnails(
     getVimeoThumbnail: (url: string) => Promise<string | null>,

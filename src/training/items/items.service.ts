@@ -193,6 +193,8 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       `user.externalId = ${qb.alias}.userId`,
     );
 
+    console.debug(await qb.getMany());
+
     return Paginated.fromQb(qb, query);
   }
 
@@ -201,7 +203,8 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     qb = qb
       .leftJoinAndSelect(`${qb.alias}.item`, 'item')
       .leftJoinAndSelect(`${qb.alias}.organization`, 'organization')
-      .leftJoinAndSelect(`${qb.alias}.unit`, 'unit');
+      .leftJoinAndSelect(`${qb.alias}.unit`, 'unit')
+      .leftJoinAndSelect(`${qb.alias}.course`, 'course');
 
     const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
       this.cls.get('user'),

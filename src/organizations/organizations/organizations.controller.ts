@@ -11,6 +11,7 @@ import {
   UploadedFiles,
   BadRequestException,
   Put,
+  NotFoundException,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -22,6 +23,7 @@ import { BaseQueryOrganizationsDto } from '../common/dto/base-query-organization
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { IdpProtocol, IdpProtocols } from 'src/auth/dto/create-idp.dto';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
+import { Public } from 'src/auth/auth.guard';
 // import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
 
 @Controller('organizations/organizations')
@@ -42,6 +44,14 @@ export class OrganizationsController {
   @Get('slug/:slug')
   findOneBySlug(@Param('slug') slug: string) {
     return this.organizationsService.findOneBySlug(slug);
+  }
+
+  @Public()
+  @Get('mine')
+  findMyOrganization() {
+    const org = this.organizationsService.findMyOrganization();
+    if (org) return org;
+    throw new NotFoundException();
   }
 
   @Get(':id')

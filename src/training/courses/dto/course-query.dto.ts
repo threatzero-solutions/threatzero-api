@@ -5,10 +5,10 @@ import {
   IsUUID,
   IsString,
 } from 'class-validator';
-import { TrainingVisibility } from '../entities/course.entity';
 import { Type } from 'class-transformer';
 import { CourseQueryOrderDto } from './course-query-order.dto';
 import { BaseQueryTrainingDto } from 'src/training/common/dto/base-query-training.dto';
+import { TrainingVisibility } from 'src/training/common/training.types';
 
 export class CourseQueryDto extends BaseQueryTrainingDto {
   @IsOptional()

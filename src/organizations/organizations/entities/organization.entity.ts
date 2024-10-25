@@ -3,8 +3,8 @@ import { OrganizationBase } from 'src/organizations/common/entities/organization
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { OrganizationPolicyFile } from 'src/safety-management/common/entities/organization-policy-file.entity';
-import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { Entity, Column, OneToMany, Relation, ManyToMany } from 'typeorm';
+import { CourseEnrollment } from './course-enrollment.entity';
 
 @Entity()
 export class Organization extends OrganizationBase {
@@ -17,8 +17,10 @@ export class Organization extends OrganizationBase {
   @OneToMany(() => Unit, (unit) => unit.organization)
   units: Relation<Unit>[];
 
-  @ManyToMany(() => TrainingCourse, (course) => course.organizations)
-  courses: Relation<TrainingCourse>[];
+  @OneToMany(() => CourseEnrollment, (enrollment) => enrollment.organization, {
+    cascade: true,
+  })
+  enrollments: Relation<CourseEnrollment>[];
 
   @ManyToMany(() => ResourceItem, (resource) => resource.organizations)
   resources: Relation<ResourceItem>[];
@@ -50,7 +52,8 @@ export class Organization extends OrganizationBase {
   @Expose()
   get allowedAudiences() {
     return (
-      this.courses?.reduce((acc, course) => {
+      this.enrollments?.reduce((acc, enrollment) => {
+        const course = enrollment.course;
         course.audiences?.forEach((audience) => acc.add(audience.slug));
         course.presentableBy?.forEach((audience) => acc.add(audience.slug));
         return acc;

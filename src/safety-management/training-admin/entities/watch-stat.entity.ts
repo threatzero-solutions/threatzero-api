@@ -4,7 +4,7 @@ import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { UserRepresentation } from 'src/users/entities/user-representation.entity';
-import { DataSource, Index, ViewColumn, ViewEntity } from 'typeorm';
+import { DataSource, ViewColumn, ViewEntity } from 'typeorm';
 
 // Determines maximum distance between watch events that are still considered
 // continous play.
@@ -165,8 +165,6 @@ export const buildWatchStatQb = (dataSource: DataSource) =>
   materialized: true,
   expression: buildWatchStatQb,
 })
-@Index(['organizationSlug', 'unitSlug', 'trainingItemId'])
-@Index(['organizationId', 'unitId', 'trainingItemId'])
 export class WatchStat {
   @ViewColumn()
   trainingItemId: string;
@@ -183,11 +181,9 @@ export class WatchStat {
   @ViewColumn()
   year: number;
 
-  @Index('watch_stat_user_id_idx')
   @ViewColumn()
   userId: string;
 
-  @Index('watch_stat_user_external_id_idx')
   @ViewColumn()
   userExternalId: string;
 
@@ -197,7 +193,6 @@ export class WatchStat {
   @ViewColumn()
   lastName: string;
 
-  @Index('watch_stat_email_idx')
   @ViewColumn()
   email: string;
 

@@ -1,8 +1,8 @@
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
-import { TrainingVisibility } from '../courses/entities/course.entity';
 import { TrainingMetadata } from './entities/training-metadata.entity';
 import { LEVEL, WRITE } from 'src/auth/permissions';
 import { StatelessUser } from 'src/auth/user.factory';
+import { TrainingVisibility } from './training.types';
 
 export const isTrainingAdmin = (user: StatelessUser | undefined) => {
   return user?.hasPermission(LEVEL.ADMIN) && user?.hasPermission(WRITE.COURSES);
@@ -38,14 +38,18 @@ export const filterTraining = <
       `(course_by_audience.slug ${audienceFilter} OR course_by_presentableBy.slug ${audienceFilter})`,
     );
 
-  // Filter by visibility.
+  // Filter by global visibility.
   _qb = _qb.andWhere('course.visibility = :visibility', {
     visibility: TrainingVisibility.VISIBLE,
   });
 
-  // Filter by organization if set.
+  // Filter by organization and organization level visibility.
   _qb = _qb
-    .leftJoin('course.organizations', 'course_by_organization')
+    .leftJoin('course.enrollments', 'course_enrollment')
+    .leftJoin('course_enrollment.organization', 'course_by_organization')
+    .andWhere('course_enrollment.visibility = :visibility', {
+      visibility: TrainingVisibility.VISIBLE,
+    })
     .andWhere('course_by_organization.slug = :organizationSlug', {
       organizationSlug: user?.organizationSlug,
     });

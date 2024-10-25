@@ -72,7 +72,8 @@ export class OrganizationsService extends BaseEntityService<Organization> {
 
   prepareQbSingle(qb: SelectQueryBuilder<Organization>) {
     return qb
-      .leftJoinAndSelect(`${qb.alias}.courses`, 'course')
+      .leftJoinAndSelect(`${qb.alias}.enrollments`, 'enrollment')
+      .leftJoinAndSelect(`enrollment.course`, 'course')
       .leftJoinAndSelect(`course.audiences`, 'audience')
       .leftJoinAndSelect(`course.presentableBy`, 'presentableBy')
       .leftJoinAndSelect(`${qb.alias}.resources`, 'resource');
@@ -89,6 +90,14 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     ).getOneOrFail();
 
     return await this.mapResult(r);
+  }
+
+  async findMyOrganization() {
+    const user = this.cls.get('user');
+    if (!user || !user.organizationSlug) {
+      return;
+    }
+    return await this.findOneBySlug(user.organizationSlug);
   }
 
   async afterCreate(organization: Organization) {
