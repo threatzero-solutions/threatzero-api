@@ -8,5 +8,9 @@ import {
 export class CourseQueryOrderDto extends BaseQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
+  ['metadata.title']: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
   ['audiences.slug']: QueryOrder;
 }

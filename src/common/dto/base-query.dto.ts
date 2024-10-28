@@ -8,6 +8,8 @@ import {
 import { Type } from 'class-transformer';
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import { BaseQueryOrderDto } from './base-query-order.dto';
+import { ColumnMetadata } from 'typeorm/metadata/ColumnMetadata';
+import { Alias } from 'typeorm/query-builder/Alias';
 
 const defaultOrder = new BaseQueryOrderDto();
 defaultOrder.createdOn = 'DESC';
@@ -105,25 +107,56 @@ export class BaseQueryDto {
     );
   }
 
-  private applyJoins<T extends ObjectLiteral>(
+  protected applyJoins<T extends ObjectLiteral>(
     qb: SelectQueryBuilder<T>,
     fieldKey: string,
-  ) {
-    const fields = fieldKey.split('.');
-    const columnName = fields.pop() ?? fieldKey;
+    alias?: Alias,
+  ): [SelectQueryBuilder<T>, string, string] {
+    const columnMetadata = this.getColumnMetadata(
+      fieldKey,
+      alias ?? qb.expressionMap.mainAlias,
+    );
+
+    if (
+      columnMetadata === undefined ||
+      columnMetadata.relationMetadata === undefined
+    ) {
+      return [qb, qb.alias, fieldKey] as const;
+    }
+
     let _qb = qb;
-    let alias = _qb.alias;
-    fields.forEach((f) => {
-      const parts = [f];
-      if (alias) {
-        parts.unshift(alias);
+
+    const relationPath = `${qb.alias}.${columnMetadata.propertyName}`;
+    const relationAlias = `${qb.alias}_${columnMetadata.propertyName}`;
+
+    let existinAlias = _qb.expressionMap.aliases.find(
+      (a) => a.name === relationAlias || a.name === columnMetadata.propertyName,
+    );
+
+    if (!existinAlias) {
+      _qb = _qb.leftJoin(relationPath, relationAlias);
+      existinAlias = _qb.expressionMap.findAliasByName(relationAlias);
+    }
+
+    const nextFieldKey = fieldKey.slice(columnMetadata.propertyName.length + 1);
+    return this.applyJoins(_qb, nextFieldKey, existinAlias);
+  }
+
+  protected getColumnMetadata(
+    fieldKey: string,
+    alias: Alias | undefined,
+  ): ColumnMetadata | undefined {
+    const fields = fieldKey.split('.');
+
+    let columnMetadata: ColumnMetadata | undefined = undefined;
+    if (alias) {
+      columnMetadata = alias.metadata.findColumnWithPropertyPath(fieldKey);
+
+      if (!columnMetadata) {
+        columnMetadata = alias.metadata.findColumnWithPropertyPath(fields[0]);
       }
-      const nextAlias = parts.join('_');
-      if (_qb.expressionMap.aliases.every((a) => a.name !== nextAlias)) {
-        _qb = _qb.leftJoin(parts.join('.'), nextAlias);
-      }
-      alias = nextAlias;
-    });
-    return [_qb, alias, columnName] as const;
+    }
+
+    return columnMetadata;
   }
 }
