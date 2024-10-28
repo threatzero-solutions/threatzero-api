@@ -112,34 +112,32 @@ export class BaseQueryDto {
     fieldKey: string,
     alias?: Alias,
   ): [SelectQueryBuilder<T>, string, string] {
-    const columnMetadata = this.getColumnMetadata(
-      fieldKey,
-      alias ?? qb.expressionMap.mainAlias,
-    );
+    const thisAlias = alias ?? qb.expressionMap.mainAlias;
+    const columnMetadata = this.getColumnMetadata(fieldKey, thisAlias);
 
     if (
       columnMetadata === undefined ||
       columnMetadata.relationMetadata === undefined
     ) {
-      return [qb, qb.alias, fieldKey] as const;
+      return [qb, thisAlias?.name ?? qb.alias, fieldKey] as const;
     }
 
     let _qb = qb;
 
-    const relationPath = `${qb.alias}.${columnMetadata.propertyName}`;
-    const relationAlias = `${qb.alias}_${columnMetadata.propertyName}`;
+    const relationPath = `${_qb.alias}.${columnMetadata.propertyName}`;
+    const relationAlias = `${_qb.alias}_${columnMetadata.propertyName}`;
 
-    let existinAlias = _qb.expressionMap.aliases.find(
+    let existingAlias = _qb.expressionMap.aliases.find(
       (a) => a.name === relationAlias || a.name === columnMetadata.propertyName,
     );
 
-    if (!existinAlias) {
+    if (!existingAlias) {
       _qb = _qb.leftJoin(relationPath, relationAlias);
-      existinAlias = _qb.expressionMap.findAliasByName(relationAlias);
+      existingAlias = _qb.expressionMap.findAliasByName(relationAlias);
     }
 
     const nextFieldKey = fieldKey.slice(columnMetadata.propertyName.length + 1);
-    return this.applyJoins(_qb, nextFieldKey, existinAlias);
+    return this.applyJoins(_qb, nextFieldKey, existingAlias);
   }
 
   protected getColumnMetadata(
