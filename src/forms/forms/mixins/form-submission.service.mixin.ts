@@ -85,7 +85,14 @@ export function FormSubmissionsServiceMixin<E extends SubmittableEntity>() {
         if (updateEntityDto.submission) {
           await this.formsService.updateSubmission(updateEntityDto.submission);
         }
-        return super.update(id, updateEntityDto, ...args);
+
+        // For some reason, this updatedOn isn't always being updated. Oftentimes only
+        // the submission is updated, even though we want the whole object to appear as updated.
+        return super.update(
+          id,
+          { ...updateEntityDto, updatedOn: new Date() },
+          ...args,
+        );
       }
 
       async generateSubmissionPDF(id: E['id']) {

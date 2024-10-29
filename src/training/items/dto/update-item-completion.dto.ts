@@ -10,6 +10,6 @@ export class UpdateItemCompletionDto {
   @IsNumber()
   @Min(0)
   @Max(1)
-  @Transform(({ value }) => Math.ceil(value * 100) / 100, {})
+  @Transform(({ value }) => Math.ceil(value * 10000) / 10000, {})
   progress: number;
 }

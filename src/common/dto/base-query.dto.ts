@@ -113,22 +113,27 @@ export class BaseQueryDto {
     alias?: Alias,
   ): [SelectQueryBuilder<T>, string, string] {
     const thisAlias = alias ?? qb.expressionMap.mainAlias;
-    const columnMetadata = this.getColumnMetadata(fieldKey, thisAlias);
+    const { columnMetadata } = this.getColumnMetadata(fieldKey, thisAlias);
+
+    const aliasName = thisAlias?.name ?? qb.alias;
 
     if (
+      !fieldKey.includes('.') ||
       columnMetadata === undefined ||
       columnMetadata.relationMetadata === undefined
     ) {
-      return [qb, thisAlias?.name ?? qb.alias, fieldKey] as const;
+      return [qb, aliasName, fieldKey] as const;
     }
 
     let _qb = qb;
 
-    const relationPath = `${_qb.alias}.${columnMetadata.propertyName}`;
-    const relationAlias = `${_qb.alias}_${columnMetadata.propertyName}`;
+    const propertyName = columnMetadata.relationMetadata.propertyName;
+
+    const relationPath = `${aliasName}.${propertyName}`;
+    const relationAlias = `${aliasName}_${propertyName}`;
 
     let existingAlias = _qb.expressionMap.aliases.find(
-      (a) => a.name === relationAlias || a.name === columnMetadata.propertyName,
+      (a) => a.name === relationAlias || a.name === propertyName,
     );
 
     if (!existingAlias) {
@@ -136,25 +141,34 @@ export class BaseQueryDto {
       existingAlias = _qb.expressionMap.findAliasByName(relationAlias);
     }
 
-    const nextFieldKey = fieldKey.slice(columnMetadata.propertyName.length + 1);
+    const nextFieldKey = fieldKey.slice(
+      columnMetadata.relationMetadata.propertyPath.length + 1,
+    );
     return this.applyJoins(_qb, nextFieldKey, existingAlias);
   }
 
   protected getColumnMetadata(
     fieldKey: string,
     alias: Alias | undefined,
-  ): ColumnMetadata | undefined {
+  ): Partial<{ propertyPath: string; columnMetadata: ColumnMetadata }> {
     const fields = fieldKey.split('.');
 
+    let propertyPath: string | undefined = undefined;
     let columnMetadata: ColumnMetadata | undefined = undefined;
     if (alias) {
-      columnMetadata = alias.metadata.findColumnWithPropertyPath(fieldKey);
+      propertyPath = fieldKey;
+      columnMetadata = alias.metadata.findColumnWithPropertyPath(propertyPath);
 
       if (!columnMetadata) {
-        columnMetadata = alias.metadata.findColumnWithPropertyPath(fields[0]);
+        propertyPath = fields[0];
+        columnMetadata =
+          alias.metadata.findColumnWithPropertyPath(propertyPath);
       }
     }
 
-    return columnMetadata;
+    return {
+      propertyPath,
+      columnMetadata,
+    };
   }
 }

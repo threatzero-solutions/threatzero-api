@@ -3,11 +3,11 @@ import {
   IsOptional,
   IsNumber,
   IsString,
-  IsDateString,
 } from 'class-validator';
 import { CreateTrainingMetadataDto } from 'src/training/common/dto/create-training-metadata.dto';
 import { CreateTrainingSectionItemDto } from './create-section-item.dto';
 import { Type } from 'class-transformer';
+import { DurationDto } from 'src/common/dto/duration.dto';
 
 export class CreateSectionDto {
   @IsOptional()
@@ -23,13 +23,9 @@ export class CreateSectionDto {
   @IsNumber()
   order: number;
 
-  @IsOptional()
-  @IsDateString()
-  availableOn?: string;
-
-  @IsOptional()
-  @IsDateString()
-  expiresOn?: string;
+  @ValidateNested()
+  @Type(() => DurationDto)
+  duration: DurationDto;
 
   @ValidateNested()
   @Type(() => CreateTrainingSectionItemDto)

@@ -4,6 +4,8 @@ import { TrainingMetadata } from 'src/training/common/entities/training-metadata
 import { Entity, Column, ManyToOne, Relation, OneToMany } from 'typeorm';
 import { TrainingSectionItem } from './section-item.entity';
 import { Video } from 'src/training/items/entities/video-item.entity';
+import { IPostgresInterval } from 'postgres-interval';
+import { intervalTransformer } from 'src/common/entity.utils';
 
 @Entity()
 export class TrainingSection extends Base {
@@ -18,6 +20,13 @@ export class TrainingSection extends Base {
 
   @Column({ type: 'date', nullable: true })
   expiresOn: string | null;
+
+  @Column({
+    type: 'interval',
+    transformer: intervalTransformer,
+    default: () => `'1 month'::interval`,
+  })
+  duration: IPostgresInterval;
 
   @Column({ nullable: true })
   courseId: string | null;
