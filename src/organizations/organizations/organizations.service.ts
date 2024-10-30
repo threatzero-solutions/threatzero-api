@@ -29,6 +29,7 @@ import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
 import { plainToInstance } from 'class-transformer';
 import { OrganizationUserDto } from './dto/organization-user.dto';
 import { CourseEnrollment } from './entities/course-enrollment.entity';
+import { TrainingVisibility } from 'src/training/common/training.types';
 
 export class OrganizationsService extends BaseEntityService<Organization> {
   private logger = new Logger(OrganizationsService.name);
@@ -92,9 +93,14 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     return organization;
   }
 
-  async findOneBySlug(slug: Organization['slug']) {
-    const r = await this.prepareQbSingle(
-      this.getQb().andWhere({ slug }),
+  async findOneBySlug(
+    slug: Organization['slug'],
+    mod: (
+      qb: SelectQueryBuilder<Organization>,
+    ) => SelectQueryBuilder<Organization> = (qb) => qb,
+  ) {
+    const r = await mod(
+      this.prepareQbSingle(this.getQb().andWhere({ slug })),
     ).getOneOrFail();
 
     return await this.mapResult(r);
@@ -105,7 +111,11 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     if (!user || !user.organizationSlug) {
       return;
     }
-    return await this.findOneBySlug(user.organizationSlug);
+    return await this.findOneBySlug(user.organizationSlug, (qb) =>
+      qb.andWhere('enrollment.visibility = :visibility', {
+        visibility: TrainingVisibility.VISIBLE,
+      }),
+    );
   }
 
   async afterCreate(organization: Organization) {
