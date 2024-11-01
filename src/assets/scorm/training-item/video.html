@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ThreatZero Training</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://content.threatzero.org/css/scorm-core.css"
+    />
+    <script src="https://player.vimeo.com/api/player.js"></script>
+    <script src="https://content.threatzero.org/js/scorm-api-wrapper.min.js"></script>
+
+    <style>
+      #training-access-metadata {
+        display: none;
+      }
+
+      #vimeo-player {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+      }
+
+      .player-container {
+        width: 100%;
+        max-width: 1000px;
+        margin-top: 1.6rem;
+
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+      }
+
+      .player-metadata {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .player-title {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .player-title * {
+        margin: 0;
+        padding: 0;
+      }
+
+      .player-stats {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <span
+      id="training-access-metadata"
+      data-api-base-url="__API_BASE_URL__"
+      data-training-item-id="__TRAINING_ITEM_ID__"
+      data-training-token="__TRAINING_TOKEN__"
+    ></span>
+    <img id="header-logo" />
+    <div class="player-container">
+      <div id="vimeo-player"></div>
+      <div class="player-metadata">
+        <div class="player-title">
+          <h3 id="training-item-title"></h3>
+          <p id="training-item-description"></p>
+        </div>
+        <div class="player-stats">
+          <div id="training-progress"></div>
+        </div>
+      </div>
+    </div>
+    <script src="https://content.threatzero.org/js/scorm-core.min.js"></script>
+    <script src="https://content.threatzero.org/js/scorm-video.min.js"></script>
+  </body>
+</html>

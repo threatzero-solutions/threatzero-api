@@ -12,7 +12,7 @@ import {
 export class TrainingTokenQueryOrderDto extends ViewingUserTokenQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  trainingItemId?: QueryOrder;
+  ['value.trainingItemId']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
@@ -25,14 +25,10 @@ defaultOrder.createdOn = 'DESC';
 export class TrainingTokenQueryDto extends ViewingUserTokenQueryDto {
   @IsOptional()
   @IsString({ each: true })
-  trainingItemId?: string | string[];
+  ['value.trainingItemId']?: string | string[];
 
   @IsOptional()
   @ValidateNested()
   @Type(() => TrainingTokenQueryOrderDto)
   order: TrainingTokenQueryOrderDto = defaultOrder;
-
-  getValueFields(): string[] {
-    return [...super.getValueFields(), 'trainingItemId'];
-  }
 }

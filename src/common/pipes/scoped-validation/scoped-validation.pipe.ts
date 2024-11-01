@@ -1,6 +1,6 @@
 import { ArgumentMetadata, Injectable, ValidationPipe } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
-import { CommonClsStore } from './types/common-cls-store';
+import { CommonClsStore } from '../../types/common-cls-store';
 
 @Injectable()
 export class ScopedValidationPipe extends ValidationPipe {

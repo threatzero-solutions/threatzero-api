@@ -208,7 +208,10 @@ export class UsersService {
     trainingParticipantRepresentationDto:
       | TrainingParticipantRepresentationDto
       | TrainingParticipantRepresentationDto[],
-  ) {
+  ): Promise<
+    | OpaqueToken<TrainingParticipantRepresentationDto>
+    | OpaqueToken<TrainingParticipantRepresentationDto>[]
+  > {
     const opaqueTokenResponse = await this.opaqueTokenService.create(
       trainingParticipantRepresentationDto,
       TrainingParticipantRepresentationDto,

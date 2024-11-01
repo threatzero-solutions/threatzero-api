@@ -33,7 +33,7 @@ import { LanguagesModule } from './languages/languages.module';
 import helmetConfig from './config/helmet.config';
 import corsConfig from './config/cors.config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ScopedValidationPipe } from './common/scoped-validation.pipe';
+import { ScopedValidationPipe } from './common/pipes/scoped-validation/scoped-validation.pipe';
 import { ScopedClassSerializerInterceptor } from './common/scoped-class-serializer.interceptor';
 
 @Module({

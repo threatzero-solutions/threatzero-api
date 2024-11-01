@@ -30,6 +30,14 @@ import { plainToInstance } from 'class-transformer';
 import { OrganizationUserDto } from './dto/organization-user.dto';
 import { CourseEnrollment } from './entities/course-enrollment.entity';
 import { TrainingVisibility } from 'src/training/common/training.types';
+import { OpaqueTokenService } from 'src/auth/opaque-token.service';
+import { LmsViewershipTokenValueDto } from './dto/lms-viewership-token-value.dto';
+import { LmsViewershipTokenQueryDto } from './dto/lms-viership-token-query.dto';
+import fs from 'fs';
+import path from 'path';
+import archiver from 'archiver';
+
+const fsp = fs.promises;
 
 export class OrganizationsService extends BaseEntityService<Organization> {
   private logger = new Logger(OrganizationsService.name);
@@ -44,6 +52,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     private readonly media: MediaService,
     private readonly keycloakClient: KeycloakAdminClientService,
     private readonly config: ConfigService,
+    private opaqueTokenService: OpaqueTokenService,
   ) {
     super();
   }
@@ -157,6 +166,115 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       .where('organization.slug = :organizationSlug', {
         organizationSlug: user.organizationSlug,
       });
+  }
+
+  async createLmsToken(
+    id: Organization['id'],
+    value: LmsViewershipTokenValueDto,
+  ) {
+    // Ensure the organization, unit, and enrollment are valid.
+    let qb = this.getQb();
+    qb = qb
+      .andWhere({ id })
+      .leftJoin(`${qb.alias}.enrollments`, 'enrollment')
+      .andWhere('"enrollment"."id" = :enrollmentId', {
+        enrollmentId: value.enrollmentId,
+      });
+
+    if (value.unitId) {
+      qb = qb.andWhere('"unitId" = :unitId', {
+        unitId: value.unitId,
+      });
+    }
+
+    const organization = await qb.getOne();
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    value.organizationId = organization.id;
+
+    return this.opaqueTokenService.create(
+      value,
+      LmsViewershipTokenValueDto,
+      'lms-training',
+    );
+  }
+
+  async findLmsTokens(
+    id: Organization['id'],
+    lmsViewershipTokenQueryDto: LmsViewershipTokenQueryDto,
+  ) {
+    const organization = await this.verifyLmsOrganization(id);
+
+    lmsViewershipTokenQueryDto['value.organizationId'] = organization.id;
+
+    return this.opaqueTokenService.findAll(lmsViewershipTokenQueryDto);
+  }
+
+  async setLmsTokenExpiration(
+    id: Organization['id'],
+    lmsViewershipTokenQueryDto: LmsViewershipTokenQueryDto,
+    expiration: Date | null,
+  ) {
+    const organization = await this.verifyLmsOrganization(id);
+
+    lmsViewershipTokenQueryDto['value.organizationId'] = organization.id;
+
+    return this.opaqueTokenService.setExpiration(
+      lmsViewershipTokenQueryDto,
+      expiration,
+    );
+  }
+
+  async downloadScormPackage(
+    id: Organization['id'],
+    tokenKey: string,
+    outStream: NodeJS.WritableStream,
+  ) {
+    await this.verifyLmsOrganization(id);
+    const tokenValue = await this.opaqueTokenService.validate(
+      tokenKey,
+      LmsViewershipTokenValueDto,
+      'lms-training',
+    );
+
+    if (!tokenValue) {
+      throw new NotFoundException('Token not found');
+    }
+
+    const videoHtmlTemplate = await fsp.readFile(
+      path.join(__dirname, '../../assets/scorm/training-item/video.html'),
+      'utf8',
+    );
+    const videoHtml = videoHtmlTemplate
+      .replace(
+        '__API_BASE_URL__',
+        this.config.get('general.apiHost') ?? 'https://api.threatzero.org/api',
+      )
+      .replace('__TRAINING_ITEM_ID__', tokenValue.trainingItemId)
+      .replace('__TRAINING_TOKEN__', tokenKey);
+
+    const zip = archiver('zip');
+
+    zip.pipe(outStream);
+
+    zip.glob('*', {
+      cwd: path.join(__dirname, '../../assets/scorm/training-item'),
+    });
+    zip.append(videoHtml, { name: 'video.html' });
+    zip.finalize();
+  }
+
+  private async verifyLmsOrganization(id: Organization['id']) {
+    const organization = await this.getQb().where({ id }).getOne();
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    return organization;
   }
 
   async importIdpConfig(

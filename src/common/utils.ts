@@ -10,3 +10,10 @@ export const asArray = <T, AllowNullish extends boolean | undefined = false>(
 
 export const collapseArray = <T>(array: T[]): T | T[] | undefined =>
   array.length > 1 ? array : array[0];
+
+export const isUndefined = (obj: any): obj is undefined =>
+  typeof obj === 'undefined';
+
+export const isNil = <T>(
+  value: T | null | undefined,
+): value is null | undefined => value === null || isUndefined(value);

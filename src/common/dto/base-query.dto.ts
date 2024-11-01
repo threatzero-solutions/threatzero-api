@@ -14,6 +14,13 @@ import { Alias } from 'typeorm/query-builder/Alias';
 const defaultOrder = new BaseQueryOrderDto();
 defaultOrder.createdOn = 'DESC';
 
+interface ContainsJsonKeyQuery {
+  tableAlias: string;
+  columnName: string;
+  key: string;
+  value: any[];
+}
+
 export class BaseQueryDto {
   @IsOptional()
   @IsNumber()
@@ -42,49 +49,13 @@ export class BaseQueryDto {
     let retQb = qb.skip(this.offset).take(this.limit);
 
     retQb = this.applySearch<T>(retQb);
-
-    // Apply order by clauses.
-    Object.entries(this.order).forEach(([sort, order]) => {
-      if (!order) return;
-      const [_qb, tableAlias, columnName] = this.applyJoins<T>(retQb, sort);
-      retQb = _qb.addOrderBy(
-        `${tableAlias}.${columnName}`,
-        order,
-        order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
-      );
-      if (_qb.alias !== tableAlias) {
-        retQb = _qb.addSelect(`${tableAlias}.${columnName}`);
-      }
-    });
-
-    // Apply where clauses for all remaining fields.
-    Object.entries(this).forEach(([fieldName, fieldValue]) => {
-      if (fieldValue === undefined) return;
-      if (['limit', 'offset', 'order', 'search'].includes(fieldName)) return;
-      const [_qb, tableAlias, columnName] = this.applyJoins<T>(
-        retQb,
-        fieldName,
-      );
-      const fieldAlias = `${tableAlias}_${columnName}`;
-
-      if (Array.isArray(fieldValue)) {
-        retQb = _qb.andWhere(
-          `${tableAlias}.${columnName} IN (:...${fieldAlias})`,
-          {
-            [fieldAlias]: fieldValue,
-          },
-        );
-      } else {
-        retQb = _qb.andWhere(`${tableAlias}.${columnName} = :${fieldAlias}`, {
-          [fieldAlias]: fieldValue,
-        });
-      }
-    });
+    retQb = this.applyOrdering<T>(retQb);
+    retQb = this.applyFilters<T>(retQb);
 
     return retQb;
   }
 
-  private applySearch<T extends ObjectLiteral>(qb: SelectQueryBuilder<T>) {
+  protected applySearch<T extends ObjectLiteral>(qb: SelectQueryBuilder<T>) {
     const searchFields = this.getSearchFields();
 
     if (!this.search || !searchFields || !searchFields.length) {
@@ -92,7 +63,16 @@ export class BaseQueryDto {
     }
 
     const vectorInput = searchFields
-      ?.map((f) => `coalesce("${qb.alias}"."${f.toString()}", '')`)
+      ?.map((f) => {
+        const { tableAlias, columnName, isJsonb } = this.applyJoins<T>(qb, f);
+
+        if (isJsonb) {
+          const key = f.replace(columnName + '.', '');
+          return `coalesce("${tableAlias}"."${columnName}"->>'${key}', '')`;
+        } else {
+          return `coalesce("${tableAlias}"."${columnName}", '')`;
+        }
+      })
       .join(" || ' ' || ");
 
     const query = this.search
@@ -107,11 +87,117 @@ export class BaseQueryDto {
     );
   }
 
+  protected applyOrdering<T extends ObjectLiteral>(qb: SelectQueryBuilder<T>) {
+    let _qb = qb;
+    Object.entries(this.order).forEach(([sort, order]) => {
+      if (!order) return;
+      const { tableAlias, columnName, isJsonb } = this.applyJoins<T>(_qb, sort);
+
+      if (isJsonb) {
+        const columnAlias = `${_qb.alias}_${sort.replace('.', '_').toLowerCase()}`;
+        _qb = _qb
+          .addSelect(
+            `${_qb.alias}.${columnName}->>'${sort.replace(columnName + '.', '')}'`,
+            columnAlias,
+          )
+          .addOrderBy(
+            columnAlias,
+            order,
+            order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
+          );
+      } else {
+        _qb = _qb.addOrderBy(
+          `${tableAlias}.${columnName}`,
+          order,
+          order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
+        );
+        if (_qb.alias !== tableAlias) {
+          _qb = _qb.addSelect(`${tableAlias}.${columnName}`);
+        }
+      }
+    });
+    return _qb;
+  }
+
+  protected applyFilters<T extends ObjectLiteral>(
+    qb: SelectQueryBuilder<T>,
+  ): SelectQueryBuilder<T> {
+    let _qb = qb;
+
+    const containmentQueries: Record<string, Record<string, string>> = {};
+    const containsKeyQueries: ContainsJsonKeyQuery[] = [];
+
+    // Apply where clauses for all remaining fields.
+    Object.entries(this).forEach(([fieldName, fieldValue]) => {
+      if (fieldValue === undefined) return;
+      if (['limit', 'offset', 'order', 'search'].includes(fieldName)) return;
+      const { tableAlias, columnName, isJsonb } = this.applyJoins<T>(
+        _qb,
+        fieldName,
+      );
+
+      if (isJsonb) {
+        const key = fieldName.replace(columnName + '.', '');
+        if (Array.isArray(fieldValue)) {
+          containsKeyQueries.push({
+            tableAlias,
+            columnName,
+            key,
+            value: fieldValue,
+          });
+        } else {
+          const colRef = `${tableAlias}.${columnName}`;
+          if (!containmentQueries[colRef]) {
+            containmentQueries[colRef] = {};
+          }
+          containmentQueries[colRef][key] = fieldValue;
+        }
+      } else {
+        const fieldAlias = `${tableAlias}_${columnName}`;
+
+        if (Array.isArray(fieldValue)) {
+          _qb = _qb.andWhere(
+            `${tableAlias}.${columnName} IN (:...${fieldAlias})`,
+            {
+              [fieldAlias]: fieldValue,
+            },
+          );
+        } else {
+          _qb = _qb.andWhere(`${tableAlias}.${columnName} = :${fieldAlias}`, {
+            [fieldAlias]: fieldValue,
+          });
+        }
+      }
+    });
+
+    for (const [colRef, containmentQuery] of Object.entries(
+      containmentQueries,
+    )) {
+      const parameterName = colRef.replace(/\./g, '_');
+      _qb = _qb.andWhere(`${colRef} @> :${parameterName}`, {
+        [parameterName]: JSON.stringify(containmentQuery),
+      });
+    }
+
+    for (const { key, value, columnName, tableAlias } of containsKeyQueries) {
+      _qb = _qb.andWhere(
+        `${tableAlias}.${columnName} -> '${key}' ?| ARRAY(SELECT jsonb_array_elements_text('${JSON.stringify(value)}'))`,
+      );
+    }
+
+    return _qb;
+  }
+
   protected applyJoins<T extends ObjectLiteral>(
     qb: SelectQueryBuilder<T>,
     fieldKey: string,
     alias?: Alias,
-  ): [SelectQueryBuilder<T>, string, string] {
+  ): {
+    qb: SelectQueryBuilder<T>;
+    tableAlias: string;
+    columnName: string;
+    isJsonb: boolean;
+  } {
     const thisAlias = alias ?? qb.expressionMap.mainAlias;
     const { columnMetadata } = this.getColumnMetadata(fieldKey, thisAlias);
 
@@ -122,7 +208,12 @@ export class BaseQueryDto {
       columnMetadata === undefined ||
       columnMetadata.relationMetadata === undefined
     ) {
-      return [qb, aliasName, fieldKey] as const;
+      return {
+        qb,
+        tableAlias: aliasName,
+        columnName: columnMetadata?.propertyPath ?? fieldKey,
+        isJsonb: columnMetadata?.type === 'jsonb',
+      };
     }
 
     let _qb = qb;

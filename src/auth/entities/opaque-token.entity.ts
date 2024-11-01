@@ -16,4 +16,7 @@ export class OpaqueToken<T extends object = object> extends Base {
   @Index()
   @Column({ type: 'uuid', nullable: true })
   batchId: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  expiresOn: Date | null;
 }

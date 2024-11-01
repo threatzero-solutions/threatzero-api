@@ -10,65 +10,61 @@ import {
 export class ViewingUserTokenQueryOrderDto extends BaseQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  userId?: QueryOrder;
+  ['value.userId']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  email?: QueryOrder;
+  ['value.email']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  lastName?: QueryOrder;
+  ['value.lastName']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  firstName?: QueryOrder;
+  ['value.firstName']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  unitSlug?: QueryOrder;
+  ['value.unitSlug']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  organizationSlug?: QueryOrder;
+  ['value.organizationSlug']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  expiresOn?: QueryOrder;
+  ['value.expiresOn']?: QueryOrder;
 }
 
 export class ViewingUserTokenQueryDto extends OpaqueTokenQueryDto {
   @IsOptional()
   @IsString({ each: true })
-  userId?: string | string[];
+  ['value.userId']?: string | string[];
 
   @IsOptional()
   @IsString({ each: true })
-  email?: string | string[];
+  ['value.email']?: string | string[];
 
   @IsOptional()
   @IsString({ each: true })
-  unitSlug?: string | string[];
+  ['value.unitSlug']?: string | string[];
 
   @IsOptional()
   @IsString({ each: true })
-  organizationSlug?: string | string[];
+  ['value.organizationSlug']?: string | string[];
 
   @IsOptional()
   @ValidateNested()
   @Type(() => ViewingUserTokenQueryOrderDto)
   order: ViewingUserTokenQueryOrderDto = new ViewingUserTokenQueryOrderDto();
 
-  getValueFields(): string[] {
+  getSearchFields(): string[] {
     return [
-      ...super.getValueFields(),
-      'userId',
-      'email',
-      'firstName',
-      'lastName',
-      'unitSlug',
-      'organizationSlug',
-      'expiresOn',
+      ...super.getSearchFields(),
+      'value.email',
+      'value.firstName',
+      'value.lastName',
     ];
   }
 }

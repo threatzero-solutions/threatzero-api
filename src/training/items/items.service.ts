@@ -23,6 +23,7 @@ import { UsersService } from 'src/users/users.service';
 import { UserRepresentation } from 'src/users/entities/user-representation.entity';
 import { Paginated } from 'src/common/dto/paginated.dto';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { LmsViewershipTokenValueDto } from 'src/organizations/organizations/dto/lms-viewership-token-value.dto';
 
 export class ItemsService extends BaseEntityService<TrainingItem> {
   alias = 'item';
@@ -72,6 +73,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     const user = await this.opaqueTokenService.validate(
       watchId,
       TrainingParticipantRepresentationDto,
+      'training',
     );
 
     if (!user) {
@@ -79,6 +81,25 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     }
 
     if (user.trainingItemId !== itemId) {
+      throw new UnauthorizedException();
+    }
+
+    const item = await super.getQb().where({ id: itemId }).getOneOrFail();
+    return await this.mapResult(item);
+  }
+
+  async lmsWatch(itemId: TrainingItem['id'], lmsId: string) {
+    const token = await this.opaqueTokenService.validate(
+      lmsId,
+      LmsViewershipTokenValueDto,
+      'lms-training',
+    );
+
+    if (!token) {
+      throw new UnauthorizedException('Access denied.');
+    }
+
+    if (token.trainingItemId !== itemId) {
       throw new UnauthorizedException();
     }
 
@@ -192,8 +213,6 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       'user',
       `user.externalId = ${qb.alias}.userId`,
     );
-
-    console.debug(await qb.getMany());
 
     return Paginated.fromQb(qb, query);
   }

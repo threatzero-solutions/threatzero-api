@@ -183,10 +183,19 @@ export class TrainingAdminService {
   findTrainingLinksQb(query: TrainingTokenQueryDto) {
     const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
       this.cls.get('user'),
-      query,
+      {
+        unitSlug: query['value.unitSlug'],
+        organizationSlug: query['value.organizationSlug'],
+      },
     );
-    query.unitSlug = unitSlugs;
-    query.organizationSlug = organizationSlugs;
+    query['value.unitSlug'] = unitSlugs;
+    query['value.organizationSlug'] = organizationSlugs;
+
+    let percentWatchedOrder: 'ASC' | 'DESC' | undefined = undefined;
+    if (query.order['watchStat.percentWatched']) {
+      percentWatchedOrder = query.order['watchStat.percentWatched'];
+      Reflect.deleteProperty(query.order, 'watchStat.percentWatched');
+    }
 
     const qb = this.usersService.getTrainingTokensQb(query);
     const al = qb.alias;
@@ -199,12 +208,11 @@ export class TrainingAdminService {
     AND watch_stat."year" = EXTRACT(YEAR FROM ${al}."createdOn")`,
     );
 
-    if (query.order['watchStat.percentWatched']) {
-      const order = query.order['watchStat.percentWatched'];
+    if (percentWatchedOrder) {
       qb.addSelect('watch_stat."percentWatched"', 'percent_watched').addOrderBy(
         'percent_watched',
-        order,
-        order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
+        percentWatchedOrder,
+        percentWatchedOrder === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
       );
     }
 

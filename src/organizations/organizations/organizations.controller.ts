@@ -12,6 +12,9 @@ import {
   BadRequestException,
   Put,
   NotFoundException,
+  Res,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -24,6 +27,10 @@ import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { IdpProtocol, IdpProtocols } from 'src/auth/dto/create-idp.dto';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
 import { Public } from 'src/auth/auth.guard';
+import { LmsViewershipTokenValueDto } from './dto/lms-viewership-token-value.dto';
+import { LmsViewershipTokenQueryDto } from './dto/lms-viership-token-query.dto';
+import { Response } from 'express';
+import { ParseDatePipe } from 'src/common/pipes/parse-date/parse-date.pipe';
 // import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
 
 @Controller('organizations/organizations')
@@ -76,6 +83,57 @@ export class OrganizationsController {
   // getUsers(@Param('id') id: string, @Query() query: OrganizationUserQueryDto) {
   //   return this.organizationsService.getOrganizationUsers(id, query);
   // }
+
+  @Post(':id/lms-tokens')
+  createLmsToken(
+    @Param('id') id: string,
+    @Body() lmsViewershipTokenValueDto: LmsViewershipTokenValueDto,
+  ) {
+    return this.organizationsService.createLmsToken(
+      id,
+      lmsViewershipTokenValueDto,
+    );
+  }
+
+  @Get(':id/lms-tokens')
+  getLmsTokens(
+    @Param('id') id: string,
+    @Query() lmsViewershipTokenQueryDto: LmsViewershipTokenQueryDto,
+  ) {
+    return this.organizationsService.findLmsTokens(
+      id,
+      lmsViewershipTokenQueryDto,
+    );
+  }
+
+  @Patch(':id/lms-tokens/expiration')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  setLmsTokenExpiration(
+    @Param('id') id: string,
+    @Query() lmsViewershipTokenQueryDto: LmsViewershipTokenQueryDto,
+    @Body('expiration', new ParseDatePipe({ optional: true }))
+    expiration: Date | null,
+  ) {
+    return this.organizationsService.setLmsTokenExpiration(
+      id,
+      lmsViewershipTokenQueryDto,
+      expiration,
+    );
+  }
+
+  @Get(':id/lms-tokens/scorm')
+  downloadScormPackage(
+    @Param('id') id: string,
+    @Query('key') tokenKey: string,
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="threatzero-training-scorm.zip"',
+    );
+    this.organizationsService.downloadScormPackage(id, tokenKey, res);
+  }
 
   @Post(':id/idps/load-imported-config/:protocol')
   @UseInterceptors(AnyFilesInterceptor())

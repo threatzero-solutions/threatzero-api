@@ -91,6 +91,12 @@ export class ItemsController {
     return this.itemsService.watch(id, watchId);
   }
 
+  @Public()
+  @Get('lms-watch/:id')
+  lmsWatch(@Param('id') id: string, @Query('lms_id') lmsId: string) {
+    return this.itemsService.lmsWatch(id, lmsId);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateItemDto: UpdateItemDto) {
     return this.itemsService.update(id, updateItemDto);

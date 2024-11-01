@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { OpaqueToken } from './entities/opaque-token.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { v4 as uuidv4 } from 'uuid';
 import { OpaqueTokenQueryDto } from './dto/opaque-token-query.dto';
 import { Paginated } from 'src/common/dto/paginated.dto';
-import { Page } from 'src/common/types/page';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class OpaqueTokenService {
@@ -19,11 +19,23 @@ export class OpaqueTokenService {
   ) {}
 
   async create<T extends object>(
+    value: unknown[],
+    valueClass?: new () => T,
+    type?: string,
+    keyFactory?: () => string,
+  ): Promise<OpaqueToken<T>[]>;
+  async create<T extends object>(
+    value: unknown,
+    valueClass?: new () => T,
+    type?: string,
+    keyFactory?: () => string,
+  ): Promise<OpaqueToken<T>>;
+  async create<T extends object>(
     value: unknown,
     valueClass?: new () => T,
     type?: string,
     keyFactory: () => string = uuidv4,
-  ) {
+  ): Promise<OpaqueToken<T> | OpaqueToken<T>[]> {
     let validatedValue: object;
     if (valueClass) {
       validatedValue = plainToInstance(valueClass, value, {
@@ -69,8 +81,12 @@ export class OpaqueTokenService {
     );
   }
 
-  async get(key: string): Promise<OpaqueToken | null> {
-    return await this.opaqueTokenRepository.findOneBy({ key });
+  async get(key: string, type?: string): Promise<OpaqueToken | null> {
+    const condition: FindOptionsWhere<OpaqueToken> = { key };
+    if (type) {
+      condition.type = type;
+    }
+    return await this.opaqueTokenRepository.findOneBy(condition);
   }
 
   getQb(query?: OpaqueTokenQueryDto) {
@@ -81,16 +97,33 @@ export class OpaqueTokenService {
     return qb;
   }
 
-  async findAll(query: OpaqueTokenQueryDto): Promise<Page<OpaqueToken>> {
-    return Paginated.fromQb(this.getQb(query), query);
+  async findAll<
+    V extends object = object,
+    Q extends OpaqueTokenQueryDto = OpaqueTokenQueryDto,
+  >(query: Q): Promise<Paginated<OpaqueToken<V>>> {
+    return Paginated.fromQb(this.getQb(query), query) as Promise<
+      Paginated<OpaqueToken<V>>
+    >;
+  }
+
+  async setExpiration(query: OpaqueTokenQueryDto, expiration: Date | null) {
+    await this.getQb(query)
+      // Order by not allowed in update, so it is removed here.
+      .orderBy()
+      .update({ expiresOn: expiration })
+      .execute();
   }
 
   async validate<T extends object>(
     key: string,
     valueClass: new () => T,
+    type?: string,
   ): Promise<T | null> {
-    const opaqueToken = await this.get(key);
-    if (!opaqueToken) {
+    const opaqueToken = await this.get(key, type);
+    if (
+      !opaqueToken ||
+      (opaqueToken.expiresOn && dayjs(opaqueToken.expiresOn).isBefore(dayjs()))
+    ) {
       return null;
     }
 
