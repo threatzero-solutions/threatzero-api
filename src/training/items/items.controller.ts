@@ -9,6 +9,8 @@ import {
   Query,
   HttpStatus,
   HttpCode,
+  Res,
+  Req,
 } from '@nestjs/common';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -22,6 +24,7 @@ import { ItemCompletion } from './entities/item-completion.entity';
 import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
 import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
 import { CreateItemCompletionDto } from './dto/create-item-completion.dto';
+import { Request, Response } from 'express';
 
 @Controller('training/items')
 @CheckPolicies(new EntityAbilityChecker(TrainingItem))
@@ -93,8 +96,26 @@ export class ItemsController {
 
   @Public()
   @Get('lms-watch/:id')
-  lmsWatch(@Param('id') id: string, @Query('lms_id') lmsId: string) {
-    return this.itemsService.lmsWatch(id, lmsId);
+  async lmsWatch(
+    @Param('id') id: string,
+    @Query('lms_id') lmsId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const { item, allowedOrigins } = await this.itemsService.lmsWatch(
+      id,
+      lmsId,
+    );
+
+    if (
+      allowedOrigins.some(
+        (origin) => origin.value === '*' || origin.value === req.headers.origin,
+      )
+    ) {
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin ?? '*');
+    }
+
+    res.json(item);
   }
 
   @Patch(':id')

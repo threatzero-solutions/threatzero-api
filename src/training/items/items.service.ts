@@ -103,8 +103,17 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       throw new UnauthorizedException();
     }
 
-    const item = await super.getQb().where({ id: itemId }).getOneOrFail();
-    return await this.mapResult(item);
+    const [item, organization] = await Promise.all([
+      super.getQb().where({ id: itemId }).getOneOrFail(),
+      this.organizationsService
+        .getQb()
+        .where({ id: token.organizationId })
+        .getOneOrFail(),
+    ]);
+    return {
+      item: await this.mapResult(item),
+      allowedOrigins: organization.trainingAccessSettings?.allowedOrigins ?? [],
+    };
   }
 
   async createMyItemCompletion(

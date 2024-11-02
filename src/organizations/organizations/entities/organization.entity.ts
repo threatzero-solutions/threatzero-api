@@ -5,6 +5,7 @@ import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { OrganizationPolicyFile } from 'src/safety-management/common/entities/organization-policy-file.entity';
 import { Entity, Column, OneToMany, Relation, ManyToMany } from 'typeorm';
 import { CourseEnrollment } from './course-enrollment.entity';
+import { OrganizationTrainingAccessSettingsDto } from '../dto/organization-training-access-settings.dto';
 
 @Entity()
 export class Organization extends OrganizationBase {
@@ -37,6 +38,9 @@ export class Organization extends OrganizationBase {
   // organizations can access.
   @Column({ nullable: true, type: 'jsonb' })
   allowedRoleGroups: string[] | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  trainingAccessSettings: OrganizationTrainingAccessSettingsDto | null;
 
   sign(signer: (k: string) => string) {
     if (this.policiesAndProcedures?.length) {
