@@ -233,6 +233,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     id: Organization['id'],
     tokenKey: string,
     outStream: NodeJS.WritableStream,
+    scormVersion: '1.2' | '2004' = '1.2',
   ) {
     await this.verifyLmsOrganization(id);
     const tokenValue = await this.opaqueTokenService.validate(
@@ -244,6 +245,19 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     if (!tokenValue) {
       throw new NotFoundException('Token not found');
     }
+
+    const manifestTemplate = await fsp.readFile(
+      path.join(__dirname, '../../assets/scorm/training-item/imsmanifest.xml'),
+      'utf8',
+    );
+    const manifest = manifestTemplate.replace(
+      '__SCORM_VERSION__',
+      scormVersion === '1.2'
+        ? '1.2'
+        : scormVersion === '2004'
+          ? '2004 4th Edition'
+          : '1.2',
+    );
 
     const videoHtmlTemplate = await fsp.readFile(
       path.join(__dirname, '../../assets/scorm/training-item/video.html'),
@@ -265,6 +279,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       cwd: path.join(__dirname, '../../assets/scorm/training-item'),
     });
     zip.append(videoHtml, { name: 'video.html' });
+    zip.append(manifest, { name: 'imsmanifest.xml' });
     zip.finalize();
   }
 

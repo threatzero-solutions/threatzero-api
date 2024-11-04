@@ -9,14 +9,14 @@
     
     <metadata>
         <schema>ADL SCORM</schema>
-        <schemaversion>1.2</schemaversion>
+        <schemaversion>__SCORM_VERSION__</schemaversion>
     </metadata>
 
     <organizations default="ThreatZero">
         <organization identifier="ThreatZero">
-            <title>Video Course</title>
+            <title>ThreatZero Training</title>
             <item identifier="item_1" identifierref="resource_1">
-                <title>Video Lesson</title>
+                <title>Training Video</title>
             </item>
         </organization>
     </organizations>

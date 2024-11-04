@@ -128,13 +128,14 @@ export class OrganizationsController {
     @Param('id') id: string,
     @Query('key') tokenKey: string,
     @Res() res: Response,
+    @Query('version') version?: '1.2' | '2004',
   ) {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader(
       'Content-Disposition',
       'attachment; filename="threatzero-training-scorm.zip"',
     );
-    this.organizationsService.downloadScormPackage(id, tokenKey, res);
+    this.organizationsService.downloadScormPackage(id, tokenKey, res, version);
   }
 
   @Post(':id/idps/load-imported-config/:protocol')
