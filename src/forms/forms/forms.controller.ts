@@ -9,6 +9,7 @@ import {
   Query,
   Res,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { FormsService } from './forms.service';
 import { CreateFormDto } from './dto/create-form.dto';
@@ -25,6 +26,8 @@ import { QueryFormDto } from './dto/query-form.dto';
 @Controller('forms')
 @CheckPolicies(new EntityAbilityChecker(Form))
 export class FormsController {
+  private readonly logger = new Logger(FormsController.name);
+
   constructor(private readonly formsService: FormsService) {}
 
   @Post()
@@ -61,6 +64,12 @@ export class FormsController {
   @Get(':id/pdf')
   async generateFormPDF(@Param('id') id: string, @Res() response: Response) {
     const pdf = await this.formsService.generateFormPDF(id);
+
+    pdf.on('error', (e) => {
+      this.logger.error('An error occurred while generating PDF.', e.stack);
+      response.status(500).send('An error occurred while generating PDF.');
+    });
+
     response.setHeader('Content-Type', 'application/pdf');
     pdf.pipe(response);
     pdf.end();

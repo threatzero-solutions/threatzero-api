@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { ThreatAssessmentsService } from './threat-assessments.service';
 import { CreateThreatAssessmentDto } from './dto/create-threat-assessment.dto';
@@ -28,6 +29,8 @@ import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 @Controller('assessments')
 @CheckPolicies(new EntityAbilityChecker(ThreatAssessment))
 export class ThreatAssessmentsController {
+  private readonly logger = new Logger(ThreatAssessmentsController.name);
+
   constructor(
     private readonly threatAssessmentsService: ThreatAssessmentsService,
   ) {}
@@ -63,6 +66,12 @@ export class ThreatAssessmentsController {
   @Get('submissions/:id/pdf')
   async generateFormPDF(@Param('id') id: string, @Res() response: Response) {
     const pdf = await this.threatAssessmentsService.generateSubmissionPDF(id);
+
+    pdf.on('error', (e) => {
+      this.logger.error('An error occurred while generating PDF.', e.stack);
+      response.status(500).send('An error occurred while generating PDF.');
+    });
+
     response.setHeader('Content-Type', 'application/pdf');
     pdf.pipe(response);
     pdf.end();

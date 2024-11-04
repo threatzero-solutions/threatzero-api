@@ -4,13 +4,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Location } from './entities/location.entity';
 import { ConfigService } from '@nestjs/config';
 import { GenerateQrCodeQueryDto } from './dto/generate-qr-code-query.dto';
-import { Response } from 'express';
 import QRCode from 'qrcode';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { getOrganizationLevel } from '../common/organizations.utils';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { LEVEL } from 'src/auth/permissions';
 import { ClsService } from 'nestjs-cls';
+import { PassThrough } from 'stream';
 
 export class LocationsService extends BaseEntityService<Location> {
   alias = 'location';
@@ -65,15 +65,20 @@ export class LocationsService extends BaseEntityService<Location> {
   generateQRCode(locationId: string, query: GenerateQrCodeQueryDto) {
     const tipUrl = `${this.config.get<string>('general.appHost')}/sos/?loc_id=${locationId}`;
 
-    return (res: Response) => {
-      res.setHeader('Content-Type', 'image/png');
-      QRCode.toFileStream(res, tipUrl, {
+    const stream = new PassThrough();
+
+    try {
+      QRCode.toFileStream(stream, tipUrl, {
         margin: query.margin,
         color: {
           dark: query.color_dark,
           light: query.color_light,
         },
       });
-    };
+    } catch (e) {
+      stream.emit('error', e);
+    }
+
+    return stream;
   }
 }

@@ -171,6 +171,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   async createLmsToken(
     id: Organization['id'],
     value: LmsViewershipTokenValueDto,
+    expiresOn?: Date,
   ) {
     // Ensure the organization, unit, and enrollment are valid.
     let qb = this.getQb();
@@ -195,11 +196,11 @@ export class OrganizationsService extends BaseEntityService<Organization> {
 
     value.organizationId = organization.id;
 
-    return this.opaqueTokenService.create(
-      value,
-      LmsViewershipTokenValueDto,
-      'lms-training',
-    );
+    return this.opaqueTokenService.create(value, {
+      valueClass: LmsViewershipTokenValueDto,
+      type: 'lms-training',
+      expiresOn,
+    });
   }
 
   async findLmsTokens(

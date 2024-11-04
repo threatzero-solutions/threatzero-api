@@ -5,7 +5,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { SaveByIdDto } from 'src/common/dto.utils';
+import { OptionalSaveByIdDto, SaveByIdDto } from 'src/common/dto.utils';
 import { TrainingItem } from '../entities/item.entity';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
@@ -21,10 +21,10 @@ export class CreateItemCompletionDto {
   @Type(() => SaveByIdDto<TrainingSection>)
   section: SaveByIdDto<TrainingSection>;
 
-  @IsNotEmpty()
+  @IsOptional()
   @ValidateNested()
-  @Type(() => SaveByIdDto<CourseEnrollment>)
-  enrollment: SaveByIdDto<CourseEnrollment>;
+  @Type(() => OptionalSaveByIdDto<CourseEnrollment>)
+  enrollment?: OptionalSaveByIdDto<CourseEnrollment>;
 
   @IsNotEmpty()
   @IsString()

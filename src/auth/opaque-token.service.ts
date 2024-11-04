@@ -9,6 +9,13 @@ import { OpaqueTokenQueryDto } from './dto/opaque-token-query.dto';
 import { Paginated } from 'src/common/dto/paginated.dto';
 import dayjs from 'dayjs';
 
+export interface CreateOpaqueTokenOptions<T extends object> {
+  valueClass?: new () => T;
+  type?: string;
+  expiresOn?: Date;
+  keyFactory?: () => string;
+}
+
 @Injectable()
 export class OpaqueTokenService {
   logger = new Logger(OpaqueTokenService.name);
@@ -20,21 +27,20 @@ export class OpaqueTokenService {
 
   async create<T extends object>(
     value: unknown[],
-    valueClass?: new () => T,
-    type?: string,
-    keyFactory?: () => string,
+    options?: CreateOpaqueTokenOptions<T>,
   ): Promise<OpaqueToken<T>[]>;
   async create<T extends object>(
     value: unknown,
-    valueClass?: new () => T,
-    type?: string,
-    keyFactory?: () => string,
+    options?: CreateOpaqueTokenOptions<T>,
   ): Promise<OpaqueToken<T>>;
   async create<T extends object>(
     value: unknown,
-    valueClass?: new () => T,
-    type?: string,
-    keyFactory: () => string = uuidv4,
+    {
+      valueClass,
+      type,
+      expiresOn,
+      keyFactory = uuidv4,
+    }: CreateOpaqueTokenOptions<T> = {},
   ): Promise<OpaqueToken<T> | OpaqueToken<T>[]> {
     let validatedValue: object;
     if (valueClass) {
@@ -66,6 +72,7 @@ export class OpaqueTokenService {
         value: val,
         type,
         batchId,
+        expiresOn,
       }) as OpaqueToken<T>;
     };
 

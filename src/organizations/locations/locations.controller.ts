@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { CreateLocationDto } from './dto/create-location.dto';
@@ -22,6 +23,8 @@ import { QueryLocationsDto } from './dto/query-locations.dto';
 @Controller('organizations/locations')
 @CheckPolicies(new EntityAbilityChecker(Location))
 export class LocationsController {
+  private readonly logger = new Logger(LocationsController.name);
+
   constructor(private readonly locationsService: LocationsService) {}
 
   @Post()
@@ -58,7 +61,14 @@ export class LocationsController {
     @Query() query: GenerateQrCodeQueryDto,
     @Res() response: Response,
   ) {
-    const streamer = this.locationsService.generateQRCode(id, query);
-    streamer(response);
+    response.setHeader('Content-Type', 'image/png');
+    const qrStream = this.locationsService.generateQRCode(id, query);
+
+    qrStream.on('error', (e) => {
+      this.logger.error('An error occurred while generating QR code.', e.stack);
+      response.status(500).send('An error occurred while generating QR code.');
+    });
+
+    qrStream.pipe(response);
   }
 }

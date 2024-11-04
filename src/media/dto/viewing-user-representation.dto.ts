@@ -1,26 +1,4 @@
-import {
-  IsDate,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  registerDecorator,
-  ValidationOptions,
-} from 'class-validator';
-export function IsNotExpired(validationOptions?: ValidationOptions) {
-  return function (object: object, propertyName: string) {
-    registerDecorator({
-      name: 'isNotExpired',
-      target: object.constructor,
-      propertyName: propertyName,
-      options: validationOptions,
-      validator: {
-        validate(value: any) {
-          return value > new Date();
-        },
-      },
-    });
-  };
-}
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class ViewingUserRepresentationDto {
   @IsNotEmpty()
@@ -50,9 +28,4 @@ export class ViewingUserRepresentationDto {
   @IsString({ each: true })
   @IsOptional()
   audiences?: string[];
-
-  @IsDate()
-  @IsOptional()
-  @IsNotExpired({ message: 'Expired viewing session' })
-  expiresOn?: Date;
 }

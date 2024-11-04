@@ -34,7 +34,7 @@ export class ViewingUserTokenQueryOrderDto extends BaseQueryOrderDto {
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  ['value.expiresOn']?: QueryOrder;
+  expiresOn?: QueryOrder;
 }
 
 export class ViewingUserTokenQueryDto extends OpaqueTokenQueryDto {

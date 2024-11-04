@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
   Post,
   Query,
   Res,
@@ -20,6 +21,8 @@ import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 
 @Controller('training-admin')
 export class TrainingAdminController {
+  private readonly logger = new Logger(TrainingAdminController.name);
+
   constructor(private readonly trainingAdminService: TrainingAdminService) {}
 
   @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))
@@ -58,6 +61,14 @@ export class TrainingAdminController {
       trainingUrlTemplate,
     );
 
+    stream.on('error', (e) => {
+      this.logger.error(
+        'An error occurred while streaming training links csv data.',
+        e.stack,
+      );
+      res.status(500).send('An error occurred while downloading data.');
+    });
+
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader(
       'Content-Disposition',
@@ -83,6 +94,14 @@ export class TrainingAdminController {
     query.limit = Number.MAX_SAFE_INTEGER;
 
     const stream = await this.trainingAdminService.getWatchStatsCsv(query);
+
+    stream.on('error', (e) => {
+      this.logger.error(
+        'An error occurred while streaming watch stats csv data.',
+        e.stack,
+      );
+      res.status(500).send('An error occurred while downloading data.');
+    });
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader(

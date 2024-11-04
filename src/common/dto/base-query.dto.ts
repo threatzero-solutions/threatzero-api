@@ -94,10 +94,10 @@ export class BaseQueryDto {
       const { tableAlias, columnName, isJsonb } = this.applyJoins<T>(_qb, sort);
 
       if (isJsonb) {
-        const columnAlias = `${_qb.alias}_${sort.replace('.', '_').toLowerCase()}`;
+        const columnAlias = `${tableAlias}_${sort.replace('.', '_').toLowerCase()}`;
         _qb = _qb
           .addSelect(
-            `${_qb.alias}.${columnName}->>'${sort.replace(columnName + '.', '')}'`,
+            `${tableAlias}.${columnName}->>'${sort.replace(columnName + '.', '')}'`,
             columnAlias,
           )
           .addOrderBy(
@@ -111,7 +111,15 @@ export class BaseQueryDto {
           order,
           order === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
         );
-        if (_qb.alias !== tableAlias) {
+        if (
+          _qb.alias !== tableAlias &&
+          !_qb.expressionMap.selects.find(
+            (s) =>
+              s.selection === tableAlias ||
+              s.selection === `${tableAlias}.*}` ||
+              s.selection === `${tableAlias}.${columnName}`,
+          )
+        ) {
           _qb = _qb.addSelect(`${tableAlias}.${columnName}`);
         }
       }
@@ -203,10 +211,22 @@ export class BaseQueryDto {
 
     const aliasName = thisAlias?.name ?? qb.alias;
 
+    let existingJoinAlias: Alias | undefined = undefined;
+    if (fieldKey.includes('.')) {
+      const propertyName = fieldKey.split('.').shift()!;
+      const relationAlias = `${aliasName}_${propertyName}`;
+      existingJoinAlias = qb.expressionMap.aliases.find(
+        (a) =>
+          a.type === 'join' &&
+          (a.name === relationAlias || a.name === propertyName),
+      );
+    }
+
     if (
-      !fieldKey.includes('.') ||
-      columnMetadata === undefined ||
-      columnMetadata.relationMetadata === undefined
+      !existingJoinAlias &&
+      (!fieldKey.includes('.') ||
+        columnMetadata === undefined ||
+        columnMetadata.relationMetadata === undefined)
     ) {
       return {
         qb,
@@ -218,24 +238,34 @@ export class BaseQueryDto {
 
     let _qb = qb;
 
-    const propertyName = columnMetadata.relationMetadata.propertyName;
+    if (
+      !existingJoinAlias &&
+      columnMetadata &&
+      columnMetadata.relationMetadata
+    ) {
+      const propertyName = columnMetadata.relationMetadata.propertyName;
+      const relationAlias = `${aliasName}_${propertyName}`;
+      existingJoinAlias = qb.expressionMap.aliases.find(
+        (a) =>
+          a.type === 'join' &&
+          (a.name === relationAlias || a.name === propertyName),
+      );
 
-    const relationPath = `${aliasName}.${propertyName}`;
-    const relationAlias = `${aliasName}_${propertyName}`;
-
-    let existingAlias = _qb.expressionMap.aliases.find(
-      (a) => a.name === relationAlias || a.name === propertyName,
-    );
-
-    if (!existingAlias) {
-      _qb = _qb.leftJoin(relationPath, relationAlias);
-      existingAlias = _qb.expressionMap.findAliasByName(relationAlias);
+      if (!existingJoinAlias) {
+        const relationPath = `${aliasName}.${columnMetadata.relationMetadata ? columnMetadata.relationMetadata.propertyName : columnMetadata.propertyName}`;
+        const relationAlias = relationPath.replace(/\./g, '_');
+        _qb = _qb.leftJoin(relationPath, relationAlias);
+        existingJoinAlias = _qb.expressionMap.findAliasByName(relationAlias);
+      }
     }
 
-    const nextFieldKey = fieldKey.slice(
-      columnMetadata.relationMetadata.propertyPath.length + 1,
-    );
-    return this.applyJoins(_qb, nextFieldKey, existingAlias);
+    const propertyPath =
+      columnMetadata?.relationMetadata?.propertyPath ??
+      columnMetadata?.propertyName ??
+      existingJoinAlias?.name ??
+      fieldKey.split('.')[0];
+    const nextFieldKey = fieldKey.slice(propertyPath.length + 1);
+    return this.applyJoins(_qb, nextFieldKey, existingJoinAlias);
   }
 
   protected getColumnMetadata(

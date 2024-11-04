@@ -32,6 +32,7 @@ import { Paginated } from 'src/common/dto/paginated.dto';
 import { ClsService } from 'nestjs-cls';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
+import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -124,7 +125,6 @@ export class TrainingAdminService {
     let preparedTokenValues = trainingTokenValues.map((tokenValue) => {
       const preparedValue: TrainingParticipantRepresentationDto = {
         ...tokenValue,
-        expiresOn: dayjs().add(DEFAULT_TOKEN_EXPIRATION_DAYS, 'day').toDate(),
         enrollmentId: courseEnrollmentId,
         trainingItemId: trainingItem.id,
         ...tokenAddIns,
@@ -170,8 +170,10 @@ export class TrainingAdminService {
     });
 
     // Create tokens.
-    const tokens =
-      await this.usersService.createTrainingToken(preparedTokenValues);
+    const tokens = await this.usersService.createTrainingToken(
+      preparedTokenValues,
+      dayjs().add(DEFAULT_TOKEN_EXPIRATION_DAYS, 'day').toDate(),
+    );
 
     this.sendTrainingLinkEmails(
       tokens,
@@ -191,28 +193,31 @@ export class TrainingAdminService {
     query['value.unitSlug'] = unitSlugs;
     query['value.organizationSlug'] = organizationSlugs;
 
-    let percentWatchedOrder: 'ASC' | 'DESC' | undefined = undefined;
-    if (query.order['watchStat.percentWatched']) {
-      percentWatchedOrder = query.order['watchStat.percentWatched'];
-      Reflect.deleteProperty(query.order, 'watchStat.percentWatched');
+    let completionProgressOrder: 'ASC' | 'DESC' | undefined = undefined;
+    if (query.order['completion.progress']) {
+      completionProgressOrder = query.order['completion.progress'];
+      Reflect.deleteProperty(query.order, 'completion.progress');
     }
 
     const qb = this.usersService.getTrainingTokensQb(query);
     const al = qb.alias;
     qb.leftJoinAndMapOne(
-      `${al}.watchStat`,
-      WatchStat,
-      'watch_stat',
-      `watch_stat."trainingItemId"::TEXT = ${al}.value ->> 'trainingItemId'
-    AND watch_stat."userExternalId"::TEXT = ${al}.value ->> 'userId'
-    AND watch_stat."year" = EXTRACT(YEAR FROM ${al}."createdOn")`,
+      `${al}.completion`,
+      ItemCompletion,
+      'item_completion',
+      `item_completion."itemId"::TEXT = ${al}.value ->> 'trainingItemId'
+    AND item_completion."userId"::TEXT = ${al}.value ->> 'userId'
+    AND item_completion."enrollmentId"::TEXT = ${al}.value ->> 'enrollmentId'`,
     );
 
-    if (percentWatchedOrder) {
-      qb.addSelect('watch_stat."percentWatched"', 'percent_watched').addOrderBy(
-        'percent_watched',
-        percentWatchedOrder,
-        percentWatchedOrder === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
+    if (completionProgressOrder) {
+      qb.addSelect(
+        'item_completion."progress"',
+        'completion_progress',
+      ).addOrderBy(
+        'completion_progress',
+        completionProgressOrder,
+        completionProgressOrder === 'ASC' ? 'NULLS FIRST' : 'NULLS LAST',
       );
     }
 
@@ -239,10 +244,22 @@ export class TrainingAdminService {
         `REPLACE(REPLACE(:urlTemplate, '{token}', ${al}.key), '{trainingItemId}', ${al}.value ->> 'trainingItemId')`,
         'training_link',
       )
-      .addSelect(`watch_stat."percentWatched"', 'percent_watched')`)
+      .addSelect(
+        `TO_CHAR(item_completion."progress" * 100, 'FM999.00"%')`,
+        'percent_watched',
+      )
       .setParameter('urlTemplate', trainingUrlTemplate)
       .stream()
-      .then((stream) => stream.pipe(csvFormat({ headers: true })));
+      .then((qbStream) => {
+        const csvStream = csvFormat({ headers: true });
+
+        qbStream.on('error', (err) => {
+          csvStream.emit('error', err);
+        });
+        qbStream.pipe(csvStream);
+
+        return csvStream;
+      });
   }
 
   async resendTrainingLinks(data: ResendTrainingLinksDto) {
@@ -345,6 +362,15 @@ export class TrainingAdminService {
   async getWatchStatsCsv(query: WatchStatsQueryDto) {
     return this.getWatchStatsQb(query)
       .stream()
-      .then((stream) => stream.pipe(csvFormat({ headers: true })));
+      .then((qbStream) => {
+        const csvStream = csvFormat({ headers: true });
+
+        qbStream.on('error', (err) => {
+          csvStream.emit('error', err);
+        });
+        qbStream.pipe(csvStream);
+
+        return csvStream;
+      });
   }
 }

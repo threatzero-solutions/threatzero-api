@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { ViolentIncidentReportsService } from './violent-incident-reports.service';
 import { CreateViolentIncidentReportDto } from './dto/create-violent-incident-report.dto';
@@ -28,6 +29,8 @@ import { ViolentIncidentReportQueryDto } from './dto/violent-incident-report-que
 @Controller('violent-incident-reports')
 @CheckPolicies(new EntityAbilityChecker(ViolentIncidentReport))
 export class ViolentIncidentReportsController {
+  private readonly logger = new Logger(ViolentIncidentReportsController.name);
+
   constructor(
     private readonly violentIncidentReportsService: ViolentIncidentReportsService,
   ) {}
@@ -68,6 +71,12 @@ export class ViolentIncidentReportsController {
   async generateFormPDF(@Param('id') id: string, @Res() response: Response) {
     const pdf =
       await this.violentIncidentReportsService.generateSubmissionPDF(id);
+
+    pdf.on('error', (e) => {
+      this.logger.error('An error occurred while generating PDF.', e.stack);
+      response.status(500).send('An error occurred while generating PDF.');
+    });
+
     response.setHeader('Content-Type', 'application/pdf');
     pdf.pipe(response);
     pdf.end();

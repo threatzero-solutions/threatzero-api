@@ -192,14 +192,17 @@ export class UsersService {
 
   async createTrainingToken(
     trainingParticipantRepresentationDto: TrainingParticipantRepresentationDto,
+    expiresOn?: Date,
   ): Promise<OpaqueToken<TrainingParticipantRepresentationDto>>;
   async createTrainingToken(
     trainingParticipantRepresentationDto: TrainingParticipantRepresentationDto[],
+    expiresOn?: Date,
   ): Promise<OpaqueToken<TrainingParticipantRepresentationDto>[]>;
   async createTrainingToken(
     trainingParticipantRepresentationDto:
       | TrainingParticipantRepresentationDto
       | TrainingParticipantRepresentationDto[],
+    expiresOn?: Date,
   ): Promise<
     | OpaqueToken<TrainingParticipantRepresentationDto>
     | OpaqueToken<TrainingParticipantRepresentationDto>[]
@@ -208,14 +211,18 @@ export class UsersService {
     trainingParticipantRepresentationDto:
       | TrainingParticipantRepresentationDto
       | TrainingParticipantRepresentationDto[],
+    expiresOn?: Date,
   ): Promise<
     | OpaqueToken<TrainingParticipantRepresentationDto>
     | OpaqueToken<TrainingParticipantRepresentationDto>[]
   > {
     const opaqueTokenResponse = await this.opaqueTokenService.create(
       trainingParticipantRepresentationDto,
-      TrainingParticipantRepresentationDto,
-      'training',
+      {
+        valueClass: TrainingParticipantRepresentationDto,
+        type: 'training',
+        expiresOn,
+      },
     );
 
     return opaqueTokenResponse;

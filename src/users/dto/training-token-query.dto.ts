@@ -16,7 +16,7 @@ export class TrainingTokenQueryOrderDto extends ViewingUserTokenQueryOrderDto {
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  ['watchStat.percentWatched']: QueryOrder;
+  ['completion.progress']: QueryOrder;
 }
 
 const defaultOrder = new TrainingTokenQueryOrderDto();

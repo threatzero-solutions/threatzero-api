@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { TipsService } from './tips.service';
 import { CreateTipDto } from './dto/create-tip.dto';
@@ -27,6 +28,8 @@ import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 @Controller('tips')
 @CheckPolicies(new EntityAbilityChecker(Tip))
 export class TipsController {
+  private readonly logger = new Logger(TipsController.name);
+
   constructor(private readonly tipsService: TipsService) {}
 
   @Throttle({ default: { limit: 3, ttl: 3 * 60 * 1000 } })
@@ -68,6 +71,12 @@ export class TipsController {
   @Get('submissions/:id/pdf')
   async generateFormPDF(@Param('id') id: string, @Res() response: Response) {
     const pdf = await this.tipsService.generateSubmissionPDF(id);
+
+    pdf.on('error', (e) => {
+      this.logger.error('An error occurred while generating PDF.', e.stack);
+      response.status(500).send('An error occurred while generating PDF.');
+    });
+
     response.setHeader('Content-Type', 'application/pdf');
     pdf.pipe(response);
     pdf.end();

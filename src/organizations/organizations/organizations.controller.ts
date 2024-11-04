@@ -88,10 +88,12 @@ export class OrganizationsController {
   createLmsToken(
     @Param('id') id: string,
     @Body() lmsViewershipTokenValueDto: LmsViewershipTokenValueDto,
+    @Query('expiresOn', new ParseDatePipe({ optional: true })) expiresOn?: Date,
   ) {
     return this.organizationsService.createLmsToken(
       id,
       lmsViewershipTokenValueDto,
+      expiresOn,
     );
   }
 

@@ -1,7 +1,12 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { TrainingItem } from './entities/item.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
+import {
+  DeepPartial,
+  FindOptionsWhere,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 import { filterTraining } from '../common/training.utils';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { Video } from './entities/video-item.entity';
@@ -24,6 +29,7 @@ import { UserRepresentation } from 'src/users/entities/user-representation.entit
 import { Paginated } from 'src/common/dto/paginated.dto';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { LmsViewershipTokenValueDto } from 'src/organizations/organizations/dto/lms-viewership-token-value.dto';
+import { format as csvFormat } from '@fast-csv/format';
 
 export class ItemsService extends BaseEntityService<TrainingItem> {
   alias = 'item';
@@ -123,13 +129,21 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     const { user, decodedToken } = await this.getWatcher(watchId);
 
     if (decodedToken) {
-      createItemCompletionDto.enrollment.id = decodedToken.enrollmentId;
+      createItemCompletionDto.enrollment = {
+        id: decodedToken.enrollmentId,
+      };
       createItemCompletionDto.item.id = decodedToken.trainingItemId;
     } else {
       // Make sure user has access to item.
       await this.getQb()
         .where({ id: createItemCompletionDto.item.id })
         .getOneOrFail();
+    }
+
+    if (!createItemCompletionDto.enrollment?.id) {
+      throw new BadRequestException(
+        'Enrollment is required for item completions.',
+      );
     }
 
     const rawItemCompletion: DeepPartial<ItemCompletion> = {
@@ -142,7 +156,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     if (user.unitSlug) {
       const unit = await this.unitsService
         .getQb()
-        .andWhere({ slug: user.unitSlug })
+        .where({ slug: user.unitSlug })
         .getOneOrFail();
 
       rawItemCompletion.unit = {
@@ -154,7 +168,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     } else if (user.organizationSlug) {
       const organization = await this.organizationsService
         .getQb()
-        .andWhere({ slug: user.organizationSlug })
+        .where({ slug: user.organizationSlug })
         .getOneOrFail();
 
       rawItemCompletion.organization = {
@@ -214,19 +228,62 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     return Paginated.fromQb(qb, query);
   }
 
-  async getItemCompletions(query: BaseQueryDto) {
-    let qb = this.getItemCompletionsQb(query);
-    qb = qb.leftJoinAndMapOne(
-      `${qb.alias}.user`,
-      UserRepresentation,
-      'user',
-      `user.externalId = ${qb.alias}.userId`,
-    );
-
-    return Paginated.fromQb(qb, query);
+  async findItemCompletions(query: BaseQueryDto) {
+    return Paginated.fromQb(this.findItemCompletionsQb(query), query);
   }
 
-  private getItemCompletionsQb(query: ItemCompletionQueryDto) {
+  async findItemCompletionsCsv(query: BaseQueryDto) {
+    const qb = this.findItemCompletionsQb(query);
+    return qb
+      .select('user.familyName', 'Last Name')
+      .addSelect('user.givenName', 'First Name')
+      .addSelect('user.email', 'Email')
+      .addSelect('user.externalId', 'User ID')
+      .addSelect('organization.name', 'Organization')
+      .addSelect('unit.name', 'Unit')
+      .addSelect(
+        `REGEXP_REPLACE(item.metadata.title, '<[^>]*>', '', 'g')`,
+        'Training Item',
+      )
+      .addSelect('EXTRACT(YEAR FROM enrollment.startDate)', 'Year')
+      .addSelect(
+        `TO_CHAR(${qb.alias}.completedOn, 'YYYY-MM-DD')`,
+        'Completed On',
+      )
+      .addSelect(
+        `TO_CHAR(${qb.alias}.progress * 100, 'FM999.00"%')`,
+        'Percent Watched',
+      )
+      .stream()
+      .then((qbStream) => {
+        const csvStream = csvFormat({ headers: true });
+
+        qbStream.on('error', (err) => {
+          csvStream.emit('error', err);
+        });
+        qbStream.pipe(csvStream);
+
+        return csvStream;
+      });
+  }
+
+  private findItemCompletionsQb(query: ItemCompletionQueryDto) {
+    return this.getItemCompletionsQb(query, (qb) =>
+      qb.leftJoinAndMapOne(
+        `${qb.alias}.user`,
+        UserRepresentation,
+        'user',
+        `user.externalId = ${qb.alias}.userId`,
+      ),
+    );
+  }
+
+  private getItemCompletionsQb(
+    query: ItemCompletionQueryDto,
+    mod: (
+      qb: SelectQueryBuilder<ItemCompletion>,
+    ) => SelectQueryBuilder<ItemCompletion> = (qb) => qb,
+  ) {
     let qb = this.itemCompletionsRepository.createQueryBuilder();
     qb = qb
       .leftJoinAndSelect(`${qb.alias}.item`, 'item')
@@ -234,6 +291,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       .leftJoinAndSelect(`${qb.alias}.unit`, 'unit')
       .leftJoinAndSelect(`${qb.alias}.enrollment`, 'enrollment')
       .leftJoinAndSelect(`enrollment.course`, 'course');
+    qb = mod(qb);
 
     const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
       this.cls.get('user'),

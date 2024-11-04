@@ -11,6 +11,7 @@ import {
   HttpCode,
   Res,
   Req,
+  Logger,
 } from '@nestjs/common';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -29,6 +30,8 @@ import { Request, Response } from 'express';
 @Controller('training/items')
 @CheckPolicies(new EntityAbilityChecker(TrainingItem))
 export class ItemsController {
+  private readonly logger = new Logger(ItemsController.name);
+
   constructor(private readonly itemsService: ItemsService) {}
 
   @Public()
@@ -69,8 +72,36 @@ export class ItemsController {
 
   @CheckPolicies(new EntityAbilityChecker(ItemCompletion))
   @Get('completions')
-  getItemCompletions(@Query() query: ItemCompletionQueryDto) {
-    return this.itemsService.getItemCompletions(query);
+  findItemCompletions(@Query() query: ItemCompletionQueryDto) {
+    return this.itemsService.findItemCompletions(query);
+  }
+
+  @CheckPolicies(new EntityAbilityChecker(ItemCompletion))
+  @Get('completions/csv')
+  async findItemCompletionsCsv(
+    @Query() query: ItemCompletionQueryDto,
+    @Res() res: Response,
+  ) {
+    // Make sure to get entire results.
+    query.offset = 0;
+    query.limit = Number.MAX_SAFE_INTEGER;
+
+    const stream = await this.itemsService.findItemCompletionsCsv(query);
+    stream.on('error', (e) => {
+      this.logger.error(
+        'An error occurred while streaming completions csv data.',
+        e.stack,
+      );
+      res.status(500).send('An error occurred while downloading data.');
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="item-completions.csv"',
+    );
+
+    stream.pipe(res);
   }
 
   @Post()

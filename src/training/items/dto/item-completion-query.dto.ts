@@ -1,5 +1,11 @@
-import { Expose } from 'class-transformer';
-import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import {
   BaseQueryOrderDto,
   QueryOrder,
@@ -18,6 +24,22 @@ export class ItemCompletionQueryOrderDto extends BaseQueryOrderDto {
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
+  completedOn?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  ['user.givenName']?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  ['user.familyName']?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  ['user.email']?: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
   ['enrollment.startDate']?: QueryOrder;
 
   @IsOptional()
@@ -26,15 +48,15 @@ export class ItemCompletionQueryOrderDto extends BaseQueryOrderDto {
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  ['enrollment.course.metadataTitle']?: QueryOrder;
+  ['enrollment.course.metadata.title']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  ['section.metadataTitle']?: QueryOrder;
+  ['section.metadata.title']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  ['item.metadataTitle']?: QueryOrder;
+  ['item.metadata.title']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
@@ -44,6 +66,9 @@ export class ItemCompletionQueryOrderDto extends BaseQueryOrderDto {
   @IsIn(QueryOrderOptions)
   ['unit.name']?: QueryOrder;
 }
+
+const defaultOrder = new ItemCompletionQueryOrderDto();
+defaultOrder.createdOn = 'DESC';
 
 export class ItemCompletionQueryDto extends BaseQueryDto {
   @IsOptional()
@@ -85,4 +110,9 @@ export class ItemCompletionQueryDto extends BaseQueryDto {
   @IsString({ each: true })
   @Expose({ groups: ['organization'] })
   ['unit.slug']?: string | string[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ItemCompletionQueryOrderDto)
+  order: ItemCompletionQueryOrderDto = defaultOrder;
 }
