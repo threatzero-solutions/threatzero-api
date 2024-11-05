@@ -39,17 +39,23 @@ export const filterTraining = <
     );
 
   // Filter by global visibility.
-  _qb = _qb.andWhere('course.visibility = :visibility', {
-    visibility: TrainingVisibility.VISIBLE,
-  });
+  _qb = _qb.andWhere(
+    'course.visibility = :visibility::public.training_course_visibility_enum',
+    {
+      visibility: TrainingVisibility.VISIBLE,
+    },
+  );
 
   // Filter by organization and organization level visibility.
   _qb = _qb
     .leftJoin('course.enrollments', 'course_enrollment')
     .leftJoin('course_enrollment.organization', 'course_by_organization')
-    .andWhere('course_enrollment.visibility = :visibility', {
-      visibility: TrainingVisibility.VISIBLE,
-    })
+    .andWhere(
+      'course_enrollment.visibility = :visibility::public.course_enrollment_visibility_enum',
+      {
+        visibility: TrainingVisibility.VISIBLE,
+      },
+    )
     .andWhere('course_by_organization.slug = :organizationSlug', {
       organizationSlug: user?.organizationSlug,
     });
