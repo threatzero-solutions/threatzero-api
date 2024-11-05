@@ -15,6 +15,7 @@ import {
   Res,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -31,11 +32,17 @@ import { LmsViewershipTokenValueDto } from './dto/lms-viewership-token-value.dto
 import { LmsViewershipTokenQueryDto } from './dto/lms-viership-token-query.dto';
 import { Response } from 'express';
 import { ParseDatePipe } from 'src/common/pipes/parse-date/parse-date.pipe';
+import {
+  ScormVersion,
+  ScormVersionPipe,
+} from 'src/common/pipes/scorm-version/scorm-version.pipe';
 // import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
 
 @Controller('organizations/organizations')
 @CheckPolicies(new EntityAbilityChecker(Organization))
 export class OrganizationsController {
+  private readonly logger = new Logger(OrganizationsController.name);
+
   constructor(private readonly organizationsService: OrganizationsService) {}
 
   @Post()
@@ -124,18 +131,31 @@ export class OrganizationsController {
   }
 
   @Get(':id/lms-tokens/scorm')
-  downloadScormPackage(
+  async downloadScormPackage(
     @Param('id') id: string,
     @Query('key') tokenKey: string,
     @Res() res: Response,
-    @Query('version') version?: '1.2' | '2004',
+    @Query('version', new ScormVersionPipe({ optional: true }))
+    version?: ScormVersion,
   ) {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader(
       'Content-Disposition',
       'attachment; filename="threatzero-training-scorm.zip"',
     );
-    this.organizationsService.downloadScormPackage(id, tokenKey, res, version);
+    const stream = await this.organizationsService.downloadScormPackage(
+      id,
+      tokenKey,
+      version,
+    );
+
+    stream.on('error', (e) => {
+      const msg = `An error occurred while generating SCORM package.`;
+      this.logger.error(msg, e.stack);
+      res.status(500).send(msg);
+    });
+
+    stream.pipe(res);
   }
 
   @Post(':id/idps/load-imported-config/:protocol')

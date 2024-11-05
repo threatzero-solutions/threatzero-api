@@ -36,6 +36,8 @@ import { LmsViewershipTokenQueryDto } from './dto/lms-viership-token-query.dto';
 import fs from 'fs';
 import path from 'path';
 import archiver from 'archiver';
+import { PassThrough } from 'stream';
+import { ScormVersion } from 'src/common/pipes/scorm-version/scorm-version.pipe';
 
 const fsp = fs.promises;
 
@@ -232,8 +234,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   async downloadScormPackage(
     id: Organization['id'],
     tokenKey: string,
-    outStream: NodeJS.WritableStream,
-    scormVersion: '1.2' | '2004' = '1.2',
+    scormVersion: ScormVersion = '1.2',
   ) {
     await this.verifyLmsOrganization(id);
     const tokenValue = await this.opaqueTokenService.validate(
@@ -246,23 +247,18 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       throw new NotFoundException('Token not found');
     }
 
+    const scormDir = path.join(__dirname, '../../assets/scorm/training-item');
     const manifestTemplate = await fsp.readFile(
-      path.join(__dirname, '../../assets/scorm/training-item/imsmanifest.xml'),
+      path.join(scormDir, `imsmanifest_${scormVersion}.xml`),
       'utf8',
     );
+
     const manifest = manifestTemplate
-      .replace(
-        '__SCORM_VERSION__',
-        scormVersion === '1.2'
-          ? '1.2'
-          : scormVersion === '2004'
-            ? '2004 3rd Edition'
-            : '1.2',
-      )
-      .replace('__TRAINING_ITEM_ID__', tokenValue.trainingItemId);
+      .replace('__TRAINING_ITEM_ID__', tokenValue.trainingItemId)
+      .replace('__ENROLLMENT_ID__', tokenValue.enrollmentId);
 
     const videoHtmlTemplate = await fsp.readFile(
-      path.join(__dirname, '../../assets/scorm/training-item/video.html'),
+      path.join(scormDir, 'video.html'),
       'utf8',
     );
     const videoHtml = videoHtmlTemplate
@@ -273,16 +269,21 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       .replace('__TRAINING_ITEM_ID__', tokenValue.trainingItemId)
       .replace('__TRAINING_TOKEN__', tokenKey);
 
-    const zip = archiver('zip');
+    const outStream = new PassThrough();
 
+    const zip = archiver('zip');
+    zip.on('error', (err) => {
+      outStream.emit('error', err);
+    });
     zip.pipe(outStream);
 
-    zip.glob('*', {
-      cwd: path.join(__dirname, '../../assets/scorm/training-item'),
-    });
+    zip.file(path.join(scormDir, 'index.html'), { name: 'index.html' });
     zip.append(videoHtml, { name: 'video.html' });
     zip.append(manifest, { name: 'imsmanifest.xml' });
+
     zip.finalize();
+
+    return outStream;
   }
 
   private async verifyLmsOrganization(id: Organization['id']) {
