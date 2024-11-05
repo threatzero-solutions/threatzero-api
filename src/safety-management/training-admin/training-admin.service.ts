@@ -82,10 +82,12 @@ export class TrainingAdminService {
 
     const trainingCourse =
       courseEnrollment &&
-      (await this.coursesService.findOne(courseEnrollment.id).catch((e) => {
-        this.logger.error('Failed to fetch training course', e);
-        return null;
-      }));
+      (await this.coursesService
+        .findOne(courseEnrollment.course?.id)
+        .catch((e) => {
+          this.logger.error('Failed to fetch training course', e);
+          return null;
+        }));
 
     const trainingItem = trainingCourse?.sections.reduce(
       (acc, s) => {
