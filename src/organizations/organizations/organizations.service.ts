@@ -250,14 +250,16 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       path.join(__dirname, '../../assets/scorm/training-item/imsmanifest.xml'),
       'utf8',
     );
-    const manifest = manifestTemplate.replace(
-      '__SCORM_VERSION__',
-      scormVersion === '1.2'
-        ? '1.2'
-        : scormVersion === '2004'
-          ? '2004 4th Edition'
-          : '1.2',
-    );
+    const manifest = manifestTemplate
+      .replace(
+        '__SCORM_VERSION__',
+        scormVersion === '1.2'
+          ? '1.2'
+          : scormVersion === '2004'
+            ? '2004 3rd Edition'
+            : '1.2',
+      )
+      .replace('__TRAINING_ITEM_ID__', tokenValue.trainingItemId);
 
     const videoHtmlTemplate = await fsp.readFile(
       path.join(__dirname, '../../assets/scorm/training-item/video.html'),
