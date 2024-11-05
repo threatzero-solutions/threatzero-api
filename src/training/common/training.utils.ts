@@ -40,7 +40,7 @@ export const filterTraining = <
 
   // Filter by global visibility.
   _qb = _qb.andWhere(
-    'course.visibility = :visibility::public.training_course_visibility_enum',
+    'course.visibility = :visibility::TEXT::public.training_course_visibility_enum',
     {
       visibility: TrainingVisibility.VISIBLE,
     },
@@ -51,7 +51,7 @@ export const filterTraining = <
     .leftJoin('course.enrollments', 'course_enrollment')
     .leftJoin('course_enrollment.organization', 'course_by_organization')
     .andWhere(
-      'course_enrollment.visibility = :visibility::public.course_enrollment_visibility_enum',
+      'course_enrollment.visibility = :visibility::TEXT::public.course_enrollment_visibility_enum',
       {
         visibility: TrainingVisibility.VISIBLE,
       },

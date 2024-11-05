@@ -106,7 +106,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
         retQb = retQb.leftJoinAndSelect(
           `${qb.alias}.enrollments`,
           'enrollment',
-          'enrollment.visibility = :visibility::public.course_enrollment_visibility_enum',
+          'enrollment.visibility = :visibility::TEXT::public.course_enrollment_visibility_enum',
           { visibility: TrainingVisibility.VISIBLE },
         );
         break;
