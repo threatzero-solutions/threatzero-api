@@ -91,8 +91,28 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   }
 
   prepareQbSingle(qb: SelectQueryBuilder<Organization>) {
-    return qb
-      .leftJoinAndSelect(`${qb.alias}.enrollments`, 'enrollment')
+    const user = this.cls.get('user');
+
+    let retQb = qb;
+
+    switch (getOrganizationLevel(user)) {
+      case LEVEL.ADMIN:
+        retQb = retQb.leftJoinAndSelect(
+          `${qb.alias}.enrollments`,
+          'enrollment',
+        );
+        break;
+      default:
+        retQb = retQb.leftJoinAndSelect(
+          `${qb.alias}.enrollments`,
+          'enrollment',
+          'enrollment.visibility = :visibility',
+          { visibility: TrainingVisibility.VISIBLE },
+        );
+        break;
+    }
+
+    return retQb
       .leftJoinAndSelect(`enrollment.course`, 'course')
       .leftJoinAndSelect(`course.audiences`, 'audience')
       .leftJoinAndSelect(`course.presentableBy`, 'presentableBy')
@@ -122,11 +142,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     if (!user || !user.organizationSlug) {
       return;
     }
-    return await this.findOneBySlug(user.organizationSlug, (qb) =>
-      qb.andWhere('enrollment.visibility = :visibility', {
-        visibility: TrainingVisibility.VISIBLE,
-      }),
-    );
+    return await this.findOneBySlug(user.organizationSlug);
   }
 
   async afterCreate(organization: Organization) {
