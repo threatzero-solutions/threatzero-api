@@ -65,6 +65,7 @@ export class TrainingAdminService {
       trainingUrlTemplate,
       courseEnrollmentId,
       trainingItemId,
+      organizationId,
     } = data;
 
     // Ensure user information is available.
@@ -74,7 +75,7 @@ export class TrainingAdminService {
 
     // Get enrollment, training course and item to make sure they exist and to provide training metadata in emails.
     const courseEnrollment = await this.organizationsService
-      .findOneEnrollment(courseEnrollmentId)
+      .findOneEnrollment(courseEnrollmentId, organizationId)
       .catch((e) => {
         this.logger.error('Failed to fetch course enrollment', e);
         return null;

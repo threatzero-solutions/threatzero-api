@@ -1,6 +1,7 @@
-import { Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
   IsNotEmpty,
+  IsOptional,
   IsString,
   IsUUID,
   Validate,
@@ -38,4 +39,9 @@ export class SendTrainingLinksDto {
   @IsNotEmpty()
   @IsUUID()
   trainingItemId: string;
+
+  @IsOptional()
+  @IsUUID()
+  @Expose({ groups: ['admin'] })
+  organizationId?: string;
 }

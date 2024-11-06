@@ -17,12 +17,7 @@ import { IdpProtocol } from 'src/auth/dto/create-idp.dto';
 import { ClsService } from 'nestjs-cls';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
-import {
-  BadRequestException,
-  ForbiddenException,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { KeycloakConfig } from 'src/config/keycloak.config';
 import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
@@ -166,24 +161,36 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     );
   }
 
-  async findOneEnrollment(id: CourseEnrollment['id']) {
-    const qb = this.getEnrollmentsQb().andWhere({ id });
+  async findOneEnrollment(
+    id: CourseEnrollment['id'],
+    organizationId?: Organization['id'],
+  ) {
+    let qb = this.getEnrollmentsQb().andWhere({ id });
+
+    if (organizationId) {
+      qb = qb.andWhere('organization.id = :organizationId', {
+        organizationId,
+      });
+    }
+
     return qb.leftJoinAndSelect(`${qb.alias}.course`, 'course').getOneOrFail();
   }
 
   private getEnrollmentsQb() {
     const user = this.cls.get('user');
 
-    if (!user || !user.organizationSlug) {
-      throw new ForbiddenException('Missing user information.');
+    let qb = this.courseEnrollmentsRepository.createQueryBuilder();
+    qb = qb.leftJoin(`${qb.alias}.organization`, 'organization');
+    switch (getOrganizationLevel(user)) {
+      case LEVEL.ADMIN:
+        return qb;
+      default:
+        return user?.organizationSlug
+          ? qb.andWhere(`organization.slug = :organizationSlug`, {
+              organizationSlug: user.organizationSlug,
+            })
+          : qb.where('1 = 0');
     }
-
-    const qb = this.courseEnrollmentsRepository.createQueryBuilder();
-    return qb
-      .leftJoin(`${qb.alias}.organization`, 'organization')
-      .where('organization.slug = :organizationSlug', {
-        organizationSlug: user.organizationSlug,
-      });
   }
 
   async createLmsToken(
