@@ -82,15 +82,16 @@ export class OrganizationChangeListener {
       id: event.id,
     });
 
-    Promise.all(
-      [organization.groupId, organization.tatGroupId]
-        .filter((id) => !!id)
-        .map((id) =>
-          this.keycloak.client.groups.del({ id: id! }).catch((e) => {
-            this.logger.error(`Failed to delete organization group ${id}`, e);
-          }),
-        ),
-    );
+    if (organization.groupId) {
+      this.keycloak.client.groups
+        .del({ id: organization.groupId })
+        .catch((e) => {
+          this.logger.error(
+            `Failed to delete organization group ${organization.groupId}`,
+            e,
+          );
+        });
+    }
   }
 
   @OnEvent(UNIT_CHANGED_EVENT)
