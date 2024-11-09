@@ -221,18 +221,18 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       .execute();
   }
 
-  async getMyItemCompletions(query: BaseQueryDto, watchId?: string) {
+  async getMyItemCompletions(query: ItemCompletionQueryDto, watchId?: string) {
     const { user } = await this.getWatcher(watchId);
     const qb = this.getItemCompletionsQb(query).andWhere({ userId: user?.id });
 
     return Paginated.fromQb(qb, query);
   }
 
-  async findItemCompletions(query: BaseQueryDto) {
+  async findItemCompletions(query: ItemCompletionQueryDto) {
     return Paginated.fromQb(this.findItemCompletionsQb(query), query);
   }
 
-  async findItemCompletionsCsv(query: BaseQueryDto) {
+  async findItemCompletionsCsv(query: ItemCompletionQueryDto) {
     const qb = this.findItemCompletionsQb(query);
     return qb
       .select('user.familyName', 'Last Name')

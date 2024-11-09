@@ -115,4 +115,8 @@ export class ItemCompletionQueryDto extends BaseQueryDto {
   @ValidateNested()
   @Type(() => ItemCompletionQueryOrderDto)
   order: ItemCompletionQueryOrderDto = defaultOrder;
+
+  protected getSearchFields(): string[] {
+    return ['user.givenName', 'user.familyName', 'user.email'];
+  }
 }

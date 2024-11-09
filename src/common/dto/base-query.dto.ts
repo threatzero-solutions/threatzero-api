@@ -78,12 +78,14 @@ export class BaseQueryDto {
     const query = this.search
       .split(' ')
       .filter((w) => !!w)
-      .map((w) => `${w}:*`)
+      .map((w) => `'${w}':*`)
       .join(' & ');
 
+    const ilikeQuery = `%${this.search}%`; // Substring search pattern
+
     return qb.andWhere(
-      `to_tsvector('english', ${vectorInput}) @@ to_tsquery('english', :query)`,
-      { query },
+      `(to_tsvector('english', ${vectorInput}) @@ to_tsquery('english', :query) OR ${vectorInput} ILIKE :ilikeQuery)`,
+      { query, ilikeQuery },
     );
   }
 
