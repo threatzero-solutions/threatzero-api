@@ -223,7 +223,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
 
   async getMyItemCompletions(query: ItemCompletionQueryDto, watchId?: string) {
     const { user } = await this.getWatcher(watchId);
-    const qb = this.getItemCompletionsQb(query).andWhere({ userId: user?.id });
+    const qb = this.getItemCompletionsQb(query).andWhere({ userId: user.id });
 
     return Paginated.fromQb(qb, query);
   }

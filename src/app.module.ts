@@ -92,8 +92,8 @@ import { ScopedClassSerializerInterceptor } from './common/scoped-class-serializ
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([
       {
-        ttl: 5 * 60 * 1000, // 5 minutes
-        limit: 1000,
+        ttl: 1 * 60 * 1000, // 1 minute
+        limit: 600,
       },
     ]),
     AuthModule,
