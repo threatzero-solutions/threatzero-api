@@ -295,6 +295,10 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
 
     const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
       this.cls.get('user'),
+      {
+        organizationSlug: query['organization.slug'],
+        unitSlug: query['unit.slug'],
+      },
     );
 
     query['unit.slug'] = unitSlugs;

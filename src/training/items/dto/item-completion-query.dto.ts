@@ -103,12 +103,10 @@ export class ItemCompletionQueryDto extends BaseQueryDto {
 
   @IsOptional()
   @IsString({ each: true })
-  @Expose({ groups: ['organization'] })
   ['unit.id']?: string | string[];
 
   @IsOptional()
   @IsString({ each: true })
-  @Expose({ groups: ['organization'] })
   ['unit.slug']?: string | string[];
 
   @IsOptional()
