@@ -3,13 +3,10 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
   Post,
   Query,
 } from '@nestjs/common';
-import { UserIdChangesDto } from './dto/user-id-change.dto';
 import { UsersService } from './users.service';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
@@ -22,10 +19,9 @@ import { TrainingTokenQueryDto } from './dto/training-token-query.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post('migrate-ids')
-  @HttpCode(HttpStatus.ACCEPTED)
-  async migrateIds(@Body() dto: UserIdChangesDto) {
-    await this.usersService.updateUserIds(dto);
+  @Post('sync-missing-users')
+  async migrateIds() {
+    return await this.usersService.syncMissingUsers();
   }
 
   @Get('training-token/:token')

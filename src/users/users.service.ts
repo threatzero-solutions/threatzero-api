@@ -9,15 +9,15 @@ import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { NotableEntity } from './interfaces/notable-entity.interface';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { Paginated } from 'src/common/dto/paginated.dto';
-import { UserIdChangeDto, UserIdChangesDto } from './dto/user-id-change.dto';
-import { VideoEvent } from 'src/media/entities/video-event.entity';
-import { FormSubmission } from 'src/forms/forms/entities/form-submission.entity';
 import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
 import { OpaqueTokenService } from 'src/auth/opaque-token.service';
 import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { TrainingTokenQueryDto } from './dto/training-token-query.dto';
 import { ClsService } from 'nestjs-cls';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
+import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
+import { getUserAttr } from 'src/common/utils';
 
 export class UsersService {
   constructor(
@@ -27,6 +27,7 @@ export class UsersService {
     private readonly cls: ClsService<CommonClsStore>,
     private dataSource: DataSource,
     private opaqueTokenService: OpaqueTokenService,
+    private keycloakAdminService: KeycloakAdminClientService,
   ) {}
 
   async updateRepresentation(user: StatelessUser) {
@@ -143,39 +144,6 @@ export class UsersService {
     };
   }
 
-  async updateUserId(change: UserIdChangeDto) {
-    await this.dataSource.transaction(async (manager) => {
-      const promises = [];
-      promises.push(
-        manager.update(
-          UserRepresentation,
-          { externalId: change.oldId },
-          { externalId: change.newId },
-        ),
-      );
-      promises.push(
-        manager.update(
-          FormSubmission,
-          { userId: change.oldId },
-          { userId: change.newId },
-        ),
-      );
-      promises.push(
-        manager.update(
-          VideoEvent,
-          { userId: change.oldId },
-          { userId: change.newId },
-        ),
-      );
-
-      await Promise.all(promises);
-    });
-  }
-
-  async updateUserIds(userIdChanges: UserIdChangesDto) {
-    await Promise.all(userIdChanges.changes.map((c) => this.updateUserId(c)));
-  }
-
   async getTrainingToken(key: string) {
     return await this.opaqueTokenService.get(key);
   }
@@ -230,5 +198,64 @@ export class UsersService {
 
   async deleteTrainingToken(token: string) {
     return await this.opaqueTokenService.delete(token);
+  }
+
+  async syncMissingUsers() {
+    let usersSyncedCount = 0;
+
+    const missingUserIds = await this.dataSource
+      .createQueryBuilder(ItemCompletion, 'item_completion')
+      .select('item_completion."userId"')
+      .addSelect('organization.slug', 'organizationSlug')
+      .addSelect('unit.slug', 'unitSlug')
+      .distinct(true)
+      .leftJoin(
+        UserRepresentation,
+        'user',
+        'item_completion.userId = user.externalId',
+      )
+      .leftJoin('item_completion.organization', 'organization')
+      .leftJoin('item_completion.unit', 'unit')
+      .where('user.id IS NULL')
+      .getRawMany<{
+        userId: string;
+        organizationSlug: string;
+        unitSlug: string;
+      }>();
+
+    for (const { userId, organizationSlug, unitSlug } of missingUserIds) {
+      const keycloakUser = await this.keycloakAdminService.client.users.findOne(
+        {
+          id: userId,
+        },
+      );
+
+      if (!keycloakUser || !keycloakUser.email) {
+        continue;
+      }
+
+      const user = new StatelessUser(
+        userId,
+        keycloakUser.email,
+        [keycloakUser.firstName, keycloakUser.lastName]
+          .filter(Boolean)
+          .join(' '),
+        keycloakUser.firstName,
+        keycloakUser.lastName,
+        getUserAttr(keycloakUser.attributes?.picture),
+        [],
+        [],
+        organizationSlug,
+        unitSlug,
+      );
+
+      await this.updateRepresentation(user);
+
+      usersSyncedCount++;
+    }
+
+    return {
+      usersSyncedCount,
+    };
   }
 }

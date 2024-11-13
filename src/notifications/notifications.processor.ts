@@ -21,6 +21,7 @@ import {
   NOTIFICATIONS_QUEUE_NAME,
   NOTIFICATIONS_QUEUE_PREFIX,
 } from 'src/common/constants/queue.constants';
+import { getUserAttr, truthyAttr } from 'src/common/utils';
 import { Tip } from 'src/safety-management/tips/entities/tip.entity';
 import { DataSource } from 'typeorm';
 
@@ -156,7 +157,7 @@ export class NotificationsProcessor extends WorkerHost {
 
         const userAttributes = user.attributes || {};
 
-        if (!this.truthyAttr(userAttributes.sosNotificationsEnabled)) {
+        if (!truthyAttr(userAttributes.sosNotificationsEnabled)) {
           continue;
         }
 
@@ -164,11 +165,8 @@ export class NotificationsProcessor extends WorkerHost {
         let email: string | undefined;
 
         // Get phone number if user has verified phone number.
-        const userPhoneNumber = this.getUserAttr(userAttributes.phoneNumber);
-        if (
-          this.truthyAttr(userAttributes.phoneNumberVerified) &&
-          userPhoneNumber
-        ) {
+        const userPhoneNumber = getUserAttr(userAttributes.phoneNumber);
+        if (truthyAttr(userAttributes.phoneNumberVerified) && userPhoneNumber) {
           phoneNumber = userPhoneNumber;
         }
 
@@ -220,29 +218,5 @@ export class NotificationsProcessor extends WorkerHost {
         },
       });
     }
-  }
-
-  private getUserAttr(attribute: unknown) {
-    if (Array.isArray(attribute) && attribute.length) {
-      attribute = attribute[0];
-    }
-
-    if (attribute === null || attribute === undefined) {
-      return undefined;
-    }
-
-    try {
-      return attribute.toString();
-    } catch {
-      return undefined;
-    }
-  }
-
-  private truthyAttr(attribute: unknown) {
-    const attr = this.getUserAttr(attribute);
-    if (attr?.trim().match(/^(true)|1|(on)|(yes)$/i)) {
-      return true;
-    }
-    return false;
   }
 }
