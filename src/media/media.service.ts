@@ -27,6 +27,7 @@ import { OpaqueTokenService } from 'src/auth/opaque-token.service';
 import { UsersService } from 'src/users/users.service';
 import { StatelessUser } from 'src/auth/user.factory';
 import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
+import { RedisStore } from 'cache-manager-ioredis-yet';
 
 const DEFAULT_WIDTH = 640;
 
@@ -37,12 +38,19 @@ export class MediaService {
   constructor(
     @InjectRepository(VideoEvent)
     private videoEventsRepository: Repository<VideoEvent>,
-    @Inject(CACHE_MANAGER) private cache: Cache,
+    @Inject(CACHE_MANAGER) private cache: Cache<RedisStore>,
     private config: ConfigService,
     private readonly http: HttpService,
     private readonly opaqueTokenService: OpaqueTokenService,
     private readonly usersService: UsersService,
   ) {}
+
+  async onApplicationShutdown(signal?: string): Promise<void> {
+    this.logger.log(
+      `Received shutdown signal: ${signal}. Closing Redis cache...`,
+    );
+    await this.cache.store.client.quit().catch((e) => this.logger.warn(e));
+  }
 
   getCloudFrontUrlSigner(prefix = '') {
     const options = this.config.getOrThrow<CloudFrontDistributionConfig>(

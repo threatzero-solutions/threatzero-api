@@ -85,6 +85,8 @@ export default registerAs('redis', () => {
   const redisOptions = {
     tls,
     enableAutoPipelining: true,
+    username: process.env.REDIS_USERNAME,
+    password: process.env.REDIS_PASSWORD,
   };
 
   return validate(RedisConfig, {

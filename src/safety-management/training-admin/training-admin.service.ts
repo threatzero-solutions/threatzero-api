@@ -52,6 +52,13 @@ export class TrainingAdminService {
     private readonly cls: ClsService<CommonClsStore>,
   ) {}
 
+  async onApplicationShutdown(signal?: string): Promise<void> {
+    this.logger.log(
+      `Received shutdown signal: ${signal}. Closing BullMQ queue...`,
+    );
+    await this.notificationsQueue.close().catch((e) => this.logger.warn(e));
+  }
+
   /**
    * Send special training invite links with tokens to specified emails.
    *

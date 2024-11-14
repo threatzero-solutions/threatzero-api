@@ -14,6 +14,7 @@ import { Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job, Queue } from 'bullmq';
 import { Cache } from 'cache-manager';
+import { RedisStore } from 'cache-manager-ioredis-yet';
 import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
 import { PinpointSmsService } from 'src/aws/pinpoint-sms/pinpoint-sms.service';
 import { SesService } from 'src/aws/ses/ses.service';
@@ -40,7 +41,7 @@ export class NotificationsProcessor extends WorkerHost {
 
   constructor(
     @InjectQueue(NOTIFICATIONS_QUEUE_NAME) private readonly queue: Queue,
-    @Inject(CACHE_MANAGER) private readonly cache: Cache,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache<RedisStore>,
     private readonly config: ConfigService,
     private readonly ses: SesService,
     private readonly pinpointSms: PinpointSmsService,
@@ -48,6 +49,15 @@ export class NotificationsProcessor extends WorkerHost {
     private readonly dataSource: DataSource,
   ) {
     super();
+  }
+
+  async onApplicationShutdown(signal?: string): Promise<void> {
+    this.logger.log(
+      `Received shutdown signal: ${signal}. Closing BullMQ queue and Redis cache...`,
+    );
+    await this.worker.close().catch((e) => this.logger.warn(e));
+    await this.queue.close().catch((e) => this.logger.warn(e));
+    await this.cache.store.client.quit().catch((e) => this.logger.warn(e));
   }
 
   async process(job: Job<unknown>) {
