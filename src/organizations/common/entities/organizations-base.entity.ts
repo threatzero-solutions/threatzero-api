@@ -1,12 +1,8 @@
 import { Base } from 'src/common/base.entity';
 import { SafetyContact } from 'src/safety-management/common/entities/safety-contact.entity';
-import { Index, Column, Relation, OneToOne, JoinColumn } from 'typeorm';
+import { Column, Relation, OneToOne, JoinColumn } from 'typeorm';
 
 export class OrganizationBase extends Base {
-  @Index()
-  @Column({ length: 64, unique: true })
-  slug: string;
-
   @Column({ length: 128 })
   name: string;
 

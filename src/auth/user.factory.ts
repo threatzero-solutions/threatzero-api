@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { DEFAULT_UNIT_SLUG } from 'src/organizations/common/constants';
 
 class TokenPayload {
   sub: string;
@@ -17,6 +18,7 @@ class TokenPayload {
   };
   audiences?: string[];
   organization?: string;
+  organization_unit_path?: string;
   unit?: string;
   peer_units?: string[];
 }
@@ -31,6 +33,7 @@ export class StatelessUser {
   public readonly permissions: string[];
   public readonly audiences: string[];
   public readonly organizationSlug?: string | null;
+  public readonly organizationUnitPath?: string | null;
   public readonly unitSlug?: string | null;
   public readonly peerUnits: string[] = [];
 
@@ -44,6 +47,7 @@ export class StatelessUser {
     permissions: string[],
     audiences: string[],
     organizationSlug?: string | null,
+    organizationUnitPath?: string | null,
     unitSlug?: string | null,
     peerUnits?: string[],
   ) {
@@ -56,7 +60,12 @@ export class StatelessUser {
     this.permissions = permissions;
     this.audiences = audiences;
     this.organizationSlug = organizationSlug;
-    this.unitSlug = unitSlug;
+    this.organizationUnitPath = organizationUnitPath;
+    this.unitSlug = unitSlug
+      ? unitSlug
+      : organizationSlug
+        ? DEFAULT_UNIT_SLUG
+        : null;
     this.peerUnits = peerUnits ?? [];
   }
 
@@ -82,6 +91,7 @@ export class UserFactory {
       tokenPayload.resource_access?.['threatzero-api']?.roles ?? [],
       tokenPayload.audiences ?? [],
       tokenPayload.organization,
+      tokenPayload.organization_unit_path,
       tokenPayload.unit,
       tokenPayload.peer_units ?? [],
     );

@@ -14,6 +14,7 @@ import { SyncDefaultGroupDto } from './idp-mappers/sync-default-group.dto';
 import { SyncDefaultAttributeDto } from './idp-mappers/sync-default-attribute.dto';
 import IdentityProviderRepresentation from '@keycloak/keycloak-admin-client/lib/defs/identityProviderRepresentation';
 import IdentityProviderMapperRepresentation from '@keycloak/keycloak-admin-client/lib/defs/identityProviderMapperRepresentation';
+import { SyncAttributeFromAttributeDto } from './idp-mappers/sync-attribute-from-attribute.dto';
 
 export const IdpProtocols = ['oidc', 'saml'] as const;
 export type IdpProtocol = (typeof IdpProtocols)[number];
@@ -39,6 +40,10 @@ export class CreateIdpDto {
   @ValidateNested()
   @Type(() => SyncAttributeDto)
   syncAttributes: SyncAttributeDto[];
+
+  @ValidateNested()
+  @Type(() => SyncAttributeFromAttributeDto)
+  syncAttributesFromAttributes: SyncAttributeFromAttributeDto[];
 
   @ValidateNested()
   @Type(() => SyncGroupFromAttributeDto)
@@ -115,6 +120,7 @@ export class CreateIdpDto {
   public buildMappers(): IdentityProviderMapperRepresentation[] {
     return [
       ...this.syncAttributes,
+      ...this.syncAttributesFromAttributes,
       ...this.syncGroupsFromAttributes,
       ...this.defaultAttributes,
       ...this.defaultGroups,
@@ -132,6 +138,17 @@ export class CreateIdpDto {
           ].includes(m.identityProviderMapper),
       )
       .map((m) => new SyncAttributeDto().parse(m));
+
+    this.syncAttributesFromAttributes = mappers
+      .filter(
+        (m) =>
+          m.identityProviderMapper &&
+          [
+            'saml-advanced-attribute-idp-mapper',
+            'oidc-advanced-attribute-idp-mapper',
+          ].includes(m.identityProviderMapper),
+      )
+      .map((m) => new SyncAttributeFromAttributeDto().parse(m));
 
     this.syncGroupsFromAttributes = mappers
       .filter(

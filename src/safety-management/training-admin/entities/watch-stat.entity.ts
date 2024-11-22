@@ -4,7 +4,9 @@ import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { UserRepresentation } from 'src/users/entities/user-representation.entity';
-import { DataSource, ViewColumn, ViewEntity } from 'typeorm';
+import { DataSource, ViewColumn } from 'typeorm';
+
+// TODO: LEGACY CODE -> Can delete after found no longer useful for reference.
 
 // Determines maximum distance between watch events that are still considered
 // continous play.
@@ -161,10 +163,10 @@ export const buildWatchStatQb = (dataSource: DataSource) =>
       'organization.id = unit."organizationId"',
     );
 
-@ViewEntity({
-  materialized: true,
-  expression: buildWatchStatQb,
-})
+// @ViewEntity({
+//   materialized: true,
+//   expression: buildWatchStatQb,
+// })
 export class WatchStat {
   @ViewColumn()
   trainingItemId: string;

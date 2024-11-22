@@ -14,19 +14,18 @@ import {
   IdpProtocol,
   IdpProtocols,
 } from 'src/auth/dto/create-idp.dto';
-import { UnitMatcherDto } from './unit-matcher.dto';
 import { Organization } from '../entities/organization.entity';
 import { SyncAttributeDto } from 'src/auth/dto/idp-mappers/sync-attribute.dto';
 import { BadRequestException } from '@nestjs/common';
 import { SyncGroupFromAttributeDto } from 'src/auth/dto/idp-mappers/sync-group-from-attribute.dto';
 import { SyncDefaultAttributeDto } from 'src/auth/dto/idp-mappers/sync-default-attribute.dto';
 import { SyncDefaultGroupDto } from 'src/auth/dto/idp-mappers/sync-default-group.dto';
-import { AudienceMatcherDto } from './audience-matcher.dto';
 import { RoleGroupMatcherDto } from './role-group-matcher.dto';
 import {
   ALLOWED_IMPORTED_ATTRIBUTES,
   AllowedImportedAttribute,
 } from '../constants';
+import { SyncAttributeFromAttributeDto } from 'src/auth/dto/idp-mappers/sync-attribute-from-attribute.dto';
 
 export class CreateOrganizationIdpDto {
   @Matches(/^[a-z0-9-]+$/)
@@ -46,15 +45,17 @@ export class CreateOrganizationIdpDto {
   @IsNotEmpty({ each: true })
   domains: string[];
 
-  @ValidateNested()
-  @Type(() => UnitMatcherDto)
-  unitMatchers: UnitMatcherDto[];
+  @ValidateNested({ each: true })
+  @Type(() => SyncAttributeFromAttributeDto)
+  @IsOptional()
+  unitMatchers?: SyncAttributeFromAttributeDto[];
 
-  @ValidateNested()
-  @Type(() => AudienceMatcherDto)
-  audienceMatchers: AudienceMatcherDto[];
+  @ValidateNested({ each: true })
+  @Type(() => SyncAttributeFromAttributeDto)
+  @IsOptional()
+  audienceMatchers?: SyncAttributeFromAttributeDto[];
 
-  @ValidateNested()
+  @ValidateNested({ each: true })
   @Type(() => RoleGroupMatcherDto)
   @IsOptional()
   @Expose({ groups: ['admin'] })
@@ -86,6 +87,8 @@ export class CreateOrganizationIdpDto {
   }
 
   public build(organization: Organization): CreateIdpDto {
+    const allowedAudiences = organization.allowedAudiences;
+
     // Prepare default sync attributes.
     const defaultSyncAttributes: SyncAttributeDto[] =
       this.protocol === 'saml'
@@ -123,37 +126,60 @@ export class CreateOrganizationIdpDto {
       }
     });
 
-    const allowedAudiences = organization.allowedAudiences;
-    const syncGroupsFromAttributes: SyncGroupFromAttributeDto[] = [
-      ...this.unitMatchers.map((unitMatcher) => {
-        const unit = organization.units.find(
-          (u) => u.slug === unitMatcher.unitSlug,
-        );
+    const syncAttributesFromAttributes: SyncAttributeFromAttributeDto[] = [];
 
-        if (!unit) {
-          throw new BadRequestException('Invalid unit slug');
-        }
-
-        // Build mapper to map pattern to unit group.
-        return plainToInstance(SyncGroupFromAttributeDto, {
-          id: unitMatcher.attributeId,
-          externalName: unitMatcher.externalName,
-          pattern: unitMatcher.pattern,
-          groupPath: `/Organizations/${organization.name}/${unit.name}`,
-        });
-      }),
-      ...this.audienceMatchers
-        .filter((audienceMatcher) =>
-          allowedAudiences.has(audienceMatcher.audience),
+    for (const unitMatcher of this.unitMatchers ?? []) {
+      if (
+        !unitMatcher.patterns.every(
+          ({ value: unitSlug }) =>
+            organization.units.findIndex((u) => u.slug === unitSlug) >= 0,
         )
-        .map((audienceMatcher) => {
-          return plainToInstance(SyncGroupFromAttributeDto, {
-            id: audienceMatcher.attributeId,
-            externalName: audienceMatcher.externalName,
-            pattern: audienceMatcher.pattern,
-            groupPath: `/Audiences/${audienceMatcher.audience}`,
-          });
-        }),
+      ) {
+        throw new BadRequestException('Invalid unit slugs provided.');
+      }
+
+      syncAttributesFromAttributes.push(
+        plainToInstance(SyncAttributeFromAttributeDto, {
+          ...unitMatcher,
+          isMultivalue: false,
+          internalName: 'unit',
+        } as SyncAttributeFromAttributeDto),
+      );
+
+      syncAttributesFromAttributes.push(
+        plainToInstance(SyncAttributeFromAttributeDto, {
+          ...unitMatcher,
+          patterns: unitMatcher.patterns
+            .map(({ pattern, value }) => ({
+              pattern,
+              value: organization.units.find((u) => u.slug === value)?.path,
+            }))
+            .filter(({ value }) => !!value),
+          isMultivalue: false,
+          internalName: 'organization_unit_path',
+        } as SyncAttributeFromAttributeDto),
+      );
+    }
+
+    for (const audienceMatcher of this.audienceMatchers ?? []) {
+      if (
+        !audienceMatcher.patterns.every(({ value: audience }) =>
+          allowedAudiences.has(audience),
+        )
+      ) {
+        throw new BadRequestException('Invalid audiences provided.');
+      }
+
+      syncAttributesFromAttributes.push(
+        plainToInstance(SyncAttributeFromAttributeDto, {
+          ...audienceMatcher,
+          isMultivalue: false,
+          internalName: 'audience',
+        } as SyncAttributeFromAttributeDto),
+      );
+    }
+
+    const syncGroupsFromAttributes: SyncGroupFromAttributeDto[] = [
       ...(this.roleGroupMatchers ?? []).map((roleGroupMatcher) => {
         return plainToInstance(SyncGroupFromAttributeDto, {
           id: roleGroupMatcher.attributeId,
@@ -193,46 +219,26 @@ export class CreateOrganizationIdpDto {
       protocol: this.protocol,
       domains: this.domains,
       syncAttributes,
+      syncAttributesFromAttributes,
       syncGroupsFromAttributes,
       defaultAttributes,
       defaultGroups,
       importedConfig: this.importedConfig,
-    });
+    } as Partial<CreateIdpDto>);
   }
 
-  public parse(createIdpDto: CreateIdpDto, organization: Organization) {
+  public parse(createIdpDto: CreateIdpDto) {
     this.slug = createIdpDto.slug;
     this.name = createIdpDto.name;
     this.protocol = createIdpDto.protocol;
     this.domains = createIdpDto.domains;
     this.syncAttributes = createIdpDto.syncAttributes;
-    this.unitMatchers = createIdpDto.syncGroupsFromAttributes
-      .filter((attribute) => attribute.groupPath.startsWith('/Organizations/'))
-      .map((attribute) => {
-        const unit = organization.units.find(
-          (u) => u.name === attribute.groupPath.split('/').pop(),
-        );
-
-        if (unit) {
-          return plainToInstance(UnitMatcherDto, {
-            unitSlug: unit.slug,
-            externalName: attribute.externalName,
-            pattern: attribute.pattern,
-            attributeId: attribute.id,
-          });
-        }
-      })
-      .filter((v) => !!v) as UnitMatcherDto[];
-    this.audienceMatchers = createIdpDto.syncGroupsFromAttributes
-      .filter((attribute) => attribute.groupPath.startsWith('/Audiences/'))
-      .map((attribute) =>
-        plainToInstance(AudienceMatcherDto, {
-          audience: attribute.groupPath.split('/').pop(),
-          externalName: attribute.externalName,
-          pattern: attribute.pattern,
-          attributeId: attribute.id,
-        }),
-      );
+    this.unitMatchers = createIdpDto.syncAttributesFromAttributes.filter(
+      (attribute) => attribute.internalName === 'unit',
+    );
+    this.audienceMatchers = createIdpDto.syncAttributesFromAttributes.filter(
+      (attribute) => attribute.internalName === 'audience',
+    );
     this.roleGroupMatchers = createIdpDto.syncGroupsFromAttributes
       .filter((attribute) => attribute.groupPath.startsWith('/Role Groups/'))
       .map((attribute) =>

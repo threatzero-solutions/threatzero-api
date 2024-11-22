@@ -4,6 +4,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  IsUUID,
   ValidateNested,
 } from 'class-validator';
 import {
@@ -60,11 +61,11 @@ export class ItemCompletionQueryOrderDto extends BaseQueryOrderDto {
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  ['organization.name']?: QueryOrder;
+  ['user.organization.name']?: QueryOrder;
 
   @IsOptional()
   @IsIn(QueryOrderOptions)
-  ['unit.name']?: QueryOrder;
+  ['user.unit.name']?: QueryOrder;
 }
 
 const defaultOrder = new ItemCompletionQueryOrderDto();
@@ -76,38 +77,38 @@ export class ItemCompletionQueryDto extends BaseQueryDto {
   completed?: boolean;
 
   @IsOptional()
-  @IsString({ each: true })
+  @IsUUID('4', { each: true })
   ['enrollment.id']?: string | string[];
 
   @IsOptional()
-  @IsString({ each: true })
+  @IsUUID('4', { each: true })
   ['enrollment.course.id']?: string | string[];
 
   @IsOptional()
-  @IsString({ each: true })
+  @IsUUID('4', { each: true })
   ['section.id']?: string | string[];
 
   @IsOptional()
-  @IsString({ each: true })
+  @IsUUID('4', { each: true })
   ['item.id']?: string | string[];
 
   @IsOptional()
+  @IsUUID('4', { each: true })
+  @Expose({ groups: ['admin'] })
+  ['user.organization.id']?: string | string[];
+
+  @IsOptional()
   @IsString({ each: true })
   @Expose({ groups: ['admin'] })
-  ['organization.id']?: string | string[];
+  ['user.organization.slug']?: string | string[];
+
+  @IsOptional()
+  @IsUUID('4', { each: true })
+  ['user.unit.id']?: string | string[];
 
   @IsOptional()
   @IsString({ each: true })
-  @Expose({ groups: ['admin'] })
-  ['organization.slug']?: string | string[];
-
-  @IsOptional()
-  @IsString({ each: true })
-  ['unit.id']?: string | string[];
-
-  @IsOptional()
-  @IsString({ each: true })
-  ['unit.slug']?: string | string[];
+  ['user.unit.slug']?: string | string[];
 
   @IsOptional()
   @ValidateNested()

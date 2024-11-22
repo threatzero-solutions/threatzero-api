@@ -13,9 +13,7 @@ import { TrainingAdminService } from './training-admin.service';
 import { SendTrainingLinksDto } from './dto/send-training-links.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
-import { WatchStatsDto } from './dto/watch-stats.dto';
 import { Response } from 'express';
-import { WatchStatsQueryDto } from './dto/watch-stats-query.dto';
 import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
 import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 
@@ -73,40 +71,6 @@ export class TrainingAdminController {
     res.setHeader(
       'Content-Disposition',
       'attachment; filename="training-links.csv"',
-    );
-    stream.pipe(res);
-  }
-
-  @CheckPolicies(new EntityAbilityChecker(WatchStatsDto))
-  @Get('watch-stats')
-  async getWatchStats(@Query() query: WatchStatsQueryDto) {
-    return this.trainingAdminService.getWatchStats(query);
-  }
-
-  @CheckPolicies(new EntityAbilityChecker(WatchStatsDto))
-  @Get('watch-stats/csv/')
-  async getWatchStatsCsv(
-    @Res() res: Response,
-    @Query() query: WatchStatsQueryDto,
-  ) {
-    // Make sure to get entire results.
-    query.offset = 0;
-    query.limit = Number.MAX_SAFE_INTEGER;
-
-    const stream = await this.trainingAdminService.getWatchStatsCsv(query);
-
-    stream.on('error', (e) => {
-      this.logger.error(
-        'An error occurred while streaming watch stats csv data.',
-        e.stack,
-      );
-      res.status(500).send('An error occurred while downloading data.');
-    });
-
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename="watch-stats.csv"',
     );
     stream.pipe(res);
   }

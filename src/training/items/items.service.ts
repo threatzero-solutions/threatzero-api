@@ -20,16 +20,18 @@ import { ItemCompletion } from './entities/item-completion.entity';
 import { StatelessUser } from 'src/auth/user.factory';
 import { CreateItemCompletionDto } from './dto/create-item-completion.dto';
 import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
-import { UnitsService } from 'src/organizations/units/units.service';
 import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
 import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
-import { getAllowedOrganizationUnits } from 'src/organizations/common/organizations.utils';
+import {
+  getOrganizationLevel,
+  getUserUnitPredicate,
+} from 'src/organizations/common/organizations.utils';
 import { UsersService } from 'src/users/users.service';
-import { UserRepresentation } from 'src/users/entities/user-representation.entity';
 import { Paginated } from 'src/common/dto/paginated.dto';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { LmsViewershipTokenValueDto } from 'src/organizations/organizations/dto/lms-viewership-token-value.dto';
 import { format as csvFormat } from '@fast-csv/format';
+import { LEVEL } from 'src/auth/permissions';
 
 export class ItemsService extends BaseEntityService<TrainingItem> {
   alias = 'item';
@@ -42,7 +44,6 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     private itemCompletionsRepository: Repository<ItemCompletion>,
     private mediaService: MediaService,
     private opaqueTokenService: OpaqueTokenService,
-    private unitsService: UnitsService,
     private organizationsService: OrganizationsService,
     private usersService: UsersService,
   ) {
@@ -126,7 +127,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     createItemCompletionDto: CreateItemCompletionDto,
     watchId?: string,
   ) {
-    const { user, decodedToken } = await this.getWatcher(watchId);
+    const { user, userRep, decodedToken } = await this.getUserContext(watchId);
 
     if (decodedToken) {
       createItemCompletionDto.enrollment = {
@@ -148,42 +149,14 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
 
     const rawItemCompletion: DeepPartial<ItemCompletion> = {
       ...createItemCompletionDto,
-      userId: user.id,
+      userId: userRep.id,
       email: user.email,
       audienceSlugs: user.audiences,
     };
 
-    if (user.unitSlug) {
-      const unit = await this.unitsService
-        .getQb()
-        .where({ slug: user.unitSlug })
-        .getOneOrFail();
-
-      rawItemCompletion.unit = {
-        id: unit.id,
-      };
-      rawItemCompletion.organization = {
-        id: unit.organization.id,
-      };
-    } else if (user.organizationSlug) {
-      const organization = await this.organizationsService
-        .getQb()
-        .where({ slug: user.organizationSlug })
-        .getOneOrFail();
-
-      rawItemCompletion.organization = {
-        id: organization.id,
-      };
-    }
-
-    const [itemCompletion] = await Promise.all([
-      this.itemCompletionsRepository.save(
-        this.itemCompletionsRepository.create(rawItemCompletion),
-      ),
-      this.usersService.updateRepresentation(user),
-    ]);
-
-    return itemCompletion;
+    return this.itemCompletionsRepository.save(
+      this.itemCompletionsRepository.create(rawItemCompletion),
+    );
   }
 
   async updateMyItemCompletion(
@@ -191,11 +164,11 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     updateItemCompletionDto: UpdateItemCompletionDto,
     watchId?: string,
   ) {
-    const { user } = await this.getWatcher(watchId);
+    const { userRep } = await this.getUserContext(watchId);
 
     const criteria: FindOptionsWhere<ItemCompletion> = {
       id,
-      userId: user.id,
+      userId: userRep.id,
     };
 
     // Only allow setting completed to false if not already completed.
@@ -222,8 +195,10 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
   }
 
   async getMyItemCompletions(query: ItemCompletionQueryDto, watchId?: string) {
-    const { user } = await this.getWatcher(watchId);
-    const qb = this.getItemCompletionsQb(query).andWhere({ userId: user.id });
+    const { userRep } = await this.getUserContext(watchId);
+    const qb = this.getItemCompletionsQb(query).andWhere({
+      userId: userRep.id,
+    });
 
     return Paginated.fromQb(qb, query);
   }
@@ -268,14 +243,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
   }
 
   private findItemCompletionsQb(query: ItemCompletionQueryDto) {
-    return this.getItemCompletionsQb(query, (qb) =>
-      qb.leftJoinAndMapOne(
-        `${qb.alias}.user`,
-        UserRepresentation,
-        'user',
-        `user.externalId = ${qb.alias}.userId`,
-      ),
-    );
+    return this.getItemCompletionsQb(query);
   }
 
   private getItemCompletionsQb(
@@ -287,22 +255,29 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     let qb = this.itemCompletionsRepository.createQueryBuilder();
     qb = qb
       .leftJoinAndSelect(`${qb.alias}.item`, 'item')
-      .leftJoinAndSelect(`${qb.alias}.organization`, 'organization')
-      .leftJoinAndSelect(`${qb.alias}.unit`, 'unit')
+      .leftJoinAndSelect(`${qb.alias}.user`, 'user')
+      .leftJoinAndSelect(`user.organization`, 'organization')
+      .leftJoinAndSelect(`user.unit`, 'unit')
       .leftJoinAndSelect(`${qb.alias}.enrollment`, 'enrollment')
       .leftJoinAndSelect(`enrollment.course`, 'course');
     qb = mod(qb);
 
-    const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
-      this.cls.get('user'),
-      {
-        organizationSlug: query['organization.slug'],
-        unitSlug: query['unit.slug'],
-      },
-    );
-
-    query['unit.slug'] = unitSlugs;
-    query['organization.slug'] = organizationSlugs;
+    const user = this.cls.get('user');
+    switch (getOrganizationLevel(user)) {
+      case LEVEL.ADMIN:
+        qb = qb;
+        break;
+      case LEVEL.ORGANIZATION:
+        qb = qb.andWhere('organization.slug = :organizationSlug', {
+          organizationSlug: user?.organizationSlug,
+        });
+        break;
+      case LEVEL.UNIT:
+        qb = qb.andWhere(getUserUnitPredicate(user));
+        break;
+      default:
+        qb = qb.where('1 = 0');
+    }
 
     if (query) {
       qb = query.applyToQb(qb);
@@ -311,38 +286,40 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     return qb;
   }
 
-  private async getWatcher(watchId?: string | null) {
-    const user = this.cls.get('user');
+  private async getUserContext(watchId?: string | null) {
+    let user = this.cls.get('user');
+    let decodedToken: TrainingParticipantRepresentationDto | undefined =
+      undefined;
 
-    if (user) {
-      return {
-        user,
-      };
-    }
-
-    if (watchId) {
+    if (!user && watchId) {
       const viewingUser = await this.opaqueTokenService.validate(
         watchId,
         TrainingParticipantRepresentationDto,
       );
 
       if (viewingUser) {
-        return {
-          user: new StatelessUser(
-            viewingUser.userId,
-            viewingUser.email,
-            `${viewingUser.firstName ?? ''} ${viewingUser.lastName ?? ''}`.trim(),
-            viewingUser.firstName,
-            viewingUser.lastName,
-            null,
-            [],
-            viewingUser.audiences ?? [],
-            viewingUser.organizationSlug,
-            viewingUser.unitSlug,
-          ),
-          decodedToken: viewingUser,
-        };
+        user = new StatelessUser(
+          viewingUser.userId,
+          viewingUser.email,
+          `${viewingUser.firstName ?? ''} ${viewingUser.lastName ?? ''}`.trim(),
+          viewingUser.firstName,
+          viewingUser.lastName,
+          null,
+          [],
+          viewingUser.audiences ?? [],
+          viewingUser.organizationSlug,
+          viewingUser.unitSlug,
+        );
+        decodedToken = viewingUser;
       }
+    }
+
+    if (user) {
+      return {
+        userRep: await this.usersService.getOrCreateRepresentation(user),
+        user,
+        decodedToken,
+      };
     }
 
     throw new UnauthorizedException('No user information found.');

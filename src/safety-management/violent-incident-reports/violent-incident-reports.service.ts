@@ -45,7 +45,7 @@ export class ViolentIncidentReportsService extends FormSubmissionsServiceMixin<V
       .leftJoinAndSelect(`${super.getQb().alias}.pocFiles`, 'pocFiles');
   }
 
-  create(
+  async create(
     createSubmissionEntityDto: DeepPartial<ViolentIncidentReport> & {
       submission: CreateFormSubmissionDto;
     },
@@ -54,9 +54,11 @@ export class ViolentIncidentReportsService extends FormSubmissionsServiceMixin<V
     if (!user?.unitSlug) {
       throw new UnauthorizedException('User is not associated with a unit.');
     }
-    return super.create({
-      ...createSubmissionEntityDto,
-      unitSlug: user.unitSlug,
-    });
+    return this.usersService.getOrCreateRepresentation(user).then((userRep) =>
+      super.create({
+        ...createSubmissionEntityDto,
+        unitId: userRep?.unitId,
+      }),
+    );
   }
 }

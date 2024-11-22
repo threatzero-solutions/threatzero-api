@@ -8,6 +8,11 @@ import { BaseOrganizationChangeEvent } from '../events/base-organization-change.
 import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
 import { ConfigService } from '@nestjs/config';
 import { KeycloakConfig } from 'src/config/keycloak.config';
+import {
+  DEFAULT_UNIT_NAME,
+  DEFAULT_UNIT_SLUG,
+  UNIT_TATS_GROUP_NAME,
+} from '../common/constants';
 
 export const ORGANIZATION_CHANGED_EVENT = 'organization.changed';
 export const ORGANIZATION_REMOVED_EVENT = 'organization.removed';
@@ -44,6 +49,21 @@ export class OrganizationChangeListener {
       id: event.id,
     });
 
+    // Make sure the organization has a default unit.
+    if (
+      !(await this.unitsRepository.existsBy({
+        organization: { id: organization.id },
+        isDefault: true,
+      }))
+    ) {
+      await this.unitsRepository.insert({
+        organization: { id: organization.id },
+        isDefault: true,
+        name: DEFAULT_UNIT_NAME,
+        slug: DEFAULT_UNIT_SLUG,
+      });
+    }
+
     const orgGroup = await this.keycloak.upsertGroup(
       {
         id: organization.groupId ?? undefined,
@@ -63,14 +83,13 @@ export class OrganizationChangeListener {
       orgGroup.id,
     );
 
-    await this.getOrCreateUnitTatsGroupId(orgGroup.id);
+    await this.getOrCreateGroupByName(orgGroup.id, UNIT_TATS_GROUP_NAME);
 
     await this.organizationsRepository.update(
       {
         id: organization.id,
       },
       {
-        groupId: orgGroup.id,
         tatGroupId: orgTatGroup.id,
       },
     );
@@ -100,7 +119,7 @@ export class OrganizationChangeListener {
       where: { id: event.id },
       relations: { organization: true },
     });
-    if (!unit.organization.id) {
+    if (!unit.organization.id || unit.isDefault) {
       return;
     }
 
@@ -110,19 +129,10 @@ export class OrganizationChangeListener {
       return;
     }
 
-    const unitGroup = await this.keycloak.upsertGroup(
-      {
-        id: unit.groupId ?? undefined,
-        name: unit.name,
-        attributes: {
-          unit: [unit.slug],
-        },
-      },
+    const unitTatsGroupId = await this.getOrCreateGroupByName(
       organizationGroupId,
+      UNIT_TATS_GROUP_NAME,
     );
-
-    const unitTatsGroupId =
-      await this.getOrCreateUnitTatsGroupId(organizationGroupId);
 
     const tatGroup = await this.keycloak.upsertGroup(
       {
@@ -140,7 +150,6 @@ export class OrganizationChangeListener {
         id: unit.id,
       },
       {
-        groupId: unitGroup.id,
         tatGroupId: tatGroup.id,
       },
     );
@@ -152,8 +161,12 @@ export class OrganizationChangeListener {
       id: event.id,
     });
 
+    if (unit.isDefault) {
+      return;
+    }
+
     Promise.all(
-      [unit.groupId, unit.tatGroupId]
+      [unit.tatGroupId]
         .filter((id) => !!id)
         .map((id) =>
           this.keycloak.client.groups.del({ id: id! }).catch((e) => {
@@ -163,21 +176,21 @@ export class OrganizationChangeListener {
     );
   }
 
-  private async getOrCreateUnitTatsGroupId(orgGroupId: string) {
-    const unitTatsGroup = await this.keycloak.client.groups
-      .listSubGroups({ parentId: orgGroupId, max: 100 })
-      .then((groups) => groups.find((g) => g.name === 'Unit TATs'));
+  private async getOrCreateGroupByName(parentGroupId: string, name: string) {
+    const foundGroup = await this.keycloak.client.groups
+      .listSubGroups({ parentId: parentGroupId, max: 500 })
+      .then((groups) => groups.find((g) => g.name === name));
 
-    if (unitTatsGroup) {
-      return unitTatsGroup.id;
+    if (foundGroup) {
+      return foundGroup.id;
     }
 
     const createResponse = await this.keycloak.client.groups.createChildGroup(
       {
-        id: orgGroupId,
+        id: parentGroupId,
       },
       {
-        name: 'Unit TATs',
+        name: name,
       },
     );
 

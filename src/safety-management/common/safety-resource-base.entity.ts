@@ -17,15 +17,11 @@ export abstract class SafetyResourceBase extends Base {
   })
   tag: string | null;
 
-  @Column({ length: 64 })
-  unitSlug: string;
+  @Column({ nullable: true })
+  unitId: string | null;
 
   @ManyToOne(() => Unit, {
     eager: true,
-  })
-  @JoinColumn({
-    name: 'unitSlug',
-    referencedColumnName: 'slug',
   })
   unit: Relation<Unit>;
 

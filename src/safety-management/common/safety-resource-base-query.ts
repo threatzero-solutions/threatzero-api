@@ -24,10 +24,6 @@ export class SafetyResourceBaseQueryOrderDto extends BaseQueryOrderDto {
 export class SafetyResourceBaseQueryDto extends BaseQueryDto {
   @IsOptional()
   @IsString({ each: true })
-  unitSlug?: string | string[];
-
-  @IsOptional()
-  @IsString({ each: true })
   ['unit.slug']?: string | string[];
 
   @IsOptional()

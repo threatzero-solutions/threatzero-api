@@ -123,7 +123,7 @@ export class NotificationsProcessor extends WorkerHost {
         },
       },
     });
-    const cacheKey = `unit:${tip.unitSlug}:tat-member-contacts`;
+    const cacheKey = `unit:${tip.unit.slug}:tat-member-contacts`;
     const cachedContacts = await this.cache.get(cacheKey);
     let contacts: { email?: string; phoneNumber?: string }[] | undefined;
     if (cachedContacts && typeof cachedContacts === 'string') {
@@ -143,7 +143,7 @@ export class NotificationsProcessor extends WorkerHost {
       const tatGroupId = tip.unit.tatGroupId;
       const orgTatGroupId = tip.unit.organization.tatGroupId;
       if (!tatGroupId) {
-        this.logger.warn(`No TAT group found for ${tip.unitSlug}`);
+        this.logger.warn(`No TAT group found for ${tip.unit.slug}`);
         return;
       }
       const tatMembers = await Promise.all(

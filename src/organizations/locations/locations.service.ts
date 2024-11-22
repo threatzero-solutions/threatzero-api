@@ -6,7 +6,10 @@ import { ConfigService } from '@nestjs/config';
 import { GenerateQrCodeQueryDto } from './dto/generate-qr-code-query.dto';
 import QRCode from 'qrcode';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { getOrganizationLevel } from '../common/organizations.utils';
+import {
+  getOrganizationLevel,
+  getUserUnitPredicate,
+} from '../common/organizations.utils';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { LEVEL } from 'src/auth/permissions';
 import { ClsService } from 'nestjs-cls';
@@ -42,9 +45,7 @@ export class LocationsService extends BaseEntityService<Location> {
             organizationSlug: user?.organizationSlug,
           });
       case LEVEL.UNIT:
-        return qb.andWhere('unit.slug = :unitSlug', {
-          unitSlug: user?.unitSlug,
-        });
+        return qb.andWhere(getUserUnitPredicate(user));
       default:
         return qb.where('1 = 0');
     }

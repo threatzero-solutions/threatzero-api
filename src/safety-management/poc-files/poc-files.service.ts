@@ -6,7 +6,10 @@ import { DeepPartial, Repository } from 'typeorm';
 import { UnitsService } from 'src/organizations/units/units.service';
 import { LEVEL } from 'src/auth/permissions';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { getOrganizationLevel } from 'src/organizations/common/organizations.utils';
+import {
+  getOrganizationLevel,
+  getUserUnitPredicate,
+} from 'src/organizations/common/organizations.utils';
 import { ThreatAssessmentsService } from '../threat-assessments/threat-assessments.service';
 import { TipsService } from '../tips/tips.service';
 import { ClsService } from 'nestjs-cls';
@@ -40,12 +43,7 @@ export class POCFilesService extends BaseEntityService<POCFile> {
       case LEVEL.ADMIN:
         return qb;
       case LEVEL.UNIT:
-        return qb.andWhere(
-          '(unit.slug = :unitSlug OR peerUnit.slug = :unitSlug)',
-          {
-            unitSlug: user?.unitSlug,
-          },
-        );
+        return qb.andWhere(getUserUnitPredicate(user));
       case LEVEL.ORGANIZATION:
         return qb
           .leftJoinAndSelect(`${qb.alias}.organization`, 'org_organization')

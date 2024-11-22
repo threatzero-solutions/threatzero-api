@@ -1,6 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, DeepPartial, EntityTarget, Repository } from 'typeorm';
+import {
+  DataSource,
+  DeepPartial,
+  EntityTarget,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 import { UserRepresentation } from './entities/user-representation.entity';
 import { StatelessUser } from 'src/auth/user.factory';
 import { Note } from './entities/note.entity';
@@ -18,6 +24,7 @@ import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
 import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
 import { getUserAttr } from 'src/common/utils';
+import { Unit } from 'src/organizations/units/entities/unit.entity';
 
 export class UsersService {
   constructor(
@@ -31,6 +38,20 @@ export class UsersService {
   ) {}
 
   async updateRepresentation(user: StatelessUser) {
+    let unit: Unit | null = null;
+    if (user.organizationSlug && user.unitSlug) {
+      unit = await this.dataSource
+        .createQueryBuilder(Unit, 'unit')
+        .leftJoin('unit.organization', 'organization')
+        .where(
+          'organization.slug = :organizationSlug AND unit.slug = :unitSlug',
+          {
+            organizationSlug: user.organizationSlug,
+            unitSlug: user.unitSlug,
+          },
+        )
+        .getOne();
+    }
     const userRepresentation = this.usersRepository.create({
       externalId: user.id,
       email: user.email,
@@ -38,10 +59,20 @@ export class UsersService {
       givenName: user.firstName,
       familyName: user.lastName,
       picture: user.picture,
-      organizationSlug: user.organizationSlug,
-      unitSlug: user.unitSlug,
+      unitId: unit?.id,
+      organizationId: unit?.organization?.id,
     });
     return this.usersRepository.upsert(userRepresentation, ['externalId']);
+  }
+
+  async getOrCreateRepresentation(user: StatelessUser) {
+    const rep = await this.usersRepository.findOneBy({ externalId: user.id });
+
+    if (rep) return rep;
+
+    return this.updateRepresentation(user).then(() =>
+      this.usersRepository.findOneByOrFail({ externalId: user.id }),
+    );
   }
 
   notesQb() {
@@ -153,9 +184,12 @@ export class UsersService {
     return await this.opaqueTokenService.findAll(query);
   }
 
-  getTrainingTokensQb(query: TrainingTokenQueryDto) {
+  getTrainingTokensQb(
+    query: TrainingTokenQueryDto,
+    mod = (qb: SelectQueryBuilder<OpaqueToken>) => qb,
+  ) {
     query.type = 'training';
-    return this.opaqueTokenService.getQb(query);
+    return this.opaqueTokenService.getQb(query, mod);
   }
 
   async createTrainingToken(

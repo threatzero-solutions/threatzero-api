@@ -3,12 +3,23 @@ import { OrganizationBase } from 'src/organizations/common/entities/organization
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { OrganizationPolicyFile } from 'src/safety-management/common/entities/organization-policy-file.entity';
-import { Entity, Column, OneToMany, Relation, ManyToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  OneToMany,
+  Relation,
+  ManyToMany,
+  Index,
+} from 'typeorm';
 import { CourseEnrollment } from './course-enrollment.entity';
 import { OrganizationTrainingAccessSettingsDto } from '../dto/organization-training-access-settings.dto';
 
 @Entity()
 export class Organization extends OrganizationBase {
+  @Index()
+  @Column({ length: 64, unique: true })
+  slug: string;
+
   @Column({ unique: true, nullable: true, type: 'varchar', length: 50 })
   groupId: string | null;
 

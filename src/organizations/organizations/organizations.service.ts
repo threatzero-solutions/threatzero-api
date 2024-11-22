@@ -9,7 +9,10 @@ import {
 import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { getOrganizationLevel } from '../common/organizations.utils';
+import {
+  buildUnitPaths,
+  getOrganizationLevel,
+} from '../common/organizations.utils';
 import { LEVEL } from 'src/auth/permissions';
 import { MediaService } from 'src/media/media.service';
 import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
@@ -159,6 +162,16 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       ORGANIZATION_REMOVED_EVENT,
       new BaseOrganizationChangeEvent(id),
     );
+  }
+
+  async isUniqueSlug(slug: string) {
+    return this.getRepository()
+      .createQueryBuilder()
+      .where({
+        slug,
+      })
+      .getExists()
+      .then((exists) => !exists);
   }
 
   async findOneEnrollment(
@@ -352,7 +365,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       idpSlugs: [...(organization.idpSlugs ?? []), newIdp.slug],
     });
 
-    return new CreateOrganizationIdpDto().parse(newIdp, organization);
+    return new CreateOrganizationIdpDto().parse(newIdp);
   }
 
   async updateIdp(
@@ -375,7 +388,6 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       if (updatedIdp) {
         const newlyUpdatedIdp = new CreateOrganizationIdpDto().parse(
           updatedIdp,
-          organization,
         );
 
         await this.update(id, {
@@ -392,6 +404,14 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     throw new NotFoundException(`Identity provider ${idpSlug} not found`);
   }
 
+  async isUniqueIdpAlias(alias: string) {
+    return this.keycloakClient.client.identityProviders
+      .findOne({
+        alias,
+      })
+      .then((idp) => !idp);
+  }
+
   async getIdp(id: Organization['id'], idpSlug: string) {
     const organization = await this.getForIdp(id);
 
@@ -400,7 +420,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       const idp = await this.keycloakClient.getIdentityProvider(idpSlug);
 
       if (idp) {
-        return new CreateOrganizationIdpDto().parse(idp, organization);
+        return new CreateOrganizationIdpDto().parse(idp);
       }
     }
 
@@ -457,30 +477,21 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     query: OrganizationUserQueryDto,
   ) {
     const organization = await this.getQbSingle(id).getOneOrFail();
-    const q = `organization:${organization.slug}`;
-
-    const [count, users] = await Promise.all([
-      this.keycloakClient.client.users.count({
-        q,
-      }),
-      this.keycloakClient.client.users
-        .find({
-          q,
-          max: query.limit,
-          first: query.offset,
-        })
-        .then((users) =>
-          users.map((user) =>
-            plainToInstance(OrganizationUserDto, user, {
-              excludeExtraneousValues: true,
-            }),
-          ),
+    const users = await this.keycloakClient.client.users
+      .find({
+        query: `organization=${organization.slug}`,
+      })
+      .then((users) =>
+        users.map((user) =>
+          plainToInstance(OrganizationUserDto, user, {
+            excludeExtraneousValues: true,
+          }),
         ),
-    ]);
+      );
 
     return {
       results: users,
-      count,
+      count: users.length,
       limit: query.limit,
       offset: query.offset,
     };
@@ -492,8 +503,12 @@ export class OrganizationsService extends BaseEntityService<Organization> {
 
   private async getForIdp(id: Organization['id']) {
     const qb = this.getQbSingle(id);
-    return await qb
+    const org = await qb
       .leftJoinAndSelect(`${qb.alias}.units`, 'unit')
       .getOneOrFail();
+
+    org.units = buildUnitPaths(org.units, org.slug);
+
+    return org;
   }
 }

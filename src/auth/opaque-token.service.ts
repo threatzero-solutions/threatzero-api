@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { OpaqueToken } from './entities/opaque-token.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { FindOptionsWhere, Repository, SelectQueryBuilder } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { v4 as uuidv4 } from 'uuid';
@@ -96,8 +96,12 @@ export class OpaqueTokenService {
     return await this.opaqueTokenRepository.findOneBy(condition);
   }
 
-  getQb(query?: OpaqueTokenQueryDto) {
+  getQb(
+    query?: OpaqueTokenQueryDto,
+    mod = (qb: SelectQueryBuilder<OpaqueToken>) => qb,
+  ) {
     let qb = this.opaqueTokenRepository.createQueryBuilder('opaque_token');
+    qb = mod(qb);
     if (query) {
       qb = query.applyToQb(qb);
     }

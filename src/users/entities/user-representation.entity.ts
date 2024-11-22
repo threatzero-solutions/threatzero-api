@@ -1,8 +1,12 @@
 import { Base } from 'src/common/base.entity';
-import { Column, Entity } from 'typeorm';
+import { Organization } from 'src/organizations/organizations/entities/organization.entity';
+import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { Column, Entity, Index, ManyToOne, Relation } from 'typeorm';
 
 @Entity()
+@Index(['organization', 'unit'])
 export class UserRepresentation extends Base {
+  @Index()
   @Column({ type: 'varchar', length: 100, unique: true })
   externalId: string;
 
@@ -21,9 +25,15 @@ export class UserRepresentation extends Base {
   @Column({ type: 'text', nullable: true })
   picture: string | null;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  organizationSlug: string | null;
+  @Column({ nullable: true })
+  organizationId: string | null;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  unitSlug: string | null;
+  @ManyToOne(() => Organization, { nullable: true })
+  organization: Relation<Organization> | null;
+
+  @Column({ nullable: true })
+  unitId: string | null;
+
+  @ManyToOne(() => Unit, { nullable: true })
+  unit: Relation<Unit> | null;
 }

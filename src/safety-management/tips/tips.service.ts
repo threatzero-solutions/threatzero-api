@@ -58,12 +58,12 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
     locationId?: string,
   ) {
     const user = this.cls.get('user');
-    const [unitSlug, location] =
-      await this.getUnitSlugAndLocationForTip(locationId);
+    const [unitId, location] =
+      await this.getUnitIdAndLocationForTip(locationId);
     const submittedTip = await super.create({
       ...createSubmissionEntityDto,
       // Add user unit slug to tip.
-      unitSlug,
+      unitId,
       location: location ?? undefined,
       informantFirstName: user?.firstName,
       informantLastName: user?.lastName,
@@ -84,7 +84,7 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
     locationId: string,
   ) {
     // Validate location.
-    await this.getUnitSlugAndLocationForTip(locationId);
+    await this.getUnitIdAndLocationForTip(locationId);
     return super.getPresignedUploadUrls(getPresignedUploadUrlsDto);
   }
 
@@ -95,21 +95,25 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
    * @param locationId the location id of the tip
    * @returns the unit slug
    */
-  private async getUnitSlugAndLocationForTip(locationId?: string) {
-    const user = this.cls.get('user');
-    let unitSlug = user?.unitSlug ?? null;
+  private async getUnitIdAndLocationForTip(locationId?: string) {
     let location: Location | null = null;
 
     if (locationId) {
       location = await this.locationsService.findUnitLocation(locationId);
 
       if (location?.unit) {
-        unitSlug = location.unit.slug;
+        return [location.unit.id, location] as const;
       }
     }
 
-    if (unitSlug) {
-      return [unitSlug, location] as const;
+    const user = this.cls.get('user');
+    if (user) {
+      const unitId = await this.usersService
+        .getOrCreateRepresentation(user)
+        .then((userRep) => userRep.unitId);
+      if (unitId) {
+        return [unitId, location] as const;
+      }
     }
 
     throw new BadRequestException('No location information found.');

@@ -31,6 +31,16 @@ export class UnitsController {
     return this.unitsService.findAll(query);
   }
 
+  @Get('slug-unique')
+  async slugUnique(
+    @Query('organizationId') organizationId: string,
+    @Query('slug') slug: string,
+  ) {
+    return this.unitsService
+      .isUniqueSlug(organizationId, slug)
+      .then((isUnique) => ({ isUnique }));
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.unitsService.findOne(id);

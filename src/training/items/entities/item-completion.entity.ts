@@ -2,16 +2,14 @@ import { Column, Entity, Index, ManyToOne, Relation, Unique } from 'typeorm';
 import { TrainingItem } from './item.entity';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import { Base } from 'src/common/base.entity';
-import { Organization } from 'src/organizations/organizations/entities/organization.entity';
-import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
+import { UserRepresentation } from 'src/users/entities/user-representation.entity';
 
 @Entity()
-@Index(['organization', 'unit', 'item'])
-@Index(['organization', 'unit', 'enrollment'])
-@Index(['userId', 'completed'])
-@Index(['userId', 'enrollment', 'item'])
-@Unique(['userId', 'enrollment', 'item'])
+@Index(['user', 'item'])
+@Index(['user', 'completed'])
+@Index(['user', 'enrollment', 'item'])
+@Unique(['user', 'enrollment', 'item'])
 export class ItemCompletion extends Base {
   @ManyToOne(() => TrainingItem, {
     onDelete: 'RESTRICT',
@@ -43,23 +41,18 @@ export class ItemCompletion extends Base {
   url: string;
 
   @Index()
-  @Column({ length: 64, select: false, update: true })
-  userId: string;
+  @Column({ select: false, update: true, nullable: true })
+  userId: string | null;
+
+  @ManyToOne(() => UserRepresentation, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
+  user: Relation<UserRepresentation>;
 
   @Column({ type: 'varchar', length: 254, nullable: true })
   email: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
   audienceSlugs?: string[] | null;
-
-  @ManyToOne(() => Organization, {
-    onDelete: 'CASCADE',
-  })
-  organization: Relation<Organization>;
-
-  @ManyToOne(() => Unit, {
-    onDelete: 'CASCADE',
-    nullable: true,
-  })
-  unit: Relation<Unit> | null;
 }

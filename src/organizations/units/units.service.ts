@@ -9,11 +9,15 @@ import {
   UNIT_CHANGED_EVENT,
   UNIT_REMOVED_EVENT,
 } from '../listeners/organization-change.listener';
-import { getOrganizationLevel } from '../common/organizations.utils';
+import {
+  getOrganizationLevel,
+  getUserUnitPredicate,
+} from '../common/organizations.utils';
 import { LEVEL } from 'src/auth/permissions';
 import { MediaService } from 'src/media/media.service';
 import { ClsService } from 'nestjs-cls';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { DEFAULT_UNIT_SLUG } from '../common/constants';
 
 export class UnitsService extends BaseEntityService<Unit> {
   alias = 'unit';
@@ -35,6 +39,7 @@ export class UnitsService extends BaseEntityService<Unit> {
     const user = this.cls.get('user');
     let qb = super
       .getQb(query)
+      .andWhere({ isDefault: false })
       .leftJoinAndSelect('unit.organization', 'organization');
 
     qb = qb
@@ -54,21 +59,33 @@ export class UnitsService extends BaseEntityService<Unit> {
             organizationSlug: user?.organizationSlug,
           });
       default:
-        return user?.unitSlug
-          ? qb.andWhere('unit.slug IN (:...unitSlug)', {
-              unitSlug: [
-                ...(user?.unitSlug ? [user?.unitSlug] : []),
-                ...(user?.peerUnits ?? []),
-              ],
-            })
-          : qb.where('1 = 0');
+        return qb.andWhere(getUserUnitPredicate(user));
     }
+  }
+
+  getQbSingle(id: string) {
+    const user = this.cls.get('user');
+
+    let retQb = super.getQbSingle(id);
+
+    switch (getOrganizationLevel(user)) {
+      case LEVEL.ADMIN:
+        retQb = retQb.leftJoinAndSelect(
+          `${retQb.alias}.parentUnit`,
+          'parentUnit',
+        );
+        break;
+      default:
+        break;
+    }
+
+    return retQb;
   }
 
   getUserUnit() {
     const user = this.cls.get('user');
 
-    if (!user?.unitSlug) {
+    if (!user?.unitSlug || user.unitSlug === DEFAULT_UNIT_SLUG) {
       return Promise.resolve(null);
     }
 
@@ -102,6 +119,34 @@ export class UnitsService extends BaseEntityService<Unit> {
       new BaseOrganizationChangeEvent(id),
     );
   }
+
+  async isUniqueSlug(organizationId: Unit['organizationId'], slug: string) {
+    return this.getRepository()
+      .createQueryBuilder()
+      .where({
+        organizationId: organizationId,
+        slug: slug,
+      })
+      .getExists()
+      .then((exists) => !exists);
+  }
+
+  // TODO: This doesn't restrict access and is not suitable to public API exposure.
+  // Validate the need for this or remove.
+  // async getSubUnits({ id, slug }: { id?: Unit['id']; slug?: string }) {
+  //   if (!id && !slug) {
+  //     return [];
+  //   }
+  //   const subunits = await getRecursiveSubUnitsQb(
+  //     super.getQb().andWhere({ id, slug }),
+  //   ).getMany();
+
+  //   return buildUnitPaths(subunits);
+  // }
+
+  // async getUnitUsers(id: Unit['id']) {
+  //   return;
+  // }
 
   private getCloudFrontUrlSigner() {
     return this.media.getCloudFrontUrlSigner('organization-policies');

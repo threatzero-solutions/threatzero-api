@@ -17,9 +17,11 @@ import { plainToInstance } from 'class-transformer';
 import { LEVEL } from 'src/auth/permissions';
 import { In, Repository } from 'typeorm';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
-import { getAllowedOrganizationUnits } from 'src/organizations/common/organizations.utils';
+import {
+  getOrganizationLevel,
+  getUserUnitPredicate,
+} from 'src/organizations/common/organizations.utils';
 import { format as csvFormat } from '@fast-csv/format';
-import { WatchStatsQueryDto } from './dto/watch-stats-query.dto';
 import { UnitsService } from 'src/organizations/units/units.service';
 import sanitizeHtml from 'sanitize-html';
 import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
@@ -33,6 +35,9 @@ import { ClsService } from 'nestjs-cls';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
 import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
+import { DEFAULT_UNIT_SLUG } from 'src/organizations/common/constants';
+import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -120,7 +125,7 @@ export class TrainingAdminService {
       user.hasPermission(LEVEL.ORGANIZATION) ||
       user.hasPermission(LEVEL.UNIT)
     ) {
-      if (!user.unitSlug) {
+      if (!user.unitSlug || user.unitSlug === DEFAULT_UNIT_SLUG) {
         throw new ForbiddenException('Missing user information.');
       }
 
@@ -193,15 +198,7 @@ export class TrainingAdminService {
   }
 
   findTrainingLinksQb(query: TrainingTokenQueryDto) {
-    const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
-      this.cls.get('user'),
-      {
-        unitSlug: query['value.unitSlug'],
-        organizationSlug: query['value.organizationSlug'],
-      },
-    );
-    query['value.unitSlug'] = unitSlugs;
-    query['value.organizationSlug'] = organizationSlugs;
+    const user = this.cls.get('user');
 
     let completionProgressOrder: 'ASC' | 'DESC' | undefined = undefined;
     if (query.order['completion.progress']) {
@@ -209,7 +206,32 @@ export class TrainingAdminService {
       Reflect.deleteProperty(query.order, 'completion.progress');
     }
 
-    const qb = this.usersService.getTrainingTokensQb(query);
+    const qb = this.usersService.getTrainingTokensQb(query, (qb) => {
+      switch (getOrganizationLevel(user)) {
+        case LEVEL.ADMIN:
+          return qb;
+        case LEVEL.UNIT:
+          return qb
+            .leftJoin(
+              Unit,
+              'unit',
+              `${qb.alias}.value ->> 'unitSlug' = unit.slug`,
+            )
+            .andWhere(getUserUnitPredicate(user));
+        case LEVEL.ORGANIZATION:
+          return qb
+            .leftJoin(
+              Organization,
+              'organization',
+              `${qb.alias}.value ->> 'organizationSlug' = organization.slug`,
+            )
+            .andWhere('organization.slug = :organizationSlug', {
+              organizationSlug: user?.organizationSlug,
+            });
+        default:
+          return qb.where('1 = 0');
+      }
+    });
     const al = qb.alias;
     qb.leftJoinAndMapOne(
       `${al}.completion`,
@@ -350,37 +372,4 @@ export class TrainingAdminService {
       .replace('{trainingItemId}', trainingItemId)
       .replace('{token}', encodeURIComponent(token));
   };
-
-  getWatchStatsQb(query: WatchStatsQueryDto) {
-    const { unitSlugs, organizationSlugs } = getAllowedOrganizationUnits(
-      this.cls.get('user'),
-      query,
-    );
-
-    query.unitSlug = unitSlugs ?? undefined;
-    query.organizationSlug = organizationSlugs ?? undefined;
-
-    let qb = this.watchStatsRepository.createQueryBuilder('watch_stat');
-    qb = query.applyToQb(qb);
-    return qb;
-  }
-
-  async getWatchStats(query: WatchStatsQueryDto) {
-    return Paginated.fromQb(this.getWatchStatsQb(query), query);
-  }
-
-  async getWatchStatsCsv(query: WatchStatsQueryDto) {
-    return this.getWatchStatsQb(query)
-      .stream()
-      .then((qbStream) => {
-        const csvStream = csvFormat({ headers: true });
-
-        qbStream.on('error', (err) => {
-          csvStream.emit('error', err);
-        });
-        qbStream.pipe(csvStream);
-
-        return csvStream;
-      });
-  }
 }

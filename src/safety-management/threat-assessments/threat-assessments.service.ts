@@ -43,7 +43,7 @@ export class ThreatAssessmentsService extends FormSubmissionsServiceMixin<Threat
       .leftJoinAndSelect(`${super.getQb().alias}.pocFiles`, 'pocFiles');
   }
 
-  create(
+  async create(
     createSubmissionEntityDto: DeepPartial<ThreatAssessment> & {
       submission: CreateFormSubmissionDto;
     },
@@ -52,9 +52,11 @@ export class ThreatAssessmentsService extends FormSubmissionsServiceMixin<Threat
     if (!user?.unitSlug) {
       throw new UnauthorizedException('User is not associated with a unit.');
     }
-    return super.create({
-      ...createSubmissionEntityDto,
-      unitSlug: user.unitSlug,
-    });
+    return this.usersService.getOrCreateRepresentation(user).then((userRep) =>
+      super.create({
+        ...createSubmissionEntityDto,
+        unitId: userRep?.unitId,
+      }),
+    );
   }
 }

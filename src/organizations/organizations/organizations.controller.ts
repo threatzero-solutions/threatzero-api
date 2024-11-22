@@ -36,7 +36,7 @@ import {
   ScormVersion,
   ScormVersionPipe,
 } from 'src/common/pipes/scorm-version/scorm-version.pipe';
-// import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
+import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
 
 @Controller('organizations/organizations')
 @CheckPolicies(new EntityAbilityChecker(Organization))
@@ -53,6 +53,20 @@ export class OrganizationsController {
   @Get()
   findAll(@Query() query: BaseQueryOrganizationsDto) {
     return this.organizationsService.findAll(query);
+  }
+
+  @Get('slug-unique')
+  async slugUnique(@Query('slug') slug: string) {
+    return this.organizationsService
+      .isUniqueSlug(slug)
+      .then((isUnique) => ({ isUnique }));
+  }
+
+  @Get('idp-slug-unique')
+  async idpSlugUnique(@Query('slug') slug: string) {
+    return this.organizationsService
+      .isUniqueIdpAlias(slug)
+      .then((isUnique) => ({ isUnique }));
   }
 
   @Get('slug/:slug')
@@ -86,10 +100,10 @@ export class OrganizationsController {
     return this.organizationsService.remove(id);
   }
 
-  // @Get(':id/users')
-  // getUsers(@Param('id') id: string, @Query() query: OrganizationUserQueryDto) {
-  //   return this.organizationsService.getOrganizationUsers(id, query);
-  // }
+  @Get(':id/users')
+  getUsers(@Param('id') id: string, @Query() query: OrganizationUserQueryDto) {
+    return this.organizationsService.getOrganizationUsers(id, query);
+  }
 
   @Post(':id/lms-tokens')
   createLmsToken(
