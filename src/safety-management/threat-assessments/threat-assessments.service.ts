@@ -52,7 +52,7 @@ export class ThreatAssessmentsService extends FormSubmissionsServiceMixin<Threat
     if (!user?.unitSlug) {
       throw new UnauthorizedException('User is not associated with a unit.');
     }
-    return this.usersService.getOrCreateRepresentation(user).then((userRep) =>
+    return this.usersService.updateRepresentation(user).then((userRep) =>
       super.create({
         ...createSubmissionEntityDto,
         unitId: userRep?.unitId,

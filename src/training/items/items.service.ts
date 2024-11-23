@@ -316,7 +316,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
 
     if (user) {
       return {
-        userRep: await this.usersService.getOrCreateRepresentation(user),
+        userRep: await this.usersService.updateRepresentation(user),
         user,
         decodedToken,
       };

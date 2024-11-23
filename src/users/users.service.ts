@@ -62,17 +62,11 @@ export class UsersService {
       unitId: unit?.id,
       organizationId: unit?.organization?.id,
     });
-    return this.usersRepository.upsert(userRepresentation, ['externalId']);
-  }
-
-  async getOrCreateRepresentation(user: StatelessUser) {
-    const rep = await this.usersRepository.findOneBy({ externalId: user.id });
-
-    if (rep) return rep;
-
-    return this.updateRepresentation(user).then(() =>
-      this.usersRepository.findOneByOrFail({ externalId: user.id }),
-    );
+    return this.usersRepository
+      .upsert(userRepresentation, ['externalId'])
+      .then(() =>
+        this.usersRepository.findOneByOrFail({ externalId: user.id }),
+      );
   }
 
   notesQb() {

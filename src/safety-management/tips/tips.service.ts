@@ -109,7 +109,7 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
     const user = this.cls.get('user');
     if (user) {
       const unitId = await this.usersService
-        .getOrCreateRepresentation(user)
+        .updateRepresentation(user)
         .then((userRep) => userRep.unitId);
       if (unitId) {
         return [unitId, location] as const;
