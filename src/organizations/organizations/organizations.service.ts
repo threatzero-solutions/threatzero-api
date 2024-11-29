@@ -36,6 +36,7 @@ import path from 'path';
 import archiver from 'archiver';
 import { PassThrough } from 'stream';
 import { ScormVersion } from 'src/common/pipes/scorm-version/scorm-version.pipe';
+import { CustomQueryFilterCondition } from 'src/auth/keycloak-admin-client/types';
 
 const fsp = fs.promises;
 
@@ -476,25 +477,52 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     id: Organization['id'],
     query: OrganizationUserQueryDto,
   ) {
+    const user = this.cls.get('user');
+
+    if (!user) {
+      return [];
+    }
+
     const organization = await this.getQbSingle(id).getOneOrFail();
-    const users = await this.keycloakClient.client.users
-      .find({
-        query: `organization=${organization.slug}`,
+    const { offset, limit } = query;
+
+    const qs: CustomQueryFilterCondition[] = [
+      {
+        key: 'organization',
+        value: organization.slug,
+      },
+    ];
+
+    const level = getOrganizationLevel(user);
+    if (!level || ![LEVEL.ADMIN, LEVEL.ORGANIZATION].includes(level)) {
+      if (!user.organizationUnitPath) {
+        return [];
+      }
+
+      qs.push({
+        key: 'organization_unit_path',
+        op: 'starts',
+        value: user.organizationUnitPath,
+      });
+    }
+
+    return this.keycloakClient
+      .findUsersByAttribute({
+        filter: {
+          AND: [...qs.map((q) => ({ q })), ...query.asFilterConditions()],
+        },
+        order: query.order.asKeycloakOrder() || 'createdTimestamp',
+        limit,
+        offset,
       })
-      .then((users) =>
-        users.map((user) =>
+      .then((users) => ({
+        ...users,
+        results: users.results.map((user) =>
           plainToInstance(OrganizationUserDto, user, {
             excludeExtraneousValues: true,
           }),
         ),
-      );
-
-    return {
-      results: users,
-      count: users.length,
-      limit: query.limit,
-      offset: query.offset,
-    };
+      }));
   }
 
   private getCloudFrontUrlSigner() {

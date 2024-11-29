@@ -50,22 +50,24 @@ export const scopeToOrganizationLevel = <
 
 export const getRecursiveSubUnitsQb = (rootQb: SelectQueryBuilder<Unit>) => {
   const qb = rootQb.createQueryBuilder();
-  const subqb = qb
+  const subqb = rootQb
     .subQuery()
     .from(Unit, 'u1')
     .select('u1.*')
     .innerJoin('subunits', 's', 'u1.parentUnitId = s.id');
-  return qb.addCommonTableExpression(
-    `
+  return qb
+    .addCommonTableExpression(
+      `
         ${rootQb.getQuery()}
         UNION
         ${subqb.getQuery()}
       `,
-    'subunits',
-    {
-      recursive: true,
-    },
-  );
+      'subunits',
+      {
+        recursive: true,
+      },
+    )
+    .from('subunits', 'subunits');
 };
 
 export const getUnitSlugsForUser = (user: StatelessUser) => {
@@ -87,11 +89,11 @@ export const getUnitsSubquery = (
     qb
       .subQuery()
       .from(Unit, 'subu')
-      .select(`subu.${selectField}`)
-      .where(`subu..${idType} IN (:...unitIds)`, {
+      .select(`subu.*`)
+      .where(`subu.${idType} IN (:...unitIds)`, {
         unitIds: ids,
       }),
-  );
+  ).select(`subunits.${selectField}`);
 };
 
 export const getUserUnitPredicate =
@@ -101,7 +103,7 @@ export const getUserUnitPredicate =
       const q = getUnitsSubquery(getUnitSlugsForUser(user), qb, {
         idType: 'slug',
       }).getQuery();
-      return `${unitAlias}.id IN ${q}`;
+      return `${unitAlias}.id IN (${q})`;
     }
 
     return '1 = 0';

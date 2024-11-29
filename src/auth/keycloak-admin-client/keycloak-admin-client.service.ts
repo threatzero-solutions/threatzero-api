@@ -11,6 +11,14 @@ import type GroupRepresentation from '@keycloak/keycloak-admin-client/lib/defs/g
 import merge from 'deepmerge';
 import { CreateIdpDto } from '../dto/create-idp.dto';
 import { type NetworkError } from '@keycloak/keycloak-admin-client';
+import type UserRepresentation from '@keycloak/keycloak-admin-client/lib/defs/userRepresentation';
+import { Paginated } from 'src/common/dto/paginated.dto';
+import { type RequestArgs } from '@keycloak/keycloak-admin-client/lib/resources/agent';
+import {
+  type FindUsersByAttributeParams,
+  type InternalFindUsersByAttributeParams,
+} from './types';
+import JSON5 from 'json5';
 
 export const KEYCLOAK_ADMIN_CLIENT = 'keycloak-admin-client';
 let KCNetworkError: typeof NetworkError | undefined;
@@ -75,6 +83,30 @@ export class KeycloakAdminClientService {
   constructor(
     @Inject(KEYCLOAK_ADMIN_CLIENT) public readonly client: KeycloakAdminClient,
   ) {}
+
+  async findUsersByAttribute(
+    payload: FindUsersByAttributeParams = {},
+    options?: Pick<RequestArgs, 'catchNotFound'>,
+  ) {
+    console.debug('LOOKIE HERE!!!!', {
+      ...payload,
+      filter: payload.filter && JSON5.stringify(payload.filter),
+    });
+    return this.client.users.makeRequest<
+      InternalFindUsersByAttributeParams,
+      Paginated<UserRepresentation>
+    >({
+      method: 'GET',
+      path: '/../users-by-attribute',
+      queryParamKeys: ['filter', 'order', 'limit', 'offset'],
+    })(
+      {
+        ...payload,
+        filter: payload.filter && JSON5.stringify(payload.filter),
+      },
+      options,
+    );
+  }
 
   async upsertGroup(
     group: GroupRepresentation,
