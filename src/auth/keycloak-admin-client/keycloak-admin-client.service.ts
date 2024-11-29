@@ -88,10 +88,6 @@ export class KeycloakAdminClientService {
     payload: FindUsersByAttributeParams = {},
     options?: Pick<RequestArgs, 'catchNotFound'>,
   ) {
-    console.debug('LOOKIE HERE!!!!', {
-      ...payload,
-      filter: payload.filter && JSON5.stringify(payload.filter),
-    });
     return this.client.users.makeRequest<
       InternalFindUsersByAttributeParams,
       Paginated<UserRepresentation>
