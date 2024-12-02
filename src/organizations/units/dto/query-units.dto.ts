@@ -16,4 +16,12 @@ export class QueryUnitsDto extends BaseQueryOrganizationsDto {
   @IsOptional()
   @IsString({ each: true })
   ['organization.slug']?: string | string[];
+
+  @IsOptional()
+  @IsUUID('4', { each: true })
+  ['parentUnit.id']?: string | string[];
+
+  @IsOptional()
+  @IsString({ each: true })
+  ['parentUnit.slug']?: string | string[];
 }

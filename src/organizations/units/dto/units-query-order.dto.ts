@@ -9,4 +9,8 @@ export class UnitsQueryOrderDto extends BaseOrganizationsQueryOrderDto {
   @IsOptional()
   @IsIn(QueryOrderOptions)
   ['organization.name']: QueryOrder;
+
+  @IsOptional()
+  @IsIn(QueryOrderOptions)
+  ['parentUnit.name']: QueryOrder;
 }

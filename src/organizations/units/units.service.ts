@@ -10,6 +10,7 @@ import {
   UNIT_REMOVED_EVENT,
 } from '../listeners/organization-change.listener';
 import {
+  buildUnitPaths,
   getOrganizationLevel,
   getUserUnitPredicate,
 } from '../common/organizations.utils';
@@ -47,7 +48,8 @@ export class UnitsService extends BaseEntityService<Unit> {
       .leftJoinAndSelect(
         `${qb.alias}.policiesAndProcedures`,
         'policiesAndProcedure',
-      );
+      )
+      .leftJoinAndSelect(`${qb.alias}.parentUnit`, 'parentUnit');
 
     switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:
@@ -97,6 +99,12 @@ export class UnitsService extends BaseEntityService<Unit> {
   async mapResult(unit: Unit) {
     unit = unit.sign(this.getCloudFrontUrlSigner());
     return unit;
+  }
+
+  async mapResults(units: Unit[]) {
+    return buildUnitPaths(
+      await Promise.all(units.map((u) => this.mapResult(u))),
+    );
   }
 
   async afterCreate(unit: Unit) {
