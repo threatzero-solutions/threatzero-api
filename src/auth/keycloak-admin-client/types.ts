@@ -15,10 +15,17 @@ export interface CustomQueryFilterCondition {
   ignoreCase?: boolean;
 }
 
+export interface CustomQueryFilterGroupCondition {
+  key?: string;
+  op?: 'any' | 'all';
+  groups: string[];
+}
+
 export interface CustomQueryFilter {
   AND?: CustomQueryFilter[];
   OR?: CustomQueryFilter[];
   q?: CustomQueryFilterCondition;
+  groupQ?: CustomQueryFilterGroupCondition;
 }
 
 interface BaseFindUsersByAttributeParams {

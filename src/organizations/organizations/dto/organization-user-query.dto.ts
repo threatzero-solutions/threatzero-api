@@ -12,6 +12,7 @@ import {
   QueryOrder,
   QueryOrderOptions,
 } from 'src/common/dto/base-query-order.dto';
+import { asArray } from 'src/common/utils';
 
 export class OrganizationUserQueryOrderDto {
   @IsOptional()
@@ -73,6 +74,14 @@ export class OrganizationUserQueryDto {
   @IsString()
   search?: string;
 
+  @IsOptional()
+  @IsString({ each: true })
+  ['groups.ids']?: string | string[];
+
+  @IsOptional()
+  @IsIn(['any', 'all'])
+  ['groups.op']?: 'any' | 'all';
+
   public asFilterConditions() {
     const qs: CustomQueryFilter[] = [];
 
@@ -87,6 +96,16 @@ export class OrganizationUserQueryDto {
           });
         }
       }
+    }
+
+    if (this['groups.ids']) {
+      qs.push({
+        groupQ: {
+          key: 'id',
+          groups: asArray(this['groups.ids']!),
+          op: this['groups.op'] || 'all',
+        },
+      });
     }
 
     const searchFields = ['email', 'firstName', 'lastName'] as const;

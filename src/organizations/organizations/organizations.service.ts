@@ -37,6 +37,7 @@ import archiver from 'archiver';
 import { PassThrough } from 'stream';
 import { ScormVersion } from 'src/common/pipes/scorm-version/scorm-version.pipe';
 import { CustomQueryFilterCondition } from 'src/auth/keycloak-admin-client/types';
+import { KeycloakGroupDto } from './dto/keycloak-group.dto';
 
 const fsp = fs.promises;
 
@@ -449,28 +450,38 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       return [];
     }
 
-    if (getOrganizationLevel(user) === LEVEL.ADMIN) {
-      const parentRoleGroupsGroupId =
-        this.config.getOrThrow<KeycloakConfig>(
-          'keycloak',
-        ).parentRoleGroupsGroupId;
+    const parentRoleGroupsGroupId =
+      this.config.getOrThrow<KeycloakConfig>(
+        'keycloak',
+      ).parentRoleGroupsGroupId;
 
-      if (!parentRoleGroupsGroupId) {
-        this.logger.error(
-          'Failed to find Role Groups parent group: Missing parent role groups group id',
-        );
-        return [];
-      }
-
-      return await this.keycloakClient.client.groups
-        .listSubGroups({ parentId: parentRoleGroupsGroupId })
-        .then((subgroups) =>
-          subgroups.map((subgroup) => subgroup.name ?? 'Unknown'),
-        );
+    if (!parentRoleGroupsGroupId) {
+      this.logger.error(
+        'Failed to find Role Groups parent group: Missing parent role groups group id',
+      );
+      return [];
     }
 
-    const organization = await this.getForIdp(id);
-    return organization.allowedRoleGroups ?? [];
+    return await this.getForIdp(id).then((organization) =>
+      this.keycloakClient.client.groups
+        .listSubGroups({ parentId: parentRoleGroupsGroupId })
+        .then((subgroups) =>
+          getOrganizationLevel(user) === LEVEL.ADMIN
+            ? subgroups
+            : subgroups.filter(
+                (subgroup) =>
+                  subgroup.id &&
+                  organization.allowedRoleGroups?.includes(subgroup.id),
+              ),
+        )
+        .then((subgroups) =>
+          subgroups.map((group) =>
+            plainToInstance(KeycloakGroupDto, group, {
+              excludeExtraneousValues: true,
+            }),
+          ),
+        ),
+    );
   }
 
   async getOrganizationUsers(

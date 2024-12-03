@@ -65,25 +65,6 @@ export class UnitsService extends BaseEntityService<Unit> {
     }
   }
 
-  getQbSingle(id: string) {
-    const user = this.cls.get('user');
-
-    let retQb = super.getQbSingle(id);
-
-    switch (getOrganizationLevel(user)) {
-      case LEVEL.ADMIN:
-        retQb = retQb.leftJoinAndSelect(
-          `${retQb.alias}.parentUnit`,
-          'parentUnit',
-        );
-        break;
-      default:
-        break;
-    }
-
-    return retQb;
-  }
-
   getUserUnit() {
     const user = this.cls.get('user');
 
