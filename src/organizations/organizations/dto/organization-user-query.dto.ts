@@ -1,11 +1,11 @@
 import { Type } from 'class-transformer';
 import {
-  IsOptional,
+  IsIn,
   IsNumber,
+  IsOptional,
+  IsString,
   Min,
   ValidateNested,
-  IsString,
-  IsIn,
 } from 'class-validator';
 import { CustomQueryFilter } from 'src/auth/keycloak-admin-client/types';
 import {
@@ -64,6 +64,10 @@ export class OrganizationUserQueryDto {
 
   @IsOptional()
   @IsString({ each: true })
+  id?: string | string[];
+
+  @IsOptional()
+  @IsString({ each: true })
   unit?: string | string[];
 
   @IsOptional()
@@ -79,13 +83,13 @@ export class OrganizationUserQueryDto {
   ['groups.ids']?: string | string[];
 
   @IsOptional()
-  @IsIn(['any', 'all'])
-  ['groups.op']?: 'any' | 'all';
+  @IsIn(['any', 'all', 'none'])
+  ['groups.op']?: 'any' | 'all' | 'none';
 
   public asFilterConditions() {
     const qs: CustomQueryFilter[] = [];
 
-    const filterKeys = ['unit', 'audience'] as const;
+    const filterKeys = ['id', 'unit', 'audience'] as const;
     for (const filterKey of filterKeys) {
       if (this[filterKey]) {
         if (typeof this[filterKey] === 'string') {

@@ -37,6 +37,8 @@ import {
   ScormVersionPipe,
 } from 'src/common/pipes/scorm-version/scorm-version.pipe';
 import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
+import { CreateOrganizationUserDto } from './dto/create-organization-user.dto';
+import { UpdateOrganizationUserDto } from './dto/update-organization-user.dto';
 
 @Controller('organizations/organizations')
 @CheckPolicies(new EntityAbilityChecker(Organization))
@@ -103,6 +105,62 @@ export class OrganizationsController {
   @Get(':id/users')
   getUsers(@Param('id') id: string, @Query() query: OrganizationUserQueryDto) {
     return this.organizationsService.getOrganizationUsers(id, query);
+  }
+
+  @Post(':id/users')
+  createUser(
+    @Param('id') id: string,
+    @Body() createOrganizationUserDto: CreateOrganizationUserDto,
+  ) {
+    return this.organizationsService.createOrganizationUser(
+      id,
+      createOrganizationUserDto,
+    );
+  }
+
+  @Patch(':id/users/:userId')
+  updateUser(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Body() updateOrganizationUserDto: UpdateOrganizationUserDto,
+  ) {
+    return this.organizationsService.updateOrganizationUser(
+      id,
+      userId,
+      updateOrganizationUserDto,
+    );
+  }
+
+  @Post(':id/users/:userId/assign-role-group')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  assignUserToGroup(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Query('groupId') groupId: string,
+    @Query('groupPath') groupPath: string,
+  ) {
+    return this.organizationsService.assignUserToRoleGroup(
+      id,
+      userId,
+      groupId,
+      groupPath,
+    );
+  }
+
+  @Post(':id/users/:userId/revoke-role-group')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  revokeUserToGroup(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Query('groupId') groupId: string,
+    @Query('groupPath') groupPath: string,
+  ) {
+    return this.organizationsService.revokeUserFromRoleGroup(
+      id,
+      userId,
+      groupId,
+      groupPath,
+    );
   }
 
   @Post(':id/lms-tokens')

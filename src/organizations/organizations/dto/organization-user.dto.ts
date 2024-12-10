@@ -18,4 +18,7 @@ export class OrganizationUserDto {
 
   @Expose()
   attributes: Record<string, string[]>;
+
+  @Expose()
+  groups?: string[];
 }

@@ -17,7 +17,7 @@ export interface CustomQueryFilterCondition {
 
 export interface CustomQueryFilterGroupCondition {
   key?: string;
-  op?: 'any' | 'all';
+  op?: 'any' | 'all' | 'none';
   groups: string[];
 }
 

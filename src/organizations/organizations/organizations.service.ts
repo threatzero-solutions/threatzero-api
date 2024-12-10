@@ -1,43 +1,53 @@
-import { BaseEntityService } from 'src/common/base-entity.service';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Organization } from './entities/organization.entity';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import type KeycloakUserRepresentation from '@keycloak/keycloak-admin-client/lib/defs/userRepresentation';
 import {
-  ORGANIZATION_CHANGED_EVENT,
-  ORGANIZATION_REMOVED_EVENT,
-} from '../listeners/organization-change.listener';
-import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import archiver from 'archiver';
+import { plainToInstance } from 'class-transformer';
+import fs from 'fs';
+import { ClsService } from 'nestjs-cls';
+import path from 'path';
+import { IdpProtocol } from 'src/auth/dto/create-idp.dto';
+import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
+import { CustomQueryFilterCondition } from 'src/auth/keycloak-admin-client/types';
+import { OpaqueTokenService } from 'src/auth/opaque-token.service';
+import { LEVEL } from 'src/auth/permissions';
+import { BaseEntityService } from 'src/common/base-entity.service';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { ScormVersion } from 'src/common/pipes/scorm-version/scorm-version.pipe';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { KeycloakConfig } from 'src/config/keycloak.config';
+import { MediaService } from 'src/media/media.service';
+import { TrainingVisibility } from 'src/training/common/training.types';
+import { PassThrough } from 'stream';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import {
   buildUnitPaths,
   getOrganizationLevel,
 } from '../common/organizations.utils';
-import { LEVEL } from 'src/auth/permissions';
-import { MediaService } from 'src/media/media.service';
-import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
-import { IdpProtocol } from 'src/auth/dto/create-idp.dto';
-import { ClsService } from 'nestjs-cls';
-import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
+import {
+  ORGANIZATION_CHANGED_EVENT,
+  ORGANIZATION_REMOVED_EVENT,
+} from '../listeners/organization-change.listener';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
-import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { KeycloakConfig } from 'src/config/keycloak.config';
-import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
-import { plainToInstance } from 'class-transformer';
-import { OrganizationUserDto } from './dto/organization-user.dto';
-import { CourseEnrollment } from './entities/course-enrollment.entity';
-import { TrainingVisibility } from 'src/training/common/training.types';
-import { OpaqueTokenService } from 'src/auth/opaque-token.service';
-import { LmsViewershipTokenValueDto } from './dto/lms-viewership-token-value.dto';
-import { LmsViewershipTokenQueryDto } from './dto/lms-viership-token-query.dto';
-import fs from 'fs';
-import path from 'path';
-import archiver from 'archiver';
-import { PassThrough } from 'stream';
-import { ScormVersion } from 'src/common/pipes/scorm-version/scorm-version.pipe';
-import { CustomQueryFilterCondition } from 'src/auth/keycloak-admin-client/types';
+import { CreateOrganizationUserDto } from './dto/create-organization-user.dto';
 import { KeycloakGroupDto } from './dto/keycloak-group.dto';
+import { LmsViewershipTokenQueryDto } from './dto/lms-viership-token-query.dto';
+import { LmsViewershipTokenValueDto } from './dto/lms-viewership-token-value.dto';
+import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
+import { OrganizationUserDto } from './dto/organization-user.dto';
+import { UpdateOrganizationUserDto } from './dto/update-organization-user.dto';
+import { CourseEnrollment } from './entities/course-enrollment.entity';
+import { Organization } from './entities/organization.entity';
 
 const fsp = fs.promises;
 
@@ -351,7 +361,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     id: Organization['id'],
     createOrganizationIdpDto: CreateOrganizationIdpDto,
   ) {
-    const organization = await this.getForIdp(id);
+    const organization = await this.getWithUnits(id);
 
     if (organization.idpSlugs?.includes(createOrganizationIdpDto.slug)) {
       throw new BadRequestException(
@@ -375,7 +385,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     idpSlug: string,
     updateOrganizationIdpDto: CreateOrganizationIdpDto,
   ) {
-    const organization = await this.getForIdp(id);
+    const organization = await this.getWithUnits(id);
     const existingIdp = await this.getIdp(id, idpSlug);
 
     existingIdp.merge(updateOrganizationIdpDto);
@@ -415,7 +425,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   }
 
   async getIdp(id: Organization['id'], idpSlug: string) {
-    const organization = await this.getForIdp(id);
+    const organization = await this.getWithUnits(id);
 
     // IMPORTANT: This protects users from accessing IDPs they don't have access to.
     if (organization.idpSlugs?.includes(idpSlug)) {
@@ -430,7 +440,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   }
 
   async deleteIdp(id: Organization['id'], idpSlug: string) {
-    const organization = await this.getForIdp(id);
+    const organization = await this.getWithUnits(id);
     if (organization.idpSlugs?.includes(idpSlug)) {
       await this.keycloakClient.deleteIdentityProvider(idpSlug);
       await this.update(id, {
@@ -462,7 +472,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       return [];
     }
 
-    return await this.getForIdp(id).then((organization) =>
+    return await this.getWithUnits(id).then((organization) =>
       this.keycloakClient.client.groups
         .listSubGroups({ parentId: parentRoleGroupsGroupId })
         .then((subgroups) =>
@@ -488,13 +498,170 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     id: Organization['id'],
     query: OrganizationUserQueryDto,
   ) {
+    const organization = await this.getQbSingle(id).getOneOrFail();
+    return this.findOrganizationUsers(organization, query);
+  }
+
+  async createOrganizationUser(
+    id: Organization['id'],
+    dto: CreateOrganizationUserDto,
+  ) {
+    const organization = await this.getWithUnits(id);
+
+    const user: KeycloakUserRepresentation & CreateOrganizationUserDto = {
+      ...dto,
+    };
+
+    // Validate user unit.
+    this.validateUserChanges(organization, user);
+
+    // Always enable new users.
+    user.enabled = true;
+
+    const { id: userId } = await this.keycloakClient.client.users
+      .create(user)
+      .catch((e) => {
+        if (e && typeof e === 'object' && 'response' in e) {
+          if (e.response.status === 409) {
+            throw new ConflictException(`User ${user.email} already exists.`);
+          }
+        }
+        throw e;
+      });
+
+    return this.keycloakClient.client.users
+      .findOne({ id: userId })
+      .then((user) =>
+        plainToInstance(OrganizationUserDto, user, {
+          excludeExtraneousValues: true,
+        }),
+      );
+  }
+
+  async updateOrganizationUser(
+    id: Organization['id'],
+    userId: string,
+    dto: UpdateOrganizationUserDto,
+  ) {
+    const { organization, user: existingUser } =
+      await this.getOrganizationUserContext(id, userId);
+
+    if (!existingUser) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const user: KeycloakUserRepresentation = {
+      ...existingUser,
+      ...dto,
+      // Merge new attributes with existing attributes. The new attributes should only
+      // contain what is specified in `CreateOrganizationUserDto`. As of now, it only
+      // permits updating the `unit` and `audience` attributes.
+      attributes: {
+        ...existingUser.attributes,
+        ...(dto.attributes ?? {}),
+      },
+    };
+
+    // Validate user unit.
+    this.validateUserChanges(organization, user);
+
+    await this.keycloakClient.client.users
+      .update({ id: userId }, user)
+      .catch((e) => {
+        throw e;
+      });
+
+    return this.keycloakClient.client.users
+      .findOne({ id: userId })
+      .then((user) =>
+        plainToInstance(OrganizationUserDto, user, {
+          excludeExtraneousValues: true,
+        }),
+      );
+  }
+
+  async assignUserToRoleGroup(
+    id: Organization['id'],
+    userId: string,
+    groupId?: string,
+    groupPath?: string,
+  ) {
+    const parentRoleGroupsGroupId =
+      this.config.getOrThrow<KeycloakConfig>(
+        'keycloak',
+      ).parentRoleGroupsGroupId;
+
+    const { keycloakUser, group } = await this.validateUserAndGroup(
+      id,
+      userId,
+      groupId,
+      groupPath,
+      parentRoleGroupsGroupId,
+    );
+
+    this.keycloakClient.client.users.addToGroup({
+      id: keycloakUser.id,
+      groupId: group.id,
+    });
+  }
+
+  async revokeUserFromRoleGroup(
+    id: Organization['id'],
+    userId: string,
+    groupId?: string,
+    groupPath?: string,
+  ) {
+    const parentRoleGroupsGroupId =
+      this.config.getOrThrow<KeycloakConfig>(
+        'keycloak',
+      ).parentRoleGroupsGroupId;
+
+    const { keycloakUser, group } = await this.validateUserAndGroup(
+      id,
+      userId,
+      groupId,
+      groupPath,
+      parentRoleGroupsGroupId,
+    );
+
+    this.keycloakClient.client.users.delFromGroup({
+      id: keycloakUser.id,
+      groupId: group.id,
+    });
+  }
+
+  private getCloudFrontUrlSigner() {
+    return this.media.getCloudFrontUrlSigner('organization-policies');
+  }
+
+  private async getWithUnits(id: Organization['id']) {
+    const qb = this.getQbSingle(id);
+    const org = await qb
+      .leftJoinAndSelect(`${qb.alias}.units`, 'unit')
+      .getOneOrFail();
+
+    org.units = buildUnitPaths(org.units, org.slug);
+
+    return org;
+  }
+
+  private async findOrganizationUsers(
+    organization: Organization,
+    query: OrganizationUserQueryDto,
+  ) {
+    const DEFAULT = {
+      results: [] as OrganizationUserDto[],
+      count: 0,
+      offset: 0,
+      limit: 0,
+    };
+
     const user = this.cls.get('user');
 
     if (!user) {
-      return [];
+      return DEFAULT;
     }
 
-    const organization = await this.getQbSingle(id).getOneOrFail();
     const { offset, limit } = query;
 
     const qs: CustomQueryFilterCondition[] = [
@@ -507,7 +674,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     const level = getOrganizationLevel(user);
     if (!level || ![LEVEL.ADMIN, LEVEL.ORGANIZATION].includes(level)) {
       if (!user.organizationUnitPath) {
-        return [];
+        return DEFAULT;
       }
 
       qs.push({
@@ -536,18 +703,119 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       }));
   }
 
-  private getCloudFrontUrlSigner() {
-    return this.media.getCloudFrontUrlSigner('organization-policies');
+  private validateUserChanges(
+    organization: Organization,
+    user: KeycloakUserRepresentation,
+  ) {
+    if (user.attributes) {
+      user.attributes.organization = [organization.slug];
+
+      if (user.attributes.unit?.length) {
+        user.attributes.unit = this.validateUnitAttribute(
+          organization,
+          user.attributes.unit,
+        );
+      }
+
+      if (user.attributes.audience) {
+        user.attributes.audience = this.validateAudienceAttribute(
+          organization,
+          user.attributes.audience,
+        );
+      }
+    }
+
+    return user;
   }
 
-  private async getForIdp(id: Organization['id']) {
-    const qb = this.getQbSingle(id);
-    const org = await qb
-      .leftJoinAndSelect(`${qb.alias}.units`, 'unit')
-      .getOneOrFail();
+  private validateUnitAttribute(
+    organization: Organization,
+    unitAttribute: string | string[] | undefined | null,
+  ) {
+    if (!unitAttribute || !organization.units) {
+      return [];
+    }
 
-    org.units = buildUnitPaths(org.units, org.slug);
+    const unitArr = Array.isArray(unitAttribute)
+      ? unitAttribute
+      : [unitAttribute];
 
-    return org;
+    return unitArr
+      .filter((unitSlug) => organization.units.some((u) => u.slug === unitSlug))
+      .slice(0, 1);
+  }
+
+  private validateAudienceAttribute(
+    organization: Organization,
+    audienceAttribute: string | string[] | undefined | null,
+  ) {
+    if (!audienceAttribute || !organization.allowedAudiences) {
+      return [];
+    }
+
+    const audiencesArr = Array.isArray(audienceAttribute)
+      ? audienceAttribute
+      : [audienceAttribute];
+
+    return audiencesArr.filter((audienceSlug) =>
+      organization.allowedAudiences.has(audienceSlug),
+    );
+  }
+
+  private async getOrganizationUserContext(
+    id: Organization['id'],
+    userId: string,
+  ) {
+    const organization = await this.getWithUnits(id);
+    // Make sure user exists and is accessible in this context.
+    const existingUser = await this.findOrganizationUsers(
+      organization,
+      plainToInstance(OrganizationUserQueryDto, { id: userId, limit: 1 }),
+    ).then((users) => users.results.find((u) => u));
+
+    if (!existingUser) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    return { organization, user: existingUser };
+  }
+
+  private async validateUserAndGroup(
+    id: Organization['id'],
+    userId: string,
+    groupId?: string,
+    groupPath?: string,
+    ancestorId?: string,
+  ) {
+    const user = this.cls.get('user');
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const { organization, user: keycloakUser } =
+      await this.getOrganizationUserContext(id, userId);
+    const group = await this.keycloakClient.findGroup({
+      id: groupId,
+      path: groupPath,
+      ancestorId,
+    });
+
+    if (!group?.id) {
+      throw new NotFoundException(`Group not found`);
+    }
+
+    if (getOrganizationLevel(user) !== LEVEL.ADMIN) {
+      if (!organization.allowedRoleGroups?.includes(group.id)) {
+        throw new ForbiddenException(
+          `User does not have permission to assign user to group ${group.name}`,
+        );
+      }
+    }
+
+    return {
+      organization,
+      keycloakUser,
+      group: group as typeof group & { id: string },
+    };
   }
 }

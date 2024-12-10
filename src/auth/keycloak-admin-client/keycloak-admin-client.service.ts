@@ -1,3 +1,8 @@
+import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
+import { type NetworkError } from '@keycloak/keycloak-admin-client';
+import type GroupRepresentation from '@keycloak/keycloak-admin-client/lib/defs/groupRepresentation';
+import type UserRepresentation from '@keycloak/keycloak-admin-client/lib/defs/userRepresentation';
+import { type RequestArgs } from '@keycloak/keycloak-admin-client/lib/resources/agent';
 import {
   BadRequestException,
   Inject,
@@ -5,20 +10,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { KeycloakAdminClientConfig } from 'src/config/keycloak.config';
-import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
-import type GroupRepresentation from '@keycloak/keycloak-admin-client/lib/defs/groupRepresentation';
 import merge from 'deepmerge';
-import { CreateIdpDto } from '../dto/create-idp.dto';
-import { type NetworkError } from '@keycloak/keycloak-admin-client';
-import type UserRepresentation from '@keycloak/keycloak-admin-client/lib/defs/userRepresentation';
+import JSON5 from 'json5';
 import { Paginated } from 'src/common/dto/paginated.dto';
-import { type RequestArgs } from '@keycloak/keycloak-admin-client/lib/resources/agent';
+import { KeycloakAdminClientConfig } from 'src/config/keycloak.config';
+import { CreateIdpDto } from '../dto/create-idp.dto';
 import {
   type FindUsersByAttributeParams,
   type InternalFindUsersByAttributeParams,
 } from './types';
-import JSON5 from 'json5';
 
 export const KEYCLOAK_ADMIN_CLIENT = 'keycloak-admin-client';
 let KCNetworkError: typeof NetworkError | undefined;
@@ -102,6 +102,53 @@ export class KeycloakAdminClientService {
       },
       options,
     );
+  }
+
+  async findGroup(query: { id?: string; path?: string; ancestorId?: string }) {
+    if (query.id) {
+      return this.client.groups.findOne(
+        { id: query.id },
+        { catchNotFound: false },
+      );
+    }
+
+    if (query.path) {
+      const name = query.path.split('/').at(-1);
+      return this.client.groups
+        .find({ search: name, populateHierarchy: !!query.ancestorId })
+        .then((groups) => {
+          if (query.ancestorId) {
+            const findDescendants = (
+              groups: GroupRepresentation[],
+              ancestorId: string,
+              idPath: string[] = [],
+            ): GroupRepresentation[] =>
+              groups.flatMap((g) => {
+                if (!g.id) {
+                  return [];
+                }
+
+                if (g.subGroups && g.subGroups.length > 0) {
+                  return findDescendants(g.subGroups, ancestorId, [
+                    ...idPath,
+                    g.id,
+                  ]);
+                }
+
+                if (idPath.includes(ancestorId)) {
+                  return [g];
+                }
+
+                return [];
+              });
+
+            return findDescendants(groups, query.ancestorId).find(
+              (g) => g.path === query.path,
+            );
+          }
+          return groups.find((g) => g.path === query.path);
+        });
+    }
   }
 
   async upsertGroup(
