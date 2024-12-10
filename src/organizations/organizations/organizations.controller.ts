@@ -1,44 +1,46 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
-  UseInterceptors,
-  UploadedFiles,
   BadRequestException,
-  Put,
-  NotFoundException,
-  Res,
+  Body,
+  Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Logger,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  Res,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
-import { OrganizationsService } from './organizations.service';
-import { CreateOrganizationDto } from './dto/create-organization.dto';
-import { UpdateOrganizationDto } from './dto/update-organization.dto';
-import { CheckPolicies } from 'src/auth/casl/policies.guard';
-import { Organization } from './entities/organization.entity';
-import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
-import { BaseQueryOrganizationsDto } from '../common/dto/base-query-organizations';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
-import { IdpProtocol, IdpProtocols } from 'src/auth/dto/create-idp.dto';
-import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
-import { Public } from 'src/auth/auth.guard';
-import { LmsViewershipTokenValueDto } from './dto/lms-viewership-token-value.dto';
-import { LmsViewershipTokenQueryDto } from './dto/lms-viership-token-query.dto';
 import { Response } from 'express';
+import { Public } from 'src/auth/auth.guard';
+import {
+  Action,
+  LmsScormPackageSubject,
+  LmsTokenSubject,
+} from 'src/auth/casl/constants';
+import { CheckPolicies } from 'src/auth/casl/policies.guard';
+import { IdpProtocol, IdpProtocols } from 'src/auth/dto/create-idp.dto';
+import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { ParseDatePipe } from 'src/common/pipes/parse-date/parse-date.pipe';
 import {
   ScormVersion,
   ScormVersionPipe,
 } from 'src/common/pipes/scorm-version/scorm-version.pipe';
-import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
-import { CreateOrganizationUserDto } from './dto/create-organization-user.dto';
-import { UpdateOrganizationUserDto } from './dto/update-organization-user.dto';
+import { BaseQueryOrganizationsDto } from '../common/dto/base-query-organizations';
+import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
+import { CreateOrganizationDto } from './dto/create-organization.dto';
+import { LmsViewershipTokenQueryDto } from './dto/lms-viership-token-query.dto';
+import { LmsViewershipTokenValueDto } from './dto/lms-viewership-token-value.dto';
+import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { Organization } from './entities/organization.entity';
+import { OrganizationsService } from './organizations.service';
 
 @Controller('organizations/organizations')
 @CheckPolicies(new EntityAbilityChecker(Organization))
@@ -102,68 +104,8 @@ export class OrganizationsController {
     return this.organizationsService.remove(id);
   }
 
-  @Get(':id/users')
-  getUsers(@Param('id') id: string, @Query() query: OrganizationUserQueryDto) {
-    return this.organizationsService.getOrganizationUsers(id, query);
-  }
-
-  @Post(':id/users')
-  createUser(
-    @Param('id') id: string,
-    @Body() createOrganizationUserDto: CreateOrganizationUserDto,
-  ) {
-    return this.organizationsService.createOrganizationUser(
-      id,
-      createOrganizationUserDto,
-    );
-  }
-
-  @Patch(':id/users/:userId')
-  updateUser(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Body() updateOrganizationUserDto: UpdateOrganizationUserDto,
-  ) {
-    return this.organizationsService.updateOrganizationUser(
-      id,
-      userId,
-      updateOrganizationUserDto,
-    );
-  }
-
-  @Post(':id/users/:userId/assign-role-group')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  assignUserToGroup(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Query('groupId') groupId: string,
-    @Query('groupPath') groupPath: string,
-  ) {
-    return this.organizationsService.assignUserToRoleGroup(
-      id,
-      userId,
-      groupId,
-      groupPath,
-    );
-  }
-
-  @Post(':id/users/:userId/revoke-role-group')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  revokeUserToGroup(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Query('groupId') groupId: string,
-    @Query('groupPath') groupPath: string,
-  ) {
-    return this.organizationsService.revokeUserFromRoleGroup(
-      id,
-      userId,
-      groupId,
-      groupPath,
-    );
-  }
-
   @Post(':id/lms-tokens')
+  @CheckPolicies((ability) => ability.can(Action.Create, LmsTokenSubject))
   createLmsToken(
     @Param('id') id: string,
     @Body() lmsViewershipTokenValueDto: LmsViewershipTokenValueDto,
@@ -177,6 +119,7 @@ export class OrganizationsController {
   }
 
   @Get(':id/lms-tokens')
+  @CheckPolicies((ability) => ability.can(Action.Read, LmsTokenSubject))
   getLmsTokens(
     @Param('id') id: string,
     @Query() lmsViewershipTokenQueryDto: LmsViewershipTokenQueryDto,
@@ -189,6 +132,7 @@ export class OrganizationsController {
 
   @Patch(':id/lms-tokens/expiration')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @CheckPolicies((ability) => ability.can(Action.Update, LmsTokenSubject))
   setLmsTokenExpiration(
     @Param('id') id: string,
     @Query() lmsViewershipTokenQueryDto: LmsViewershipTokenQueryDto,
@@ -203,6 +147,7 @@ export class OrganizationsController {
   }
 
   @Get(':id/lms-tokens/scorm')
+  @CheckPolicies((ability) => ability.can(Action.Read, LmsScormPackageSubject))
   async downloadScormPackage(
     @Param('id') id: string,
     @Query('key') tokenKey: string,
@@ -232,6 +177,11 @@ export class OrganizationsController {
 
   @Post(':id/idps/load-imported-config/:protocol')
   @UseInterceptors(AnyFilesInterceptor())
+  @CheckPolicies(
+    (ability) =>
+      ability.can(Action.Create, CreateOrganizationIdpDto) ||
+      ability.can(Action.Update, CreateOrganizationIdpDto),
+  )
   async loadImportedConfig(
     @UploadedFiles() files: Express.Multer.File[] | undefined,
     @Param('protocol') protocol: IdpProtocol,
@@ -272,11 +222,17 @@ export class OrganizationsController {
   }
 
   @Get(':id/idps/:slug')
+  @CheckPolicies((ability) =>
+    ability.can(Action.Read, CreateOrganizationIdpDto),
+  )
   getIdp(@Param('id') id: string, @Param('slug') slug: string) {
     return this.organizationsService.getIdp(id, slug);
   }
 
   @Post(':id/idps')
+  @CheckPolicies((ability) =>
+    ability.can(Action.Create, CreateOrganizationIdpDto),
+  )
   createIdp(
     @Param('id') id: string,
     @Body() createOrganizationIdpDto: CreateOrganizationIdpDto,
@@ -285,6 +241,9 @@ export class OrganizationsController {
   }
 
   @Put(':id/idps/:slug')
+  @CheckPolicies((ability) =>
+    ability.can(Action.Update, CreateOrganizationIdpDto),
+  )
   updateIdp(
     @Param('id') id: string,
     @Param('slug') slug: string,
@@ -298,6 +257,9 @@ export class OrganizationsController {
   }
 
   @Delete(':id/idps/:slug')
+  @CheckPolicies((ability) =>
+    ability.can(Action.Delete, CreateOrganizationIdpDto),
+  )
   deleteIdp(@Param('id') id: string, @Param('slug') slug: string) {
     return this.organizationsService.deleteIdp(id, slug);
   }

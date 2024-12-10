@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -10,6 +10,7 @@ import {
 import { SaveByIdDto } from 'src/common/dto.utils';
 import { TrainingVisibility } from 'src/training/common/training.types';
 import { TrainingCourse } from 'src/training/courses/entities/course.entity';
+import { Organization } from '../entities/organization.entity';
 
 export class CreateCourseEnrollmentDto {
   @IsOptional()
@@ -17,7 +18,10 @@ export class CreateCourseEnrollmentDto {
   id?: string;
 
   @IsOptional()
-  organizationId: string | null;
+  @Type(() => SaveByIdDto<Organization>)
+  @ValidateNested()
+  @Expose({ groups: ['admin'] })
+  organization?: SaveByIdDto<Organization>;
 
   @ValidateNested()
   @Type(() => SaveByIdDto<TrainingCourse>)

@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
-import { OrganizationsService } from './organizations.service';
-import { OrganizationsController } from './organizations.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Organization } from './entities/organization.entity';
-import { MediaModule } from 'src/media/media.module';
-import { AuthModule } from 'src/auth/auth.module';
 import { MulterModule } from '@nestjs/platform-express';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { memoryStorage } from 'multer';
+import { AuthModule } from 'src/auth/auth.module';
+import { MediaModule } from 'src/media/media.module';
+import { EnrollmentsController } from './enrollments.controller';
+import { EnrollmentsService } from './enrollments.service';
 import { CourseEnrollment } from './entities/course-enrollment.entity';
+import { Organization } from './entities/organization.entity';
+import { OrganizationsController } from './organizations.controller';
+import { OrganizationsService } from './organizations.service';
+import { UsersController } from './users.controller';
 
 @Module({
   imports: [
@@ -18,8 +21,12 @@ import { CourseEnrollment } from './entities/course-enrollment.entity';
       storage: memoryStorage(),
     }),
   ],
-  controllers: [OrganizationsController],
-  providers: [OrganizationsService],
-  exports: [TypeOrmModule, OrganizationsService],
+  controllers: [
+    OrganizationsController,
+    EnrollmentsController,
+    UsersController,
+  ],
+  providers: [OrganizationsService, EnrollmentsService],
+  exports: [TypeOrmModule, OrganizationsService, EnrollmentsService],
 })
 export class OrganizationsModule {}

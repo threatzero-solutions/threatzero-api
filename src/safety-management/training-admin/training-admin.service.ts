@@ -1,43 +1,43 @@
+import { format as csvFormat } from '@fast-csv/format';
+import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
   ForbiddenException,
   Logger,
 } from '@nestjs/common';
-import { UsersService } from 'src/users/users.service';
-import { SendTrainingLinksDto } from './dto/send-training-links.dto';
-import dayjs from 'dayjs';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { NOTIFICATIONS_QUEUE_NAME } from 'src/common/constants/queue.constants';
-import { NotificationsJobNames } from 'src/notifications/notifications.processor';
 import { ConfigService } from '@nestjs/config';
-import { ItemsService } from 'src/training/items/items.service';
-import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Queue } from 'bullmq';
 import { plainToInstance } from 'class-transformer';
+import dayjs from 'dayjs';
+import { ClsService } from 'nestjs-cls';
+import sanitizeHtml from 'sanitize-html';
+import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { LEVEL } from 'src/auth/permissions';
-import { In, Repository } from 'typeorm';
-import { TrainingItem } from 'src/training/items/entities/item.entity';
+import { NOTIFICATIONS_QUEUE_NAME } from 'src/common/constants/queue.constants';
+import { Paginated } from 'src/common/dto/paginated.dto';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { NotificationsJobNames } from 'src/notifications/notifications.processor';
+import { DEFAULT_UNIT_SLUG } from 'src/organizations/common/constants';
 import {
   getOrganizationLevel,
   getUserUnitPredicate,
 } from 'src/organizations/common/organizations.utils';
-import { format as csvFormat } from '@fast-csv/format';
-import { UnitsService } from 'src/organizations/units/units.service';
-import sanitizeHtml from 'sanitize-html';
-import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
-import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
-import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
-import { CoursesService } from 'src/training/courses/courses.service';
-import { WatchStat } from './entities/watch-stat.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Paginated } from 'src/common/dto/paginated.dto';
-import { ClsService } from 'nestjs-cls';
-import { CommonClsStore } from 'src/common/types/common-cls-store';
-import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
-import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
-import { DEFAULT_UNIT_SLUG } from 'src/organizations/common/constants';
-import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { EnrollmentsService } from 'src/organizations/organizations/enrollments.service';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
+import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { UnitsService } from 'src/organizations/units/units.service';
+import { CoursesService } from 'src/training/courses/courses.service';
+import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
+import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
+import { TrainingItem } from 'src/training/items/entities/item.entity';
+import { ItemsService } from 'src/training/items/items.service';
+import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
+import { UsersService } from 'src/users/users.service';
+import { In } from 'typeorm';
+import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
+import { SendTrainingLinksDto } from './dto/send-training-links.dto';
+import { WatchStat } from './entities/watch-stat.entity';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -47,13 +47,12 @@ export class TrainingAdminService {
   constructor(
     @InjectQueue(NOTIFICATIONS_QUEUE_NAME) private notificationsQueue: Queue,
     @InjectRepository(WatchStat)
-    private watchStatsRepository: Repository<WatchStat>,
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
     private readonly coursesService: CoursesService,
     private readonly itemsService: ItemsService,
     private readonly unitsService: UnitsService,
-    private readonly organizationsService: OrganizationsService,
+    private readonly enrollmentsService: EnrollmentsService,
     private readonly cls: ClsService<CommonClsStore>,
   ) {}
 
@@ -77,7 +76,6 @@ export class TrainingAdminService {
       trainingUrlTemplate,
       courseEnrollmentId,
       trainingItemId,
-      organizationId,
     } = data;
 
     // Ensure user information is available.
@@ -86,8 +84,8 @@ export class TrainingAdminService {
     }
 
     // Get enrollment, training course and item to make sure they exist and to provide training metadata in emails.
-    const courseEnrollment = await this.organizationsService
-      .findOneEnrollment(courseEnrollmentId, organizationId)
+    const courseEnrollment = await this.enrollmentsService
+      .findOne(courseEnrollmentId)
       .catch((e) => {
         this.logger.error('Failed to fetch course enrollment', e);
         return null;

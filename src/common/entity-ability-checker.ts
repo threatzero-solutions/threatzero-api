@@ -1,5 +1,5 @@
 import { MongoAbility } from '@casl/ability';
-import { Action } from 'src/auth/casl/actions';
+import { Action } from 'src/auth/casl/constants';
 import { PolicyHandlerContext } from 'src/auth/casl/policies.guard';
 import { EntityTarget, ObjectLiteral } from 'typeorm';
 

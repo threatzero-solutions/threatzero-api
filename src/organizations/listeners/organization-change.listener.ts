@@ -1,18 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Unit } from '../units/entities/unit.entity';
-import { Organization } from '../organizations/entities/organization.entity';
-import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
 import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
-import { ConfigService } from '@nestjs/config';
 import { KeycloakConfig } from 'src/config/keycloak.config';
+import { Repository } from 'typeorm';
 import {
   DEFAULT_UNIT_NAME,
   DEFAULT_UNIT_SLUG,
   UNIT_TATS_GROUP_NAME,
 } from '../common/constants';
+import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
+import { Organization } from '../organizations/entities/organization.entity';
+import { Unit } from '../units/entities/unit.entity';
 
 export const ORGANIZATION_CHANGED_EVENT = 'organization.changed';
 export const ORGANIZATION_REMOVED_EVENT = 'organization.removed';
@@ -99,6 +99,13 @@ export class OrganizationChangeListener {
   async handleOrganizationRemovedEvent(event: BaseOrganizationChangeEvent) {
     const organization = await this.organizationsRepository.findOneByOrFail({
       id: event.id,
+    });
+
+    await this.unitsRepository.delete({
+      organization: { id: organization.id },
+      isDefault: true,
+      name: DEFAULT_UNIT_NAME,
+      slug: DEFAULT_UNIT_SLUG,
     });
 
     if (organization.groupId) {

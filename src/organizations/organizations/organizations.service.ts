@@ -46,7 +46,6 @@ import { LmsViewershipTokenValueDto } from './dto/lms-viewership-token-value.dto
 import { OrganizationUserQueryDto } from './dto/organization-user-query.dto';
 import { OrganizationUserDto } from './dto/organization-user.dto';
 import { UpdateOrganizationUserDto } from './dto/update-organization-user.dto';
-import { CourseEnrollment } from './entities/course-enrollment.entity';
 import { Organization } from './entities/organization.entity';
 
 const fsp = fs.promises;
@@ -57,8 +56,6 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   constructor(
     @InjectRepository(Organization)
     private organizationsRepository: Repository<Organization>,
-    @InjectRepository(CourseEnrollment)
-    private courseEnrollmentsRepository: Repository<CourseEnrollment>,
     private readonly cls: ClsService<CommonClsStore>,
     private readonly eventEmitter: EventEmitter2,
     private readonly media: MediaService,
@@ -184,38 +181,6 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       })
       .getExists()
       .then((exists) => !exists);
-  }
-
-  async findOneEnrollment(
-    id: CourseEnrollment['id'],
-    organizationId?: Organization['id'],
-  ) {
-    let qb = this.getEnrollmentsQb().andWhere({ id });
-
-    if (organizationId) {
-      qb = qb.andWhere('organization.id = :organizationId', {
-        organizationId,
-      });
-    }
-
-    return qb.leftJoinAndSelect(`${qb.alias}.course`, 'course').getOneOrFail();
-  }
-
-  private getEnrollmentsQb() {
-    const user = this.cls.get('user');
-
-    let qb = this.courseEnrollmentsRepository.createQueryBuilder();
-    qb = qb.leftJoin(`${qb.alias}.organization`, 'organization');
-    switch (getOrganizationLevel(user)) {
-      case LEVEL.ADMIN:
-        return qb;
-      default:
-        return user?.organizationSlug
-          ? qb.andWhere(`organization.slug = :organizationSlug`, {
-              organizationSlug: user.organizationSlug,
-            })
-          : qb.where('1 = 0');
-    }
   }
 
   async createLmsToken(
@@ -578,6 +543,12 @@ export class OrganizationsService extends BaseEntityService<Organization> {
           excludeExtraneousValues: true,
         }),
       );
+  }
+
+  async deleteOrganizationUser(id: Organization['id'], userId: string) {
+    return this.getOrganizationUserContext(id, userId).then(({ user }) =>
+      this.keycloakClient.client.users.del({ id: user.id }),
+    );
   }
 
   async assignUserToRoleGroup(

@@ -1,7 +1,7 @@
-import { ExceptionFilter, Catch, ArgumentsHost, Logger } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, Logger } from '@nestjs/common';
 import { Response } from 'express';
-import { EntityNotFoundError, QueryFailedError, TypeORMError } from 'typeorm';
 import { DatabaseError } from 'pg';
+import { EntityNotFoundError, QueryFailedError, TypeORMError } from 'typeorm';
 
 @Catch(TypeORMError)
 export class TypeORMErrorsFilter implements ExceptionFilter {
@@ -22,14 +22,30 @@ export class TypeORMErrorsFilter implements ExceptionFilter {
         switch ((exception as QueryFailedError).driverError.constructor) {
           case DatabaseError:
             const e = exception as QueryFailedError<DatabaseError>;
+            const entityName = (e.driverError.table ?? 'entity').replace(
+              /_/g,
+              ' ',
+            );
+            const operation = e.query.startsWith('INSERT')
+              ? 'creation'
+              : e.query.startsWith('UPDATE')
+                ? 'update'
+                : e.query.startsWith('DELETE')
+                  ? 'deletion'
+                  : 'operation';
             if (
               e.message.includes(
                 'duplicate key value violates unique constraint',
               )
             ) {
-              const entityName = e.driverError.table ?? 'entity';
               message = `New ${entityName} conflicts with existing ${entityName}${e.driverError.detail ? `: ${e.driverError.detail}` : '.'}`;
               status = 409;
+            } else if (
+              e.message.includes('violates foreign key constraint') ||
+              e.message.includes('violates check constraint')
+            ) {
+              message = `An existing ${entityName} is not allowing this ${operation} to complete.`;
+              status = 400;
             }
             break;
         }

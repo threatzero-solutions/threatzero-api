@@ -3,14 +3,14 @@ import { IsOptional, IsString, ValidateNested } from 'class-validator';
 import { SaveByIdDto } from 'src/common/dto.utils';
 import { CreateOrganizationBaseDto } from 'src/organizations/common/dto/create-organization-base.dto';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
-import { CourseEnrollment } from '../entities/course-enrollment.entity';
+import { CreateCourseEnrollmentDto } from './create-course-enrollment.dto';
 import { OrganizationTrainingAccessSettingsDto } from './organization-training-access-settings.dto';
 
 export class CreateOrganizationDto extends CreateOrganizationBaseDto {
-  @Type(() => CourseEnrollment)
+  @Type(() => CreateCourseEnrollmentDto)
   @IsOptional()
   @Expose({ groups: ['admin'] })
-  enrollments: SaveByIdDto<CourseEnrollment>[];
+  enrollments: CreateCourseEnrollmentDto[];
 
   @Type(() => SaveByIdDto<ResourceItem>)
   @IsOptional()

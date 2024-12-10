@@ -6,29 +6,32 @@ import {
 } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
 import { StatelessUser } from 'src/auth/user.factory';
-import { Location } from 'src/organizations/locations/entities/location.entity';
-import { Organization } from 'src/organizations/organizations/entities/organization.entity';
-import { Unit } from 'src/organizations/units/entities/unit.entity';
-import { Audience } from 'src/training/audiences/entities/audience.entity';
-import { TrainingCourse } from 'src/training/courses/entities/course.entity';
-import { TrainingItem } from 'src/training/items/entities/item.entity';
-import { TrainingSection } from 'src/training/sections/entities/section.entity';
-import { LEVEL, WRITE, READ } from '../permissions';
-import { Action } from './actions';
-import { ThreatAssessment } from 'src/safety-management/threat-assessments/entities/threat-assessment.entity';
-import { Form } from 'src/forms/forms/entities/form.entity';
 import { FieldGroup } from 'src/forms/field-groups/entities/field-group.entity';
 import { Field } from 'src/forms/fields/entities/field.entity';
-import { Tip } from 'src/safety-management/tips/entities/tip.entity';
-import { ResourceItem } from 'src/resources/entities/resource.entity';
-import { VideoEvent } from 'src/media/entities/video-event.entity';
-import { UserRepresentation } from 'src/users/entities/user-representation.entity';
-import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
-import { ViolentIncidentReport } from 'src/safety-management/violent-incident-reports/entities/violent-incident-report.entity';
+import { Form } from 'src/forms/forms/entities/form.entity';
 import { Language } from 'src/languages/entities/language.entity';
+import { VideoEvent } from 'src/media/entities/video-event.entity';
+import { Location } from 'src/organizations/locations/entities/location.entity';
+import { CreateOrganizationIdpDto } from 'src/organizations/organizations/dto/create-organization-idp.dto';
+import { OrganizationUserDto } from 'src/organizations/organizations/dto/organization-user.dto';
+import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
+import { Organization } from 'src/organizations/organizations/entities/organization.entity';
+import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { ResourceItem } from 'src/resources/entities/resource.entity';
+import { POCFile } from 'src/safety-management/poc-files/entities/poc-file.entity';
+import { ThreatAssessment } from 'src/safety-management/threat-assessments/entities/threat-assessment.entity';
+import { Tip } from 'src/safety-management/tips/entities/tip.entity';
 import { SendTrainingLinksDto } from 'src/safety-management/training-admin/dto/send-training-links.dto';
 import { WatchStatsDto } from 'src/safety-management/training-admin/dto/watch-stats.dto';
+import { ViolentIncidentReport } from 'src/safety-management/violent-incident-reports/entities/violent-incident-report.entity';
+import { Audience } from 'src/training/audiences/entities/audience.entity';
+import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
+import { TrainingItem } from 'src/training/items/entities/item.entity';
+import { TrainingSection } from 'src/training/sections/entities/section.entity';
+import { UserRepresentation } from 'src/users/entities/user-representation.entity';
+import { LEVEL, READ, WRITE } from '../permissions';
+import { Action, LmsScormPackageSubject, LmsTokenSubject } from './constants';
 
 export const CASL_ABILITY_FACTORY = 'CASL_ABILITY_FACTORY';
 
@@ -43,10 +46,23 @@ const TrainingSubjects = [
 ];
 type TrainingSubjectTypes = InferSubjects<(typeof TrainingSubjects)[number]>;
 
-const OrganizationsSubjects = [Organization, Unit, Location];
+const OrganizationsSubjectsAllowRead = [
+  Organization,
+  Unit,
+  Location,
+  CourseEnrollment,
+];
+const OrganizationsSubjectsRestrictedRead = [
+  CreateOrganizationIdpDto,
+  OrganizationUserDto,
+  LmsTokenSubject,
+  LmsScormPackageSubject,
+];
 type OrganizationsSubjectTypes = InferSubjects<
-  (typeof OrganizationsSubjects)[number]
+  | (typeof OrganizationsSubjectsAllowRead)[number]
+  | (typeof OrganizationsSubjectsRestrictedRead)[number]
 >;
+type OrganizationUserSubjectType = InferSubjects<OrganizationUserDto>;
 
 const SafetyManagementSubjects = [
   ThreatAssessment,
@@ -75,6 +91,7 @@ type LanguageSubjectTypes = InferSubjects<(typeof LanguageSubjects)[number]>;
 type AllSubjectTypes =
   | TrainingSubjectTypes
   | OrganizationsSubjectTypes
+  | OrganizationUserSubjectType
   | SafetyManagementSubjectTypes
   | FormsSubjectTypes
   | ResourceSubjectTypes
@@ -107,16 +124,41 @@ export class CaslAbilityFactory {
 
     // --------- ORGANIZATIONS ---------
     if (user.hasPermission(LEVEL.ADMIN, WRITE.ORGANIZATIONS)) {
-      can(Action.Manage, OrganizationsSubjects);
+      can(Action.Manage, OrganizationsSubjectsAllowRead);
     }
 
-    if (user.hasPermission(READ.ORGANIZATIONS)) {
-      can(Action.Read, OrganizationsSubjects);
+    if (user.hasPermission(WRITE.ORGANIZATIONS)) {
+      can(Action.Manage, [Unit, Location]);
+      can(Action.Update, [Organization]);
+    }
+
+    if (user.hasPermission(READ.ORGANIZATION_USERS)) {
+      can(Action.Read, [OrganizationUserDto]);
+    }
+
+    if (user.hasPermission(WRITE.ORGANIZATION_USERS)) {
+      can(Action.Manage, [OrganizationUserDto]);
+    }
+
+    if (user.hasPermission(READ.ORGANIZATION_IDPS)) {
+      can(Action.Read, [CreateOrganizationIdpDto]);
+    }
+
+    if (user.hasPermission(WRITE.ORGANIZATION_IDPS)) {
+      can(Action.Manage, [CreateOrganizationIdpDto]);
+    }
+
+    if (user.hasPermission(READ.ORGANIZATION_LMS_CONTENT)) {
+      can(Action.Read, [LmsTokenSubject, LmsScormPackageSubject]);
+    }
+
+    if (user.hasPermission(WRITE.ORGANIZATION_LMS_CONTENT)) {
+      can(Action.Manage, [LmsTokenSubject, LmsScormPackageSubject]);
     }
 
     // Anyone can read their own organization/unit. Fine grained access is managed
     // in organization service.
-    can(Action.Read, [Organization, Unit]);
+    can(Action.Read, OrganizationsSubjectsAllowRead);
 
     // --------- SAFETY MANAGEMENT ---------
     if (user.hasPermission(READ.TRAINING_STATS)) {

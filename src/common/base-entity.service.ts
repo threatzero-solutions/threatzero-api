@@ -6,8 +6,8 @@ import {
   SelectQueryBuilder,
 } from 'typeorm';
 import { BaseQueryDto } from './dto/base-query.dto';
-import { Page } from './types/page';
 import { Paginated } from './dto/paginated.dto';
+import { Page } from './types/page';
 
 export class BaseEntityService<E extends ObjectLiteral> {
   alias?: string;
@@ -81,10 +81,15 @@ export class BaseEntityService<E extends ObjectLiteral> {
     updateEntityDto: DeepPartial<E>,
     ...args: unknown[]
   ) {
-    const updatedEntity = await this.getRepository().preload({
-      id,
-      ...updateEntityDto,
-    });
+    // Validate proper access to object here since `preload` doesn't perform such a check.
+    const exists = await this.getQbSingle(id, ...args).getExists();
+    let updatedEntity: E | null | undefined = null;
+    if (exists) {
+      updatedEntity = await this.getRepository().preload({
+        id,
+        ...updateEntityDto,
+      });
+    }
     if (!updatedEntity) {
       throw new NotFoundException();
     }
