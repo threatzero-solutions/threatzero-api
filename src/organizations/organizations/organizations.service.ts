@@ -682,10 +682,8 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       user.attributes.organization = [organization.slug];
 
       if (user.attributes.unit?.length) {
-        user.attributes.unit = this.validateUnitAttribute(
-          organization,
-          user.attributes.unit,
-        );
+        [user.attributes.unit, user.attributes.organization_unit_path] =
+          this.validateUnitAttribute(organization, user.attributes.unit);
       }
 
       if (user.attributes.audience) {
@@ -703,17 +701,27 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     organization: Organization,
     unitAttribute: string | string[] | undefined | null,
   ) {
+    const DEFAULT_RETURN = [[], []] as readonly [
+      readonly string[],
+      readonly string[],
+    ];
+
     if (!unitAttribute || !organization.units) {
-      return [];
+      return DEFAULT_RETURN;
     }
 
     const unitArr = Array.isArray(unitAttribute)
       ? unitAttribute
       : [unitAttribute];
 
-    return unitArr
-      .filter((unitSlug) => organization.units.some((u) => u.slug === unitSlug))
-      .slice(0, 1);
+    return organization.units
+      .filter((unit) => unitArr.includes(unit.slug))
+      .map((unit) => ({ slug: unit.slug, path: unit.path }))
+      .slice(0, 1)
+      .reduce(
+        (_acc, { slug, path }) => [[slug], path ? [path] : []] as const,
+        DEFAULT_RETURN,
+      );
   }
 
   private validateAudienceAttribute(
