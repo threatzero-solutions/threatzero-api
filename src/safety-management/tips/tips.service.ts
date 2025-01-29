@@ -1,24 +1,24 @@
 import { BadRequestException } from '@nestjs/common';
-import { Tip } from './entities/tip.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
-import { TIP_SUBMISSION_FORM_SLUG } from 'src/common/constants/form.constants';
-import { CreateFormSubmissionDto } from 'src/forms/forms/dto/create-form-submission.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ClsService } from 'nestjs-cls';
+import { BaseEntityService } from 'src/common/base-entity.service';
+import { TIP_SUBMISSION_FORM_SLUG } from 'src/common/constants/form.constants';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { CreateFormSubmissionDto } from 'src/forms/forms/dto/create-form-submission.dto';
+import { FormsService } from 'src/forms/forms/forms.service';
+import { FormSubmissionsServiceMixin } from 'src/forms/forms/mixins/form-submission.service.mixin';
+import { GetPresignedUploadUrlsDto } from 'src/media/dto/get-presigned-upload-urls.dto';
+import { scopeToOrganizationLevel } from 'src/organizations/common/organizations.utils';
+import { Location } from 'src/organizations/locations/entities/location.entity';
+import { LocationsService } from 'src/organizations/locations/locations.service';
+import { NotesServiceMixin } from 'src/users/mixins/notes.service.mixin';
+import { UsersService } from 'src/users/users.service';
+import { DeepPartial, Repository } from 'typeorm';
+import { Tip } from './entities/tip.entity';
 import { TipSubmittedEvent } from './events/tip-submitted.event';
 import { TIP_SUBMITTED_EVENT } from './listeners/submit-tip.listener';
-import { LocationsService } from 'src/organizations/locations/locations.service';
-import { BaseEntityService } from 'src/common/base-entity.service';
-import { FormSubmissionsServiceMixin } from 'src/forms/forms/mixins/form-submission.service.mixin';
-import { NotesServiceMixin } from 'src/users/mixins/notes.service.mixin';
-import { FormsService } from 'src/forms/forms/forms.service';
-import { UsersService } from 'src/users/users.service';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { scopeToOrganizationLevel } from 'src/organizations/common/organizations.utils';
-import { GetPresignedUploadUrlsDto } from 'src/forms/forms/dto/get-presigned-upload-urls.dto';
-import { Location } from 'src/organizations/locations/entities/location.entity';
-import { ClsService } from 'nestjs-cls';
-import { CommonClsStore } from 'src/common/types/common-cls-store';
 
 export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
   NotesServiceMixin<Tip>()(BaseEntityService<Tip>),

@@ -20,17 +20,21 @@ import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycl
 import { CustomQueryFilterCondition } from 'src/auth/keycloak-admin-client/types';
 import { OpaqueTokenService } from 'src/auth/opaque-token.service';
 import { LEVEL } from 'src/auth/permissions';
+import { S3Service } from 'src/aws/s3/s3.service';
 import { BaseEntityService } from 'src/common/base-entity.service';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { ScormVersion } from 'src/common/pipes/scorm-version/scorm-version.pipe';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { S3Config } from 'src/config/aws.config';
 import { KeycloakConfig } from 'src/config/keycloak.config';
+import { GetPresignedUploadUrlsDto } from 'src/media/dto/get-presigned-upload-urls.dto';
 import { MediaService } from 'src/media/media.service';
 import { TrainingVisibility } from 'src/training/common/training.types';
 import { PassThrough } from 'stream';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import {
   buildUnitPaths,
+  generatePolicyUploadUrls,
   getOrganizationLevel,
 } from '../common/organizations.utils';
 import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
@@ -62,6 +66,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     private readonly keycloakClient: KeycloakAdminClientService,
     private readonly config: ConfigService,
     private opaqueTokenService: OpaqueTokenService,
+    private s3: S3Service,
   ) {
     super();
   }
@@ -599,6 +604,21 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       id: keycloakUser.id,
       groupId: group.id,
     });
+  }
+
+  async generatePolicyUploadUrls(
+    id: Organization['id'],
+    getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
+  ) {
+    const organization = await this.getQbSingle(id).getOneOrFail();
+
+    return generatePolicyUploadUrls(
+      organization.slug,
+      getPresignedUploadUrlsDto,
+      this.config.getOrThrow<S3Config>('aws.s3').buckets.appFiles.name,
+      this.s3.client,
+      this.getCloudFrontUrlSigner(),
+    );
   }
 
   private getCloudFrontUrlSigner() {

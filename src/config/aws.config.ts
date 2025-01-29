@@ -7,8 +7,8 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { readFileToString } from './utils';
 import { validate } from './env.validation';
+import { readFileToString } from './utils';
 
 export class CloudFrontDistributionConfig {
   @IsFQDN()
@@ -58,6 +58,10 @@ export class S3Buckets {
   @ValidateNested()
   @Type(() => S3BucketConfig)
   resources: S3BucketConfig;
+
+  @ValidateNested()
+  @Type(() => S3BucketConfig)
+  appFiles: S3BucketConfig;
 }
 
 export class S3Config {
@@ -120,6 +124,9 @@ export default registerAs('aws', () =>
         resources: {
           name:
             process.env.AWS_S3_BUCKETS_RESOURCES_NAME ?? 'tz-resource-files',
+        },
+        appFiles: {
+          name: process.env.AWS_S3_BUCKETS_RESOURCES_NAME ?? 'tz-app-files',
         },
       },
     },

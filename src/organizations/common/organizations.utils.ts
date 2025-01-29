@@ -1,9 +1,12 @@
-import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
-import { Unit } from '../units/entities/unit.entity';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { LEVEL } from 'src/auth/permissions';
 import { StatelessUser } from 'src/auth/user.factory';
-import { DEFAULT_UNIT_SLUG } from './constants';
 import { withLeftJoin } from 'src/common/entity.utils';
+import { GetPresignedUploadUrlsDto } from 'src/media/dto/get-presigned-upload-urls.dto';
+import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
+import { Unit } from '../units/entities/unit.entity';
+import { DEFAULT_UNIT_SLUG } from './constants';
 
 export const getOrganizationLevel = (user: StatelessUser | undefined) => {
   if (user?.hasPermission(LEVEL.ADMIN)) {
@@ -140,3 +143,33 @@ export const buildUnitPaths = (units: Unit[], rootPath?: string) => {
 
   return [...unitsMap.values()];
 };
+
+export async function generatePolicyUploadUrls(
+  organizationPrefix: string,
+  getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
+  bucketName: string,
+  s3Client: S3Client,
+  signer: (k: string) => string,
+) {
+  return await Promise.all(
+    getPresignedUploadUrlsDto.files.map(async (f) => {
+      const cleanedFilename = `${organizationPrefix.replace(/^\//, '').replace(/\/$/g, '')}/${f.filename.replace(/\/+/g, '_')}`;
+      const key = `organization-policies/${cleanedFilename}`;
+
+      const cmd = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      });
+
+      return {
+        putUrl: await getSignedUrl(s3Client, cmd, {
+          expiresIn: 5 * 60,
+        }), // 5 minutes
+        getUrl: signer(cleanedFilename),
+        key,
+        filename: cleanedFilename,
+        fileId: f.fileId,
+      };
+    }),
+  );
+}

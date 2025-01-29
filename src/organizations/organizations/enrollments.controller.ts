@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -30,8 +31,14 @@ export class EnrollmentsController {
   }
 
   @Post()
-  createEnrollment(@Body() createEnrollmentDto: CreateCourseEnrollmentDto) {
-    return this.enrollmentsService.create(createEnrollmentDto);
+  createEnrollment(
+    @Param('id') id: string,
+    @Body() createEnrollmentDto: CreateCourseEnrollmentDto,
+  ) {
+    return this.enrollmentsService.create({
+      ...createEnrollmentDto,
+      organization: { id },
+    });
   }
 
   @Get(':enrollmentId')
@@ -45,5 +52,10 @@ export class EnrollmentsController {
     @Body() updateEnrollmentDto: UpdateCourseEnrollmentDto,
   ) {
     return this.enrollmentsService.update(enrollmentId, updateEnrollmentDto);
+  }
+
+  @Delete(':enrollmentId')
+  removeEnrollment(@Param('enrollmentId') enrollmentId: string) {
+    return this.enrollmentsService.remove(enrollmentId);
   }
 }

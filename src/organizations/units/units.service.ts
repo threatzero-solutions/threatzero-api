@@ -1,24 +1,29 @@
-import { BaseEntityService } from 'src/common/base-entity.service';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Unit } from './entities/unit.entity';
-import { Repository } from 'typeorm';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ClsService } from 'nestjs-cls';
+import { LEVEL } from 'src/auth/permissions';
+import { S3Service } from 'src/aws/s3/s3.service';
+import { BaseEntityService } from 'src/common/base-entity.service';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { S3Config } from 'src/config/aws.config';
+import { GetPresignedUploadUrlsDto } from 'src/media/dto/get-presigned-upload-urls.dto';
+import { MediaService } from 'src/media/media.service';
+import { Repository } from 'typeorm';
+import { DEFAULT_UNIT_SLUG } from '../common/constants';
+import {
+  buildUnitPaths,
+  generatePolicyUploadUrls,
+  getOrganizationLevel,
+  getUserUnitPredicate,
+} from '../common/organizations.utils';
 import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
 import {
   UNIT_CHANGED_EVENT,
   UNIT_REMOVED_EVENT,
 } from '../listeners/organization-change.listener';
-import {
-  buildUnitPaths,
-  getOrganizationLevel,
-  getUserUnitPredicate,
-} from '../common/organizations.utils';
-import { LEVEL } from 'src/auth/permissions';
-import { MediaService } from 'src/media/media.service';
-import { ClsService } from 'nestjs-cls';
-import { CommonClsStore } from 'src/common/types/common-cls-store';
-import { DEFAULT_UNIT_SLUG } from '../common/constants';
+import { Unit } from './entities/unit.entity';
 
 export class UnitsService extends BaseEntityService<Unit> {
   alias = 'unit';
@@ -28,6 +33,8 @@ export class UnitsService extends BaseEntityService<Unit> {
     private readonly cls: ClsService<CommonClsStore>,
     private eventEmitter: EventEmitter2,
     private media: MediaService,
+    private readonly config: ConfigService,
+    private s3: S3Service,
   ) {
     super();
   }
@@ -118,6 +125,21 @@ export class UnitsService extends BaseEntityService<Unit> {
       })
       .getExists()
       .then((exists) => !exists);
+  }
+
+  async generatePolicyUploadUrls(
+    id: Unit['id'],
+    getPresignedUploadUrlsDto: GetPresignedUploadUrlsDto,
+  ) {
+    const unit = await this.getQbSingle(id).getOneOrFail();
+
+    return generatePolicyUploadUrls(
+      `${unit.organization.slug}/${unit.slug}`,
+      getPresignedUploadUrlsDto,
+      this.config.getOrThrow<S3Config>('aws.s3').buckets.appFiles.name,
+      this.s3.client,
+      this.getCloudFrontUrlSigner(),
+    );
   }
 
   // TODO: This doesn't restrict access and is not suitable to public API exposure.

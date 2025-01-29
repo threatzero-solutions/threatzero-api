@@ -1,20 +1,22 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
 } from '@nestjs/common';
-import { UnitsService } from './units.service';
-import { CreateUnitDto } from './dto/create-unit.dto';
-import { UpdateUnitDto } from './dto/update-unit.dto';
+import { Action } from 'src/auth/casl/constants';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
-import { Unit } from './entities/unit.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
+import { GetPresignedUploadUrlsDto } from 'src/media/dto/get-presigned-upload-urls.dto';
+import { CreateUnitDto } from './dto/create-unit.dto';
 import { QueryUnitsDto } from './dto/query-units.dto';
+import { UpdateUnitDto } from './dto/update-unit.dto';
+import { Unit } from './entities/unit.entity';
+import { UnitsService } from './units.service';
 
 @Controller('organizations/units')
 @CheckPolicies(new EntityAbilityChecker(Unit))
@@ -54,5 +56,14 @@ export class UnitsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.unitsService.remove(id);
+  }
+
+  @Post(':id/generate-policy-upload-urls')
+  @CheckPolicies((ability) => ability.can(Action.Update, Unit))
+  getPresignedUploadUrls(
+    @Param('id') id: string,
+    @Body() body: GetPresignedUploadUrlsDto,
+  ) {
+    return this.unitsService.generatePolicyUploadUrls(id, body);
   }
 }

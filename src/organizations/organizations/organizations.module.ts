@@ -3,6 +3,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { memoryStorage } from 'multer';
 import { AuthModule } from 'src/auth/auth.module';
+import { AwsModule } from 'src/aws/aws.module';
 import { MediaModule } from 'src/media/media.module';
 import { EnrollmentsController } from './enrollments.controller';
 import { EnrollmentsService } from './enrollments.service';
@@ -20,6 +21,7 @@ import { UsersController } from './users.controller';
     MulterModule.register({
       storage: memoryStorage(),
     }),
+    AwsModule,
   ],
   controllers: [
     OrganizationsController,

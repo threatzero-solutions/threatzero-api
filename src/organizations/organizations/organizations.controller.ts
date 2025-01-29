@@ -33,6 +33,7 @@ import {
   ScormVersion,
   ScormVersionPipe,
 } from 'src/common/pipes/scorm-version/scorm-version.pipe';
+import { GetPresignedUploadUrlsDto } from 'src/media/dto/get-presigned-upload-urls.dto';
 import { BaseQueryOrganizationsDto } from '../common/dto/base-query-organizations';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -262,5 +263,14 @@ export class OrganizationsController {
   )
   deleteIdp(@Param('id') id: string, @Param('slug') slug: string) {
     return this.organizationsService.deleteIdp(id, slug);
+  }
+
+  @Post(':id/generate-policy-upload-urls')
+  @CheckPolicies((ability) => ability.can(Action.Update, Organization))
+  getPresignedUploadUrls(
+    @Param('id') id: string,
+    @Body() body: GetPresignedUploadUrlsDto,
+  ) {
+    return this.organizationsService.generatePolicyUploadUrls(id, body);
   }
 }

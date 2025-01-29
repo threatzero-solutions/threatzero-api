@@ -27,7 +27,9 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
     const user = this.cls.get('user');
 
     let qb = super.getQb(query);
-    qb = qb.leftJoin(`${qb.alias}.organization`, 'organization');
+    qb = qb
+      .leftJoin(`${qb.alias}.organization`, 'organization')
+      .leftJoinAndSelect(`${qb.alias}.course`, 'course');
     switch (getOrganizationLevel(user)) {
       case LEVEL.ADMIN:
         return qb;
