@@ -217,7 +217,7 @@ export class OrganizationsController {
     return await this.organizationsService.importIdpConfig(input);
   }
 
-  @Get(':id/idps/role-groups')
+  @Get(':id/role-groups')
   getRoleGroups(@Param('id') id: string) {
     return this.organizationsService.getRoleGroups(id);
   }

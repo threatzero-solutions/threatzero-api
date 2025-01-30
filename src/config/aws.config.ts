@@ -126,7 +126,7 @@ export default registerAs('aws', () =>
             process.env.AWS_S3_BUCKETS_RESOURCES_NAME ?? 'tz-resource-files',
         },
         appFiles: {
-          name: process.env.AWS_S3_BUCKETS_RESOURCES_NAME ?? 'tz-app-files',
+          name: process.env.AWS_S3_BUCKETS_RESOURCES_NAME ?? 'tz-app-files-2',
         },
       },
     },
