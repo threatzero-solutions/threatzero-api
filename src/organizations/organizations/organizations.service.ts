@@ -42,6 +42,7 @@ import {
   ORGANIZATION_CHANGED_EVENT,
   ORGANIZATION_REMOVED_EVENT,
 } from '../listeners/organization-change.listener';
+import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from './constants';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
 import { CreateOrganizationUserDto } from './dto/create-organization-user.dto';
 import { KeycloakGroupDto } from './dto/keycloak-group.dto';
@@ -478,8 +479,9 @@ export class OrganizationsService extends BaseEntityService<Organization> {
   ) {
     const organization = await this.getWithUnits(id);
 
+    const { canAccessTraining, ...rest } = dto;
     const user: KeycloakUserRepresentation & CreateOrganizationUserDto = {
-      ...dto,
+      ...rest,
     };
 
     // Validate user unit.
@@ -499,6 +501,15 @@ export class OrganizationsService extends BaseEntityService<Organization> {
         throw e;
       });
 
+    if (canAccessTraining) {
+      await this.assignUserToRoleGroup(
+        id,
+        userId,
+        undefined,
+        TRAINING_PARTICIPANT_ROLE_GROUP_PATH,
+      );
+    }
+
     return this.keycloakClient.client.users
       .findOne({ id: userId })
       .then((user) =>
@@ -513,6 +524,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     userId: string,
     dto: UpdateOrganizationUserDto,
   ) {
+    const { canAccessTraining: shouldAccessTraining, ...updatedUser } = dto;
     const { organization, user: existingUser } =
       await this.getOrganizationUserContext(id, userId);
 
@@ -520,15 +532,37 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       throw new NotFoundException(`User ${userId} not found`);
     }
 
+    const canAccessTraining = !!existingUser.groups?.includes(
+      TRAINING_PARTICIPANT_ROLE_GROUP_PATH,
+    );
+
+    if (canAccessTraining !== shouldAccessTraining) {
+      if (shouldAccessTraining) {
+        await this.assignUserToRoleGroup(
+          id,
+          userId,
+          undefined,
+          TRAINING_PARTICIPANT_ROLE_GROUP_PATH,
+        );
+      } else {
+        await this.revokeUserFromRoleGroup(
+          id,
+          userId,
+          undefined,
+          TRAINING_PARTICIPANT_ROLE_GROUP_PATH,
+        );
+      }
+    }
+
     const user: KeycloakUserRepresentation = {
       ...existingUser,
-      ...dto,
+      ...updatedUser,
       // Merge new attributes with existing attributes. The new attributes should only
       // contain what is specified in `CreateOrganizationUserDto`. As of now, it only
       // permits updating the `unit` and `audience` attributes.
       attributes: {
         ...existingUser.attributes,
-        ...(dto.attributes ?? {}),
+        ...(updatedUser.attributes ?? {}),
       },
     };
 

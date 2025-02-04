@@ -1,4 +1,12 @@
-export const ALLOWED_DEFAULT_ROLE_GROUPS = ['Training Participant'] as const;
+export const ROLE_GROUP_PREFIX = '/Role Groups/';
+export const TRAINING_PARTICIPANT_GROUP_NAME = 'Training Participant';
+
+export const TRAINING_PARTICIPANT_ROLE_GROUP_PATH =
+  ROLE_GROUP_PREFIX + TRAINING_PARTICIPANT_GROUP_NAME;
+
+export const ALLOWED_DEFAULT_ROLE_GROUPS = [
+  TRAINING_PARTICIPANT_GROUP_NAME,
+] as const;
 export type AllowedDefaultRoleGroups =
   (typeof ALLOWED_DEFAULT_ROLE_GROUPS)[number];
 

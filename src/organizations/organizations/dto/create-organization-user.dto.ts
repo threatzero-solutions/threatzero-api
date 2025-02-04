@@ -2,7 +2,9 @@ import { Exclude, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
+  IsBoolean,
   IsNotEmpty,
+  IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
@@ -43,4 +45,8 @@ export class CreateOrganizationUserDto {
   @ValidateNested()
   @IsNotEmpty()
   attributes: Attributes;
+
+  @IsBoolean()
+  @IsOptional()
+  canAccessTraining?: boolean;
 }
