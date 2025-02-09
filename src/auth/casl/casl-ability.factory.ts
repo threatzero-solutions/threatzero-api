@@ -102,7 +102,7 @@ type AllSubjectTypes =
 @Injectable()
 export class CaslAbilityFactory {
   createForUser(user: StatelessUser) {
-    const { can, build } = new AbilityBuilder(createMongoAbility);
+    const { can, cannot, build } = new AbilityBuilder(createMongoAbility);
 
     // --------- FORMS ---------
     if (user.hasPermission(LEVEL.ADMIN, WRITE.FORMS)) {
@@ -123,8 +123,21 @@ export class CaslAbilityFactory {
     }
 
     // --------- ORGANIZATIONS ---------
-    if (user.hasPermission(LEVEL.ADMIN, WRITE.ORGANIZATIONS)) {
-      can(Action.Manage, OrganizationsSubjectsAllowRead);
+    if (user.hasPermission(WRITE.ORGANIZATIONS)) {
+      can(Action.Manage, [Organization, Unit, Location]);
+    }
+
+    // IMPORTANT: Only global admins can create organizations.
+    if (!user.hasPermission(LEVEL.ADMIN)) {
+      cannot(Action.Create, Organization);
+    }
+
+    if (user.hasPermission(WRITE.UNITS)) {
+      can(Action.Manage, [Unit, Location]);
+    }
+
+    if (user.hasPermission(WRITE.COURSE_ENROLLMENTS)) {
+      can(Action.Manage, [CourseEnrollment]);
     }
 
     if (user.hasPermission(WRITE.ORGANIZATIONS)) {
