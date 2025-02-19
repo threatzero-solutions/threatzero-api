@@ -30,18 +30,20 @@ export const scopeToOrganizationLevel = <
 >(
   user: StatelessUser | undefined,
   qb: SelectQueryBuilder<T>,
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  unitEntityOrProperty: Function | string = Unit,
 ): SelectQueryBuilder<T> => {
   switch (getOrganizationLevel(user)) {
     case LEVEL.ADMIN:
       return qb;
     case LEVEL.UNIT:
-      return withLeftJoin(qb, Unit, 'unit').andWhere(
-        getUserUnitPredicate(user, 'org_unit'),
+      return withLeftJoin(qb, unitEntityOrProperty, 'predicate_unit').andWhere(
+        getUserUnitPredicate(user, 'predicate_unit'),
       );
     case LEVEL.ORGANIZATION:
       return withLeftJoin(
-        withLeftJoin(qb, Unit, 'unit'),
-        'unit.organization',
+        withLeftJoin(qb, unitEntityOrProperty, 'predicate_unit'),
+        'predicate_unit.organization',
         'organization',
       ).andWhere('organization.slug = :organizationSlug', {
         organizationSlug: user?.organizationSlug,

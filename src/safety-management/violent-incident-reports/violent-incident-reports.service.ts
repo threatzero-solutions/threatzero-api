@@ -1,18 +1,18 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { ViolentIncidentReport } from './entities/violent-incident-report.entity';
-import { BaseEntityService } from 'src/common/base-entity.service';
-import { FormSubmissionsServiceMixin } from 'src/forms/forms/mixins/form-submission.service.mixin';
-import { NotesServiceMixin } from 'src/users/mixins/notes.service.mixin';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
-import { FormsService } from 'src/forms/forms/forms.service';
-import { UsersService } from 'src/users/users.service';
-import { scopeToOrganizationLevel } from 'src/organizations/common/organizations.utils';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { CreateFormSubmissionDto } from 'src/forms/forms/dto/create-form-submission.dto';
-import { VIOLENT_INCIDENT_REPORT_FORM_SLUG } from 'src/common/constants/form.constants';
 import { ClsService } from 'nestjs-cls';
+import { BaseEntityService } from 'src/common/base-entity.service';
+import { VIOLENT_INCIDENT_REPORT_FORM_SLUG } from 'src/common/constants/form.constants';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { CreateFormSubmissionDto } from 'src/forms/forms/dto/create-form-submission.dto';
+import { FormsService } from 'src/forms/forms/forms.service';
+import { FormSubmissionsServiceMixin } from 'src/forms/forms/mixins/form-submission.service.mixin';
+import { scopeToOrganizationLevel } from 'src/organizations/common/organizations.utils';
+import { NotesServiceMixin } from 'src/users/mixins/notes.service.mixin';
+import { UsersService } from 'src/users/users.service';
+import { DeepPartial, Repository } from 'typeorm';
+import { ViolentIncidentReport } from './entities/violent-incident-report.entity';
 
 export class ViolentIncidentReportsService extends FormSubmissionsServiceMixin<ViolentIncidentReport>()(
   NotesServiceMixin<ViolentIncidentReport>()(
@@ -40,7 +40,11 @@ export class ViolentIncidentReportsService extends FormSubmissionsServiceMixin<V
 
   getQb(query?: BaseQueryDto) {
     const user = this.cls.get('user');
-    return scopeToOrganizationLevel(user, super.getQb(query))
+    return scopeToOrganizationLevel(
+      user,
+      super.getQb(query),
+      `${super.getQb().alias}.unit`,
+    )
       .leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit')
       .leftJoinAndSelect(`${super.getQb().alias}.pocFiles`, 'pocFiles');
   }

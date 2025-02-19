@@ -35,7 +35,9 @@ export const withJoin = <T extends ObjectLiteral>(
     return qb;
   }
 
-  let fn = qb.leftJoin;
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  let fn: (e: Function | string, a: string) => SelectQueryBuilder<T> =
+    qb.leftJoin;
   switch (joinType) {
     case 'inner':
       fn = select ? qb.innerJoinAndSelect : qb.innerJoin;
@@ -46,7 +48,7 @@ export const withJoin = <T extends ObjectLiteral>(
       break;
   }
 
-  return fn(entityOrProperty, alias);
+  return fn.bind(qb)(entityOrProperty, alias);
 };
 
 export const withLeftJoin = <T extends ObjectLiteral>(

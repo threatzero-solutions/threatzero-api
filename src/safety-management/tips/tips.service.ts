@@ -45,7 +45,11 @@ export class TipsService extends FormSubmissionsServiceMixin<Tip>()(
 
   getQb(query?: BaseQueryDto) {
     const user = this.cls.get('user');
-    return scopeToOrganizationLevel(user, super.getQb(query))
+    return scopeToOrganizationLevel(
+      user,
+      super.getQb(query),
+      `${super.getQb().alias}.unit`,
+    )
       .leftJoinAndSelect(`${super.getQb().alias}.unit`, 'unit')
       .leftJoinAndSelect(`${super.getQb().alias}.location`, 'location')
       .leftJoinAndSelect(`${super.getQb().alias}.pocFiles`, 'pocFiles');
