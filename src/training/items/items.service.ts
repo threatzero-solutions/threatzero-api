@@ -1,37 +1,32 @@
+import { format as csvFormat } from '@fast-csv/format';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { TrainingItem } from './entities/item.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  DeepPartial,
-  FindOptionsWhere,
-  Repository,
-  SelectQueryBuilder,
-} from 'typeorm';
-import { filterTraining } from '../common/training.utils';
-import { BaseEntityService } from 'src/common/base-entity.service';
-import { Video } from './entities/video-item.entity';
-import { MediaService } from 'src/media/media.service';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { OpaqueTokenService } from 'src/auth/opaque-token.service';
-import { TrainingParticipantRepresentationDto } from './dto/training-participant-representation.dto';
 import { ClsService } from 'nestjs-cls';
-import { CommonClsStore } from 'src/common/types/common-cls-store';
-import { ItemCompletion } from './entities/item-completion.entity';
+import { OpaqueTokenService } from 'src/auth/opaque-token.service';
+import { LEVEL } from 'src/auth/permissions';
 import { StatelessUser } from 'src/auth/user.factory';
-import { CreateItemCompletionDto } from './dto/create-item-completion.dto';
-import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
-import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
-import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
+import { BaseEntityService } from 'src/common/base-entity.service';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { Paginated } from 'src/common/dto/paginated.dto';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { MediaService } from 'src/media/media.service';
 import {
   getOrganizationLevel,
   getUserUnitPredicate,
 } from 'src/organizations/common/organizations.utils';
-import { UsersService } from 'src/users/users.service';
-import { Paginated } from 'src/common/dto/paginated.dto';
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { LmsViewershipTokenValueDto } from 'src/organizations/organizations/dto/lms-viewership-token-value.dto';
-import { format as csvFormat } from '@fast-csv/format';
-import { LEVEL } from 'src/auth/permissions';
+import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
+import { UsersService } from 'src/users/users.service';
+import { DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { filterTraining } from '../common/training.utils';
+import { CreateItemCompletionDto } from './dto/create-item-completion.dto';
+import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
+import { TrainingParticipantRepresentationDto } from './dto/training-participant-representation.dto';
+import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
+import { ItemCompletion } from './entities/item-completion.entity';
+import { TrainingItem } from './entities/item.entity';
+import { Video } from './entities/video-item.entity';
 
 export class ItemsService extends BaseEntityService<TrainingItem> {
   alias = 'item';
@@ -196,9 +191,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
 
   async getMyItemCompletions(query: ItemCompletionQueryDto, watchId?: string) {
     const { userRep } = await this.getUserContext(watchId);
-    const qb = this.getItemCompletionsQb(query).andWhere({
-      userId: userRep.id,
-    });
+    const qb = this.getItemCompletionsQb(query, userRep.id);
 
     return Paginated.fromQb(qb, query);
   }
@@ -248,9 +241,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
 
   private getItemCompletionsQb(
     query: ItemCompletionQueryDto,
-    mod: (
-      qb: SelectQueryBuilder<ItemCompletion>,
-    ) => SelectQueryBuilder<ItemCompletion> = (qb) => qb,
+    forOwnerId?: string,
   ) {
     let qb = this.itemCompletionsRepository.createQueryBuilder();
     qb = qb
@@ -260,23 +251,29 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       .leftJoinAndSelect(`user.unit`, 'unit')
       .leftJoinAndSelect(`${qb.alias}.enrollment`, 'enrollment')
       .leftJoinAndSelect(`enrollment.course`, 'course');
-    qb = mod(qb);
 
     const user = this.cls.get('user');
-    switch (getOrganizationLevel(user)) {
-      case LEVEL.ADMIN:
-        qb = qb;
-        break;
-      case LEVEL.ORGANIZATION:
-        qb = qb.andWhere('organization.slug = :organizationSlug', {
-          organizationSlug: user?.organizationSlug,
-        });
-        break;
-      case LEVEL.UNIT:
-        qb = qb.andWhere(getUserUnitPredicate(user));
-        break;
-      default:
-        qb = qb.where('1 = 0');
+
+    if (forOwnerId) {
+      qb = qb.andWhere('user.id = :userId', {
+        userId: forOwnerId,
+      });
+    } else {
+      switch (getOrganizationLevel(user)) {
+        case LEVEL.ADMIN:
+          qb = qb;
+          break;
+        case LEVEL.ORGANIZATION:
+          qb = qb.andWhere('organization.slug = :organizationSlug', {
+            organizationSlug: user?.organizationSlug,
+          });
+          break;
+        case LEVEL.UNIT:
+          qb = qb.andWhere(getUserUnitPredicate(user));
+          break;
+        default:
+          qb = qb.where('1 = 0');
+      }
     }
 
     if (query) {
