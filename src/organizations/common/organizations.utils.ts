@@ -111,7 +111,7 @@ export const getUserUnitPredicate =
       return `${unitAlias}.id IN (${q})`;
     }
 
-    return '1 = 0';
+    return { isDefault: true };
   };
 
 export const buildUnitPaths = (units: Unit[], rootPath?: string) => {
