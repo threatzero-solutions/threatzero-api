@@ -71,7 +71,7 @@ export class UsersService {
       familyName: user.lastName,
       picture: user.picture,
       unitId: unit?.id,
-      organizationId: unit?.organization?.id,
+      organizationId: unit?.organizationId,
     });
     return this.usersRepository
       .upsert(userRepresentation, ['externalId'])
