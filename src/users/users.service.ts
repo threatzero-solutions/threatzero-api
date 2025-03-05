@@ -1,5 +1,17 @@
 import { BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ClsService } from 'nestjs-cls';
+import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
+import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
+import { OpaqueTokenService } from 'src/auth/opaque-token.service';
+import { StatelessUser } from 'src/auth/user.factory';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { Paginated } from 'src/common/dto/paginated.dto';
+import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { getUserAttr } from 'src/common/utils';
+import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
+import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
 import {
   DataSource,
   DeepPartial,
@@ -7,24 +19,12 @@ import {
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
-import { UserRepresentation } from './entities/user-representation.entity';
-import { StatelessUser } from 'src/auth/user.factory';
-import { Note } from './entities/note.entity';
 import { CreateNoteDto } from './dto/create-note.dto';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
-import { NotableEntity } from './interfaces/notable-entity.interface';
-import { UpdateNoteDto } from './dto/update-note.dto';
-import { Paginated } from 'src/common/dto/paginated.dto';
-import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
-import { OpaqueTokenService } from 'src/auth/opaque-token.service';
-import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { TrainingTokenQueryDto } from './dto/training-token-query.dto';
-import { ClsService } from 'nestjs-cls';
-import { CommonClsStore } from 'src/common/types/common-cls-store';
-import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
-import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
-import { getUserAttr } from 'src/common/utils';
-import { Unit } from 'src/organizations/units/entities/unit.entity';
+import { UpdateNoteDto } from './dto/update-note.dto';
+import { Note } from './entities/note.entity';
+import { UserRepresentation } from './entities/user-representation.entity';
+import { NotableEntity } from './interfaces/notable-entity.interface';
 
 export class UsersService {
   constructor(
@@ -39,18 +39,29 @@ export class UsersService {
 
   async updateRepresentation(user: StatelessUser) {
     let unit: Unit | null = null;
-    if (user.organizationSlug && user.unitSlug) {
-      unit = await this.dataSource
+    if (user.organizationSlug) {
+      const qb = this.dataSource
         .createQueryBuilder(Unit, 'unit')
-        .leftJoin('unit.organization', 'organization')
-        .where(
-          'organization.slug = :organizationSlug AND unit.slug = :unitSlug',
-          {
+        .leftJoin('unit.organization', 'organization');
+
+      if (user.unitSlug) {
+        unit = await qb
+          .where(
+            'organization.slug = :organizationSlug AND unit.slug = :unitSlug',
+            {
+              organizationSlug: user.organizationSlug,
+              unitSlug: user.unitSlug,
+            },
+          )
+          .getOne();
+      } else {
+        unit = await qb
+          .where('organization.slug = :organizationSlug', {
             organizationSlug: user.organizationSlug,
-            unitSlug: user.unitSlug,
-          },
-        )
-        .getOne();
+          })
+          .andWhere({ isDefault: true })
+          .getOne();
+      }
     }
     const userRepresentation = this.usersRepository.create({
       externalId: user.id,
