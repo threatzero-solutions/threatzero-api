@@ -138,7 +138,7 @@ export class TrainingReminderTasks {
   private buildTrainingLink(itemId: string, token: string) {
     const template =
       this.config.get<string>('general.appHost') +
-      `/training/${itemId}?token=${encodeURIComponent(token)}`;
+      `/watch-training/${itemId}?watchId=${encodeURIComponent(token)}`;
     return template;
   }
 
