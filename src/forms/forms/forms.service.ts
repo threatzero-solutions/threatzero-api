@@ -234,7 +234,8 @@ export class FormsService extends BaseEntityService<Form> {
           ext = mime.extension(f.mimetype);
         }
         let key = uuidv4().replace(/-/g, '') + (ext ? `.${ext}` : '');
-        key = `${prefix.replace(/\//g, '/')}/tmp/${key}`;
+        // Remove any duplicated forward slashes when composing the key
+        key = `${prefix}/tmp/${key}`.replace(/\/{2,}/g, '/');
 
         const cmd = new PutObjectCommand({
           Bucket:
