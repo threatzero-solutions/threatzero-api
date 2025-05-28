@@ -16,6 +16,10 @@ export class EmailTemplatesConfig {
   @IsOptional()
   @IsString()
   trainingLink: string = 'tz-training-link-notification';
+
+  @IsOptional()
+  @IsString()
+  trainingReminder: string = 'tz-training-reminder-notification';
 }
 
 export class EmailNotificationsConfig {
@@ -53,6 +57,8 @@ export default registerAs('notifications', () =>
       defaultFrom: process.env.NOTIFICATIONS_EMAIL_DEFAULT_FROM,
       templates: {
         newTip: process.env.NOTIFICATIONS_EMAIL_TEMPLATES_NEW_TIP,
+        trainingReminder:
+          process.env.NOTIFICATIONS_EMAIL_TEMPLATES_TRAINING_REMINDER,
       },
     },
     sms: {
