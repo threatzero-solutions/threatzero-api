@@ -190,7 +190,10 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
   }
 
   async getMyItemCompletions(query: ItemCompletionQueryDto, watchId?: string) {
-    const { userRep } = await this.getUserContext(watchId);
+    const { userRep, decodedToken } = await this.getUserContext(watchId);
+    if (decodedToken) {
+      query['enrollment.id'] = decodedToken.enrollmentId;
+    }
     const qb = this.getItemCompletionsQb(query, userRep.id);
 
     return Paginated.fromQb(qb, query);

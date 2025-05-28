@@ -1,20 +1,24 @@
+import KeycloakUserRepresentation from '@keycloak/keycloak-admin-client/lib/defs/userRepresentation';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { NotificationsJobNames } from 'src/notifications/notifications.processor';
-import { NOTIFICATIONS_QUEUE_NAME } from 'src/common/constants/queue.constants';
-import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
-import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from 'src/organizations/organizations/constants';
+import duration from 'dayjs/plugin/duration';
 import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
-import { TrainingItem } from '../items/entities/item.entity';
-import { ItemCompletion } from '../items/entities/item-completion.entity';
 import { OpaqueTokenService } from 'src/auth/opaque-token.service';
+import { NOTIFICATIONS_QUEUE_NAME } from 'src/common/constants/queue.constants';
+import { NotificationsJobNames } from 'src/notifications/notifications.processor';
+import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from 'src/organizations/organizations/constants';
+import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
+import { In, Repository } from 'typeorm';
 import { TrainingParticipantRepresentationDto } from '../items/dto/training-participant-representation.dto';
+import { ItemCompletion } from '../items/entities/item-completion.entity';
+import { TrainingItem } from '../items/entities/item.entity';
+
+dayjs.extend(duration);
 
 @Injectable()
 export class TrainingReminderTasks {
@@ -22,7 +26,8 @@ export class TrainingReminderTasks {
   private trainingParticipantGroupId?: string;
 
   constructor(
-    @InjectQueue(NOTIFICATIONS_QUEUE_NAME) private readonly notificationsQueue: Queue,
+    @InjectQueue(NOTIFICATIONS_QUEUE_NAME)
+    private readonly notificationsQueue: Queue,
     private readonly config: ConfigService,
     @InjectRepository(CourseEnrollment)
     private readonly enrollmentsRepo: Repository<CourseEnrollment>,
@@ -33,7 +38,9 @@ export class TrainingReminderTasks {
   ) {}
 
   async onModuleInit() {
-    const parentRoleGroups = this.config.get<string>('keycloak.parentRoleGroupsGroupId');
+    const parentRoleGroups = this.config.get<string>(
+      'keycloak.parentRoleGroupsGroupId',
+    );
     const group = await this.keycloak.findGroup({
       path: TRAINING_PARTICIPANT_ROLE_GROUP_PATH,
       ancestorId: parentRoleGroups,
@@ -51,32 +58,49 @@ export class TrainingReminderTasks {
       .leftJoinAndSelect('course.sections', 'section')
       .leftJoinAndSelect('section.items', 'sectionItem')
       .leftJoinAndSelect('sectionItem.item', 'item')
-      .where('enrollment.startDate <= :today', { today: today.format('YYYY-MM-DD') })
-      .andWhere('enrollment.endDate >= :today', { today: today.format('YYYY-MM-DD') })
+      .where('enrollment.startDate <= :today', {
+        today: today.format('YYYY-MM-DD'),
+      })
+      .andWhere('enrollment.endDate >= :today', {
+        today: today.format('YYYY-MM-DD'),
+      })
       .getMany();
 
     for (const enrollment of enrollments) {
-      for (const sectionItem of enrollment.course.sections) {
-        const section: any = sectionItem as any;
-        const item: TrainingItem = (sectionItem as any).item;
-        const available = dayjs(section.availableOn ?? enrollment.startDate);
-        const availableDate = available.isBefore(dayjs(enrollment.startDate))
-          ? dayjs(enrollment.startDate)
-          : available;
-        const firstWeekday = this.firstWeekday(availableDate);
-        const durationDays = section.duration?.days ?? 14;
-        const periodEnd = availableDate.add(durationDays, 'day');
-        const reminderDate = this.firstWeekday(
-          availableDate.add(Math.min(14, durationDays / 2), 'day'),
+      let sectionStartDate = dayjs(enrollment.startDate);
+      for (const section of enrollment.course.sections
+        .slice()
+        .sort((a, b) => a.order - b.order)) {
+        const availableOn = sectionStartDate;
+        const availableUntil = sectionStartDate.add(
+          dayjs.duration(section.duration),
         );
 
-        if (today.isSame(firstWeekday, 'day')) {
-          await this.sendTrainingEmails(enrollment.id, enrollment.organization.slug, item);
+        const initialReminderDate = this.firstWeekday(availableOn);
+        const followupReminderDate = this.firstWeekday(
+          availableOn.add(
+            Math.min(14, availableUntil.diff(availableOn, 'day') / 2),
+            'day',
+          ),
+        );
+
+        if (today.isSame(initialReminderDate, 'day')) {
+          await this.sendInitialReminderEmails(
+            enrollment.id,
+            enrollment.organization.slug,
+            section.items.map((item) => item.item),
+          );
         }
 
-        if (today.isSame(reminderDate, 'day')) {
-          await this.sendReminderEmails(enrollment.id, enrollment.organization.slug, item);
+        if (today.isSame(followupReminderDate, 'day')) {
+          await this.sendFollowupReminderEmails(
+            enrollment.id,
+            enrollment.organization.slug,
+            section.items.map((item) => item.item),
+          );
         }
+
+        sectionStartDate = availableUntil;
       }
     }
   }
@@ -95,7 +119,13 @@ export class TrainingReminderTasks {
       filter: {
         AND: [
           { q: { key: 'organization', value: organizationSlug } },
-          { groupQ: { key: 'id', groups: [this.trainingParticipantGroupId], op: 'all' } },
+          {
+            groupQ: {
+              key: 'id',
+              groups: [this.trainingParticipantGroupId],
+              op: 'all',
+            },
+          },
         ],
       },
       limit: 1000,
@@ -112,87 +142,115 @@ export class TrainingReminderTasks {
     return template;
   }
 
-  private async sendTrainingEmails(
+  private async sendInitialReminderEmails(
     enrollmentId: string,
     organizationSlug: string,
-    item: TrainingItem,
+    items: TrainingItem[],
   ) {
     const participants = await this.getTrainingParticipants(organizationSlug);
     for (const user of participants) {
-      if (!user.id || !user.email) continue;
-      const tokenValue: TrainingParticipantRepresentationDto = {
-        userId: user.id,
-        email: user.email,
-        firstName: user.firstName ?? '',
-        lastName: user.lastName ?? '',
-        unitSlug: (user.attributes?.unit ?? [])[0] ?? '',
-        organizationSlug,
-        audiences: user.attributes?.audience ?? [],
+      await this.sendReminderEmail({
+        user,
         enrollmentId,
-        trainingItemId: item.id,
-      };
-      const token = await this.opaqueTokenService.create(tokenValue, {
-        valueClass: TrainingParticipantRepresentationDto,
-        type: 'training',
-      });
-      await this.notificationsQueue.add(NotificationsJobNames.SendEmailNotification, {
-        to: [user.email],
-        templateName: this.config.get<string>('notifications.email.templates.trainingLink'),
-        context: {
-          firstName: tokenValue.firstName,
-          trainingLink: this.buildTrainingLink(item.id, token.key),
-          trainingTitle: item.metadata.title,
-          trainingDescription: item.metadata.description,
-          trainingThumbnailUrl: item.thumbnailUrl,
-        },
+        organizationSlug,
+        items,
+        isInitialReminder: true,
       });
     }
   }
 
-  private async sendReminderEmails(
+  private async sendFollowupReminderEmails(
     enrollmentId: string,
     organizationSlug: string,
-    item: TrainingItem,
+    items: TrainingItem[],
   ) {
     const participants = await this.getTrainingParticipants(organizationSlug);
     const completions = await this.completionsRepo.find({
       where: {
         enrollment: { id: enrollmentId },
-        item: { id: item.id },
+        item: { id: In(items.map((item) => item.id)) },
         completed: true,
       },
-      select: ['userId'],
+      select: ['userId', 'item'],
     });
-    const completedIds = new Set(completions.map((c) => c.userId));
+    const completedIds = new Set(
+      completions.map((c) => c.userId + '+' + c.item.id),
+    );
     for (const user of participants) {
-      if (!user.id || !user.email) continue;
-      if (completedIds.has(user.id)) continue;
-      const tokenValue: TrainingParticipantRepresentationDto = {
-        userId: user.id,
-        email: user.email,
-        firstName: user.firstName ?? '',
-        lastName: user.lastName ?? '',
-        unitSlug: (user.attributes?.unit ?? [])[0] ?? '',
-        organizationSlug,
-        audiences: user.attributes?.audience ?? [],
+      const incompleteItems = items.filter(
+        (item) => !completedIds.has(user.id + '+' + item.id),
+      );
+
+      await this.sendReminderEmail({
+        user,
         enrollmentId,
-        trainingItemId: item.id,
-      };
-      const token = await this.opaqueTokenService.create(tokenValue, {
-        valueClass: TrainingParticipantRepresentationDto,
-        type: 'training',
+        organizationSlug,
+        items: incompleteItems,
+        isInitialReminder: false,
       });
-      await this.notificationsQueue.add(NotificationsJobNames.SendEmailNotification, {
-        to: [user.email],
-        templateName: this.config.get<string>('notifications.email.templates.trainingReminder'),
-        context: {
-          firstName: tokenValue.firstName,
+    }
+  }
+
+  private async sendReminderEmail({
+    user,
+    enrollmentId,
+    organizationSlug,
+    items,
+    isInitialReminder,
+  }: {
+    user: KeycloakUserRepresentation;
+    enrollmentId: string;
+    organizationSlug: string;
+    items: TrainingItem[];
+    isInitialReminder: boolean;
+  }) {
+    if (!user.id || !user.email) return;
+    const userId = user.id;
+    const email = user.email;
+
+    const trainingContexts = await Promise.all(
+      items.map(async (item) => {
+        const tokenValue: TrainingParticipantRepresentationDto = {
+          userId,
+          email,
+          firstName: user.firstName ?? '',
+          lastName: user.lastName ?? '',
+          unitSlug: (user.attributes?.unit ?? [])[0] ?? '',
+          organizationSlug,
+          audiences: user.attributes?.audience ?? [],
+          enrollmentId,
+          trainingItemId: item.id,
+        };
+        const token = await this.opaqueTokenService.create(tokenValue, {
+          valueClass: TrainingParticipantRepresentationDto,
+          type: 'training',
+        });
+
+        return {
           trainingLink: this.buildTrainingLink(item.id, token.key),
           trainingTitle: item.metadata.title,
           trainingDescription: item.metadata.description,
-          trainingThumbnailUrl: item.thumbnailUrl,
+          trainingThumbnailUrl: item.thumbnailUrl ?? '',
+        };
+      }),
+    );
+
+    if (trainingContexts.length === 0) return;
+
+    await this.notificationsQueue.add(
+      NotificationsJobNames.SendEmailNotification,
+      {
+        to: [email],
+        templateName: this.config.get<string>(
+          'notifications.email.templates.trainingReminder',
+        ),
+        context: {
+          firstName: user.firstName ?? '',
+          trainingContexts,
+          plural: trainingContexts.length !== 1,
+          isInitialReminder,
         },
-      });
-    }
+      },
+    );
   }
 }
