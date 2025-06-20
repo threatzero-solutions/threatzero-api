@@ -38,7 +38,7 @@ export class MediaService {
   constructor(
     @InjectRepository(VideoEvent)
     private videoEventsRepository: Repository<VideoEvent>,
-    @Inject(CACHE_MANAGER) private cache: Cache<RedisStore>,
+    @Inject(CACHE_MANAGER) private cache: Cache,
     private config: ConfigService,
     private readonly http: HttpService,
     private readonly opaqueTokenService: OpaqueTokenService,
@@ -49,7 +49,7 @@ export class MediaService {
     this.logger.log(
       `Received shutdown signal: ${signal}. Closing Redis cache...`,
     );
-    await this.cache.store.client.quit().catch((e) => this.logger.warn(e));
+    // Redis client cleanup is handled automatically by cache-manager v7
   }
 
   getCloudFrontUrlSigner(prefix = '') {

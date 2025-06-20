@@ -16,7 +16,7 @@ export class ScopedValidationPipe extends ValidationPipe {
 
   public async transform(value: any, metadata: ArgumentMetadata) {
     const user = this.cls.get('user');
-    if (user) {
+    if (user && user.permissions && this.transformOptions) {
       this.transformOptions.groups = user.permissions
         .filter((p) => p.startsWith('level:'))
         .map((p) => p.slice(6));

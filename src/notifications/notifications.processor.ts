@@ -41,7 +41,7 @@ export class NotificationsProcessor extends WorkerHost {
 
   constructor(
     @InjectQueue(NOTIFICATIONS_QUEUE_NAME) private readonly queue: Queue,
-    @Inject(CACHE_MANAGER) private readonly cache: Cache<RedisStore>,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
     private readonly config: ConfigService,
     private readonly ses: SesService,
     private readonly pinpointSms: PinpointSmsService,
@@ -55,9 +55,9 @@ export class NotificationsProcessor extends WorkerHost {
     this.logger.log(
       `Received shutdown signal: ${signal}. Closing BullMQ queue and Redis cache...`,
     );
-    await this.worker.close().catch((e) => this.logger.warn(e));
-    await this.queue.close().catch((e) => this.logger.warn(e));
-    await this.cache.store.client.quit().catch((e) => this.logger.warn(e));
+    await this.worker.close().catch((e: any) => this.logger.warn(e));
+    await this.queue.close().catch((e: any) => this.logger.warn(e));
+    // Redis client cleanup is handled automatically by cache-manager v7
   }
 
   async process(job: Job<unknown>) {
