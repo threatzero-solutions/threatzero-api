@@ -7,12 +7,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
-import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
-import { OpaqueTokenService } from 'src/auth/opaque-token.service';
-import { NOTIFICATIONS_QUEUE_NAME } from 'src/common/constants/queue.constants';
-import { NotificationsJobNames } from 'src/notifications/notifications.processor';
-import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from 'src/organizations/organizations/constants';
-import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
+import { KeycloakAdminClientService } from '../../auth/keycloak-admin-client/keycloak-admin-client.service';
+import { OpaqueTokenService } from '../../auth/opaque-token.service';
+import { NOTIFICATIONS_QUEUE_NAME } from '../../common/constants/queue.constants';
+import { NotificationsJobNames } from '../../notifications/notifications.processor';
+import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from '../../organizations/organizations/constants';
+import { CourseEnrollment } from '../../organizations/organizations/entities/course-enrollment.entity';
 import { In, Repository } from 'typeorm';
 import { TrainingParticipantRepresentationDto } from '../items/dto/training-participant-representation.dto';
 import { ItemCompletion } from '../items/entities/item-completion.entity';
@@ -51,57 +51,107 @@ export class TrainingReminderTasks {
   @Cron(CronExpression.EVERY_DAY_AT_6AM)
   async handleReminders() {
     const today = dayjs().startOf('day');
-    const enrollments = await this.enrollmentsRepo
-      .createQueryBuilder('enrollment')
-      .leftJoinAndSelect('enrollment.organization', 'organization')
-      .leftJoinAndSelect('enrollment.course', 'course')
-      .leftJoinAndSelect('course.sections', 'section')
-      .leftJoinAndSelect('section.items', 'sectionItem')
-      .leftJoinAndSelect('sectionItem.item', 'item')
-      .where('enrollment.startDate <= :today', {
-        today: today.format('YYYY-MM-DD'),
-      })
-      .andWhere('enrollment.endDate >= :today', {
-        today: today.format('YYYY-MM-DD'),
-      })
-      .getMany();
+    this.logger.log(
+      `Starting daily training reminder check for ${today.format('YYYY-MM-DD')}`,
+    );
 
-    for (const enrollment of enrollments) {
-      let sectionStartDate = dayjs(enrollment.startDate);
-      for (const section of enrollment.course.sections
-        .slice()
-        .sort((a, b) => a.order - b.order)) {
-        const availableOn = sectionStartDate;
-        const availableUntil = sectionStartDate.add(
-          dayjs.duration(section.duration),
-        );
+    try {
+      // Query only active enrollments with optimized date filtering
+      const enrollments = await this.enrollmentsRepo
+        .createQueryBuilder('enrollment')
+        .leftJoinAndSelect('enrollment.organization', 'organization')
+        .leftJoinAndSelect('enrollment.course', 'course')
+        .leftJoinAndSelect('course.sections', 'section')
+        .leftJoinAndSelect('section.items', 'sectionItem')
+        .leftJoinAndSelect('sectionItem.item', 'item')
+        .where('enrollment.startDate <= :today', {
+          today: today.format('YYYY-MM-DD'),
+        })
+        .andWhere('enrollment.endDate >= :today', {
+          today: today.format('YYYY-MM-DD'),
+        })
+        .getMany();
 
-        const initialReminderDate = this.firstWeekday(availableOn);
-        const followupReminderDate = this.firstWeekday(
-          availableOn.add(
-            Math.min(14, availableUntil.diff(availableOn, 'day') / 2),
-            'day',
-          ),
-        );
+      this.logger.log(
+        `Found ${enrollments.length} active enrollments to process`,
+      );
 
-        if (today.isSame(initialReminderDate, 'day')) {
-          await this.sendInitialReminderEmails(
-            enrollment.id,
-            enrollment.organization.slug,
-            section.items.map((item) => item.item),
+      let processedCount = 0;
+      let errorCount = 0;
+
+      for (const enrollment of enrollments) {
+        try {
+          // Null check for course sections
+          if (
+            !enrollment.course?.sections ||
+            enrollment.course.sections.length === 0
+          ) {
+            this.logger.warn(
+              `Enrollment ${enrollment.id} has no course sections, skipping`,
+            );
+            continue;
+          }
+
+          let sectionStartDate = dayjs(enrollment.startDate);
+          for (const section of enrollment.course.sections
+            .slice()
+            .sort((a, b) => a.order - b.order)) {
+            const availableOn = sectionStartDate;
+            const availableUntil = sectionStartDate.add(
+              dayjs.duration(section.duration),
+            );
+
+            const initialReminderDate = this.firstWeekday(availableOn);
+            const followupReminderDate = this.firstWeekday(
+              availableOn.add(
+                Math.min(14, availableUntil.diff(availableOn, 'day') / 2),
+                'day',
+              ),
+            );
+
+            if (today.isSame(initialReminderDate, 'day')) {
+              this.logger.log(
+                `Sending initial reminders for enrollment ${enrollment.id}, section ${section.id}`,
+              );
+              await this.sendInitialReminderEmails(
+                enrollment.id,
+                enrollment.organization.slug,
+                section.items.map((item) => item.item),
+              );
+              processedCount++;
+            }
+
+            if (today.isSame(followupReminderDate, 'day')) {
+              this.logger.log(
+                `Sending follow-up reminders for enrollment ${enrollment.id}, section ${section.id}`,
+              );
+              await this.sendFollowupReminderEmails(
+                enrollment.id,
+                enrollment.organization.slug,
+                section.items.map((item) => item.item),
+              );
+              processedCount++;
+            }
+
+            sectionStartDate = availableUntil;
+          }
+        } catch (enrollmentError) {
+          this.logger.error(
+            `Error processing enrollment ${enrollment.id}: ${enrollmentError.message}`,
+            enrollmentError.stack,
           );
+          errorCount++;
         }
-
-        if (today.isSame(followupReminderDate, 'day')) {
-          await this.sendFollowupReminderEmails(
-            enrollment.id,
-            enrollment.organization.slug,
-            section.items.map((item) => item.item),
-          );
-        }
-
-        sectionStartDate = availableUntil;
       }
+
+      this.logger.log(
+        `Training reminder processing complete. Processed: ${processedCount}, Errors: ${errorCount}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Fatal error in training reminder task: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
@@ -148,15 +198,28 @@ export class TrainingReminderTasks {
     items: TrainingItem[],
   ) {
     const participants = await this.getTrainingParticipants(organizationSlug);
+    let sentCount = 0;
+
     for (const user of participants) {
-      await this.sendReminderEmail({
-        user,
-        enrollmentId,
-        organizationSlug,
-        items,
-        isInitialReminder: true,
-      });
+      try {
+        await this.sendReminderEmail({
+          user,
+          enrollmentId,
+          organizationSlug,
+          items,
+          isInitialReminder: true,
+        });
+        sentCount++;
+      } catch (error) {
+        this.logger.error(
+          `Failed to send initial reminder to user ${user.id}: ${error.message}`,
+        );
+      }
     }
+
+    this.logger.log(
+      `Sent ${sentCount}/${participants.length} initial reminder emails for enrollment ${enrollmentId}`,
+    );
   }
 
   private async sendFollowupReminderEmails(
@@ -172,23 +235,44 @@ export class TrainingReminderTasks {
         completed: true,
       },
       select: ['userId', 'item'],
+      relations: ['item'],
     });
     const completedIds = new Set(
       completions.map((c) => c.userId + '+' + c.item.id),
     );
+
+    let sentCount = 0;
+    let skippedCount = 0;
+
     for (const user of participants) {
       const incompleteItems = items.filter(
         (item) => !completedIds.has(user.id + '+' + item.id),
       );
 
-      await this.sendReminderEmail({
-        user,
-        enrollmentId,
-        organizationSlug,
-        items: incompleteItems,
-        isInitialReminder: false,
-      });
+      if (incompleteItems.length === 0) {
+        skippedCount++;
+        continue;
+      }
+
+      try {
+        await this.sendReminderEmail({
+          user,
+          enrollmentId,
+          organizationSlug,
+          items: incompleteItems,
+          isInitialReminder: false,
+        });
+        sentCount++;
+      } catch (error) {
+        this.logger.error(
+          `Failed to send follow-up reminder to user ${user.id}: ${error.message}`,
+        );
+      }
     }
+
+    this.logger.log(
+      `Sent ${sentCount}/${participants.length} follow-up reminder emails (${skippedCount} completed all items) for enrollment ${enrollmentId}`,
+    );
   }
 
   private async sendReminderEmail({
@@ -235,7 +319,12 @@ export class TrainingReminderTasks {
       }),
     );
 
-    if (trainingContexts.length === 0) return;
+    if (trainingContexts.length === 0) {
+      this.logger.debug(
+        `No training contexts to send for user ${userId}, skipping email`,
+      );
+      return;
+    }
 
     await this.notificationsQueue.add(
       NotificationsJobNames.SendEmailNotification,

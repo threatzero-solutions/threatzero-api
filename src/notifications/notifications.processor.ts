@@ -76,7 +76,7 @@ export class NotificationsProcessor extends WorkerHost {
     }
   }
 
-  @OnWorkerEvent('error')
+  @OnWorkerEvent('failed')
   async onWorkerFailed(job: Job<unknown>, error: Error) {
     this.logger.error(`Job ${job.name} failed`, error.stack);
   }

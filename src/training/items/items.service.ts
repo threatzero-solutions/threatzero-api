@@ -191,10 +191,14 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
 
   async getMyItemCompletions(query: ItemCompletionQueryDto, watchId?: string) {
     const { userRep, decodedToken } = await this.getUserContext(watchId);
-    if (decodedToken) {
-      query['enrollment.id'] = decodedToken.enrollmentId;
+    let qb = this.getItemCompletionsQb(query, userRep.id);
+
+    // Add enrollment filter if token contains enrollmentId
+    if (decodedToken?.enrollmentId) {
+      qb = qb.andWhere('enrollment.id = :enrollmentId', {
+        enrollmentId: decodedToken.enrollmentId,
+      });
     }
-    const qb = this.getItemCompletionsQb(query, userRep.id);
 
     return Paginated.fromQb(qb, query);
   }
