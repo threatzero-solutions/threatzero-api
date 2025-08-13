@@ -5,9 +5,9 @@ import {
 import { SendEmailCommand, SendEmailCommandInput } from '@aws-sdk/client-sesv2';
 import {
   InjectQueue,
+  OnWorkerEvent,
   Processor,
   WorkerHost,
-  OnWorkerEvent,
 } from '@nestjs/bullmq';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Logger } from '@nestjs/common';
