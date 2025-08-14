@@ -2,21 +2,24 @@ import KeycloakUserRepresentation from '@keycloak/keycloak-admin-client/lib/defs
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron, CronExpression, Timeout } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
+import { DEFAULT_THUMBNAIL_URL } from 'src/common/constants/items.constants';
+import { MediaService } from 'src/media/media.service';
+import { In, Repository } from 'typeorm';
 import { KeycloakAdminClientService } from '../../auth/keycloak-admin-client/keycloak-admin-client.service';
 import { OpaqueTokenService } from '../../auth/opaque-token.service';
 import { NOTIFICATIONS_QUEUE_NAME } from '../../common/constants/queue.constants';
 import { NotificationsJobNames } from '../../notifications/notifications.processor';
 import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from '../../organizations/organizations/constants';
 import { CourseEnrollment } from '../../organizations/organizations/entities/course-enrollment.entity';
-import { In, Repository } from 'typeorm';
 import { TrainingParticipantRepresentationDto } from '../items/dto/training-participant-representation.dto';
 import { ItemCompletion } from '../items/entities/item-completion.entity';
 import { TrainingItem } from '../items/entities/item.entity';
+import { Video } from '../items/entities/video-item.entity';
 
 dayjs.extend(duration);
 
@@ -35,6 +38,7 @@ export class TrainingReminderTasks {
     private readonly completionsRepo: Repository<ItemCompletion>,
     private readonly keycloak: KeycloakAdminClientService,
     private readonly opaqueTokenService: OpaqueTokenService,
+    private readonly mediaService: MediaService,
   ) {}
 
   async onModuleInit() {
@@ -49,6 +53,9 @@ export class TrainingReminderTasks {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  test() {}
+
+  @Timeout(5000)
   async handleReminders() {
     const today = dayjs().startOf('day');
     this.logger.log(
@@ -310,11 +317,17 @@ export class TrainingReminderTasks {
           type: 'training',
         });
 
+        if (item instanceof Video) {
+          item.loadThumbnailUrl((url) =>
+            this.mediaService.getThumbnailUrlForVimeoUrl(url),
+          );
+        }
+
         return {
           trainingLink: this.buildTrainingLink(item.id, token.key),
           trainingTitle: item.metadata.title,
           trainingDescription: item.metadata.description,
-          trainingThumbnailUrl: item.thumbnailUrl ?? '',
+          trainingThumbnailUrl: item.thumbnailUrl ?? DEFAULT_THUMBNAIL_URL,
         };
       }),
     );

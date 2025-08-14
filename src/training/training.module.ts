@@ -6,6 +6,7 @@ import {
   NOTIFICATIONS_QUEUE_NAME,
   NOTIFICATIONS_QUEUE_PREFIX,
 } from 'src/common/constants/queue.constants';
+import { MediaModule } from 'src/media/media.module';
 import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
 import { OrganizationsModule } from 'src/organizations/organizations/organizations.module';
 import { AudiencesModule } from './audiences/audiences.module';
@@ -29,6 +30,7 @@ import { SectionsModule } from './sections/sections.module';
     ItemsModule,
     AuthModule,
     OrganizationsModule,
+    MediaModule,
   ],
   providers: [AudienceChangeListener, TrainingReminderTasks],
 })
