@@ -7,21 +7,33 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
+import { LEVEL } from 'src/auth/permissions';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
-import { UserRepresentation } from './entities/user-representation.entity';
 import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
 import { TrainingTokenQueryDto } from './dto/training-token-query.dto';
+import { UserRepresentation } from './entities/user-representation.entity';
+import { UsersService } from './users.service';
 
 @Controller('users')
 @CheckPolicies(new EntityAbilityChecker(UserRepresentation))
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @CheckPolicies(
+    (ability, context) => !!context.request.user?.hasPermission(LEVEL.ADMIN),
+  )
   @Post('sync-missing-users')
+  async syncMissingLocalUsersFromItemCompletions() {
+    return await this.usersService.syncMissingLocalUsersFromItemCompletions();
+  }
+
+  @CheckPolicies(
+    (ability, context) => !!context.request.user?.hasPermission(LEVEL.ADMIN),
+  )
+  @Post('sync-missing-local-users-from-opaque-tokens')
   async migrateIds() {
-    return await this.usersService.syncMissingUsers();
+    return await this.usersService.syncMissingLocalUsersFromOpaqueTokens();
   }
 
   @Get('training-token/:token')

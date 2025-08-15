@@ -1,8 +1,10 @@
-import { BadRequestException } from '@nestjs/common';
+import type KeycloakUserRepresentation from '@keycloak/keycloak-admin-client/lib/defs/userRepresentation';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClsService } from 'nestjs-cls';
 import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { KeycloakAdminClientService } from 'src/auth/keycloak-admin-client/keycloak-admin-client.service';
+import { CustomQueryFilter } from 'src/auth/keycloak-admin-client/types';
 import { OpaqueTokenService } from 'src/auth/opaque-token.service';
 import { StatelessUser } from 'src/auth/user.factory';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
@@ -25,8 +27,11 @@ import { UpdateNoteDto } from './dto/update-note.dto';
 import { Note } from './entities/note.entity';
 import { UserRepresentation } from './entities/user-representation.entity';
 import { NotableEntity } from './interfaces/notable-entity.interface';
+import { UnifiedUser } from './interfaces/unified-user.interface';
 
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(UserRepresentation)
     private usersRepository: Repository<UserRepresentation>,
@@ -232,6 +237,56 @@ export class UsersService {
       },
     );
 
+    const dtos = Array.isArray(trainingParticipantRepresentationDto)
+      ? trainingParticipantRepresentationDto
+      : [trainingParticipantRepresentationDto];
+
+    const results = await Promise.allSettled(
+      dtos.map(async (dto) => {
+        const user = await this.updateRepresentation(
+          new StatelessUser(
+            dto.userId,
+            dto.email,
+            [dto.firstName, dto.lastName].filter(Boolean).join(' '),
+            dto.firstName,
+            dto.lastName,
+            null,
+            [],
+            [],
+            dto.organizationSlug,
+            null,
+            dto.unitSlug,
+            [],
+          ),
+        );
+
+        await this.dataSource
+          .createQueryBuilder(ItemCompletion, 'item_completion')
+          .insert()
+          .values({
+            item: {
+              id: dto.trainingItemId,
+            },
+            enrollment: {
+              id: dto.enrollmentId,
+            },
+            userId: user.id,
+            email: dto.email,
+            url: 'https://threatzero.org',
+            audienceSlugs: dto.audiences,
+          })
+          .orIgnore()
+          .execute();
+      }),
+    );
+    if (results.some((r) => r.status === 'rejected')) {
+      this.logger.error(
+        `Failed to update user representation for ${
+          results.filter((r) => r.status === 'rejected').length
+        } users while creating training tokens.`,
+      );
+    }
+
     return opaqueTokenResponse;
   }
 
@@ -239,7 +294,13 @@ export class UsersService {
     return await this.opaqueTokenService.delete(token);
   }
 
-  async syncMissingUsers() {
+  /**
+   * Synchronizes users from Keycloak who have training completions but are missing from the local database.
+   * Searches for user IDs in item_completion records that don't have corresponding UserRepresentation entries,
+   * then fetches those users from Keycloak and creates local records.
+   * @returns The count of users successfully synchronized
+   */
+  async syncMissingLocalUsersFromItemCompletions() {
     let usersSyncedCount = 0;
 
     const missingUserIds = await this.dataSource
@@ -295,6 +356,214 @@ export class UsersService {
 
     return {
       usersSyncedCount,
+    };
+  }
+
+  async syncMissingLocalUsersFromOpaqueTokens() {
+    const opaqueTokens = await this.dataSource
+      .createQueryBuilder(OpaqueToken, 'opaque_token')
+      .leftJoin(
+        UserRepresentation,
+        'user',
+        `opaque_token.value->>'userId' = user.externalId`,
+      )
+      .where(`user.id IS NULL AND opaque_token.value->>'userId' IS NOT NULL`)
+      .getMany();
+
+    for (const token of opaqueTokens) {
+      const tokenValue = token.value as Record<string, unknown>;
+      if (
+        'email' in tokenValue &&
+        typeof tokenValue.email === 'string' &&
+        'userId' in tokenValue &&
+        typeof tokenValue.userId === 'string'
+      ) {
+        const user = await this.updateRepresentation(
+          new StatelessUser(
+            tokenValue.userId,
+            tokenValue.email,
+            [tokenValue.firstName, tokenValue.lastName]
+              .filter(Boolean)
+              .join(' '),
+            tokenValue.firstName as string,
+            tokenValue.lastName as string,
+            null,
+            [],
+            [],
+            tokenValue.organizationSlug as string,
+            null,
+            tokenValue.unitSlug as string,
+            [],
+          ),
+        );
+
+        if (token.type === 'training') {
+          const dto = token.value as TrainingParticipantRepresentationDto;
+          await this.dataSource
+            .createQueryBuilder(ItemCompletion, 'item_completion')
+            .insert()
+            .values({
+              item: {
+                id: dto.trainingItemId,
+              },
+              enrollment: {
+                id: dto.enrollmentId,
+              },
+              userId: user.id,
+              email: dto.email,
+              url: 'https://threatzero.org',
+              audienceSlugs: dto.audiences,
+            })
+            .orIgnore()
+            .execute();
+        }
+      }
+    }
+  }
+
+  async *getAllUsersGenerator({
+    batchSize = 1000,
+    includeOpaqueTokens = true,
+    organizationSlug,
+    keycloakGroupIds,
+  }: {
+    batchSize?: number;
+    includeOpaqueTokens?: boolean;
+    organizationSlug?: string;
+    keycloakGroupIds?: string[];
+  } = {}): AsyncGenerator<UnifiedUser, void, unknown> {
+    const processedEmails = new Set<string>();
+    let first = 0;
+
+    // Yield Keycloak users in batches
+    while (true) {
+      const queryFilters: CustomQueryFilter[] = [];
+      if (organizationSlug) {
+        queryFilters.push({
+          q: { key: 'organization', value: organizationSlug },
+        });
+      }
+      if (keycloakGroupIds) {
+        queryFilters.push({
+          groupQ: {
+            key: 'id',
+            groups: keycloakGroupIds,
+            op: 'all',
+          },
+        });
+      }
+      const keycloakUsers = await this.keycloakAdminService
+        .findUsersByAttribute({
+          offset: first,
+          limit: batchSize,
+          filter: {
+            AND: queryFilters,
+          },
+          order: 'firstName',
+        })
+        .then((users) => users.results);
+
+      if (!keycloakUsers || keycloakUsers.length === 0) {
+        break;
+      }
+
+      const unifiedUsers: UnifiedUser[] = keycloakUsers
+        .filter((user) => user.email && !processedEmails.has(user.email))
+        .map((user) => {
+          processedEmails.add(user.email!);
+          return this.mapKeycloakUserToUnified(user);
+        });
+
+      for (const user of unifiedUsers) {
+        yield user;
+      }
+
+      if (keycloakUsers.length < batchSize) {
+        break;
+      }
+
+      first += batchSize;
+    }
+
+    // Yield OpaqueToken users if requested
+    if (includeOpaqueTokens) {
+      let skip = 0;
+
+      while (true) {
+        const opaqueTokenQuery = new TrainingTokenQueryDto();
+        opaqueTokenQuery.type = 'training';
+        if (organizationSlug) {
+          opaqueTokenQuery['value.organizationSlug'] = organizationSlug;
+        }
+        const opaqueTokens = (await this.opaqueTokenService
+          .getQb(opaqueTokenQuery, (qb) => qb.skip(skip).take(batchSize))
+          .getMany()) as OpaqueToken<TrainingParticipantRepresentationDto>[];
+
+        if (!opaqueTokens || opaqueTokens.length === 0) {
+          break;
+        }
+
+        const unifiedUsers: UnifiedUser[] = [];
+
+        for (const token of opaqueTokens) {
+          const tokenValue =
+            token.value as TrainingParticipantRepresentationDto;
+
+          // Skip if we already processed this email from Keycloak
+          if (tokenValue.email && !processedEmails.has(tokenValue.email)) {
+            processedEmails.add(tokenValue.email);
+            unifiedUsers.push(this.mapOpaqueTokenToUnified(token));
+          }
+        }
+
+        for (const user of unifiedUsers) {
+          yield user;
+        }
+
+        if (opaqueTokens.length < batchSize) {
+          break;
+        }
+
+        skip += batchSize;
+      }
+    }
+  }
+
+  private mapKeycloakUserToUnified(
+    user: KeycloakUserRepresentation,
+  ): UnifiedUser {
+    return {
+      id: user.id || '',
+      email: user.email || '',
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name:
+        [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+      organizationSlug: getUserAttr(user.attributes?.organizationSlug),
+      unitSlug: getUserAttr(user.attributes?.unitSlug),
+      audiences: user.attributes?.audiences as string[] | undefined,
+      source: 'keycloak',
+    };
+  }
+
+  private mapOpaqueTokenToUnified(
+    token: OpaqueToken<TrainingParticipantRepresentationDto>,
+  ): UnifiedUser {
+    const value = token.value as TrainingParticipantRepresentationDto;
+    return {
+      id: value.userId,
+      email: value.email,
+      firstName: value.firstName,
+      lastName: value.lastName,
+      name:
+        [value.firstName, value.lastName].filter(Boolean).join(' ') ||
+        undefined,
+      organizationSlug: value.organizationSlug,
+      unitSlug: value.unitSlug,
+      audiences: value.audiences,
+      source: 'opaque_token',
+      enrollmentId: value.enrollmentId,
+      trainingItemId: value.trainingItemId,
     };
   }
 }

@@ -12,6 +12,7 @@ import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { CourseEnrollmentQueryDto } from './dto/course-enrollment-query.dto';
 import { CreateCourseEnrollmentDto } from './dto/create-course-enrollment.dto';
+import { LatestCourseEnrollmentsQueryDto } from './dto/latest-course-enrollments-query.dto';
 import { UpdateCourseEnrollmentDto } from './dto/update-course-enrollment.dto';
 import { EnrollmentsService } from './enrollments.service';
 import { CourseEnrollment } from './entities/course-enrollment.entity';
@@ -28,6 +29,38 @@ export class EnrollmentsController {
   ) {
     query['organization.id'] = id;
     return this.enrollmentsService.findAll(query);
+  }
+
+  @Get('latest')
+  getLatestEnrollments(
+    @Param('id') id: string,
+    @Query() query: LatestCourseEnrollmentsQueryDto,
+  ) {
+    return this.enrollmentsService.getLatestEnrollments(id, query);
+  }
+
+  @Get(':enrollmentId/relative')
+  getRelativeEnrollment(
+    @Param('id') id: string,
+    @Param('enrollmentId') enrollmentId: string,
+  ) {
+    return this.enrollmentsService.getRelativeEnrollment(id, enrollmentId);
+  }
+
+  @Get(':enrollmentId/previous')
+  getPreviousEnrollment(
+    @Param('id') id: string,
+    @Param('enrollmentId') enrollmentId: string,
+  ) {
+    return this.enrollmentsService.getPreviousEnrollment(id, enrollmentId);
+  }
+
+  @Get(':enrollmentId/next')
+  getNextEnrollment(
+    @Param('id') id: string,
+    @Param('enrollmentId') enrollmentId: string,
+  ) {
+    return this.enrollmentsService.getNextEnrollment(id, enrollmentId);
   }
 
   @Post()

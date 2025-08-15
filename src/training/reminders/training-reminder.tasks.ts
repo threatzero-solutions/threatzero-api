@@ -2,13 +2,14 @@ import KeycloakUserRepresentation from '@keycloak/keycloak-admin-client/lib/defs
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cron, CronExpression, Timeout } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import { DEFAULT_THUMBNAIL_URL } from 'src/common/constants/items.constants';
 import { MediaService } from 'src/media/media.service';
+import { UsersService } from 'src/users/users.service';
 import { In, Repository } from 'typeorm';
 import { KeycloakAdminClientService } from '../../auth/keycloak-admin-client/keycloak-admin-client.service';
 import { OpaqueTokenService } from '../../auth/opaque-token.service';
@@ -16,6 +17,7 @@ import { NOTIFICATIONS_QUEUE_NAME } from '../../common/constants/queue.constants
 import { NotificationsJobNames } from '../../notifications/notifications.processor';
 import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from '../../organizations/organizations/constants';
 import { CourseEnrollment } from '../../organizations/organizations/entities/course-enrollment.entity';
+import { TrainingVisibility } from '../common/training.types';
 import { TrainingParticipantRepresentationDto } from '../items/dto/training-participant-representation.dto';
 import { ItemCompletion } from '../items/entities/item-completion.entity';
 import { TrainingItem } from '../items/entities/item.entity';
@@ -39,6 +41,7 @@ export class TrainingReminderTasks {
     private readonly keycloak: KeycloakAdminClientService,
     private readonly opaqueTokenService: OpaqueTokenService,
     private readonly mediaService: MediaService,
+    private readonly users: UsersService,
   ) {}
 
   async onModuleInit() {
@@ -53,9 +56,6 @@ export class TrainingReminderTasks {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_6AM)
-  test() {}
-
-  @Timeout(5000)
   async handleReminders() {
     const today = dayjs().startOf('day');
     this.logger.log(
@@ -76,6 +76,9 @@ export class TrainingReminderTasks {
         })
         .andWhere('enrollment.endDate >= :today', {
           today: today.format('YYYY-MM-DD'),
+        })
+        .andWhere('enrollment.visibility = :visibility', {
+          visibility: TrainingVisibility.VISIBLE,
         })
         .getMany();
 
@@ -168,28 +171,17 @@ export class TrainingReminderTasks {
     return d;
   }
 
-  private async getTrainingParticipants(organizationSlug: string) {
+  private async *getTrainingParticipants(organizationSlug: string) {
     if (!this.trainingParticipantGroupId) {
-      return [];
+      return;
     }
-    const users = await this.keycloak.findUsersByAttribute({
-      filter: {
-        AND: [
-          { q: { key: 'organization', value: organizationSlug } },
-          {
-            groupQ: {
-              key: 'id',
-              groups: [this.trainingParticipantGroupId],
-              op: 'all',
-            },
-          },
-        ],
-      },
-      limit: 1000,
-      offset: 0,
-      order: 'firstName',
-    });
-    return users.results;
+
+    for await (const user of this.users.getAllUsersGenerator({
+      organizationSlug,
+      keycloakGroupIds: [this.trainingParticipantGroupId],
+    })) {
+      yield user;
+    }
   }
 
   private buildTrainingLink(itemId: string, token: string) {
@@ -204,10 +196,13 @@ export class TrainingReminderTasks {
     organizationSlug: string,
     items: TrainingItem[],
   ) {
-    const participants = await this.getTrainingParticipants(organizationSlug);
-    let sentCount = 0;
+    const participants = this.getTrainingParticipants(organizationSlug);
 
-    for (const user of participants) {
+    let sentCount = 0;
+    let participantCount = 0;
+
+    for await (const user of participants) {
+      participantCount++;
       try {
         await this.sendReminderEmail({
           user,
@@ -225,7 +220,7 @@ export class TrainingReminderTasks {
     }
 
     this.logger.log(
-      `Sent ${sentCount}/${participants.length} initial reminder emails for enrollment ${enrollmentId}`,
+      `Sent ${sentCount}/${participantCount} initial reminder emails for enrollment ${enrollmentId}`,
     );
   }
 
@@ -234,7 +229,6 @@ export class TrainingReminderTasks {
     organizationSlug: string,
     items: TrainingItem[],
   ) {
-    const participants = await this.getTrainingParticipants(organizationSlug);
     const completions = await this.completionsRepo.find({
       where: {
         enrollment: { id: enrollmentId },
@@ -250,8 +244,10 @@ export class TrainingReminderTasks {
 
     let sentCount = 0;
     let skippedCount = 0;
+    let participantCount = 0;
 
-    for (const user of participants) {
+    for await (const user of this.getTrainingParticipants(organizationSlug)) {
+      participantCount++;
       const incompleteItems = items.filter(
         (item) => !completedIds.has(user.id + '+' + item.id),
       );
@@ -278,7 +274,7 @@ export class TrainingReminderTasks {
     }
 
     this.logger.log(
-      `Sent ${sentCount}/${participants.length} follow-up reminder emails (${skippedCount} completed all items) for enrollment ${enrollmentId}`,
+      `Sent ${sentCount}/${participantCount} follow-up reminder emails (${skippedCount} completed all items) for enrollment ${enrollmentId}`,
     );
   }
 

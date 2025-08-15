@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from 'src/auth/auth.module';
 import { Note } from './entities/note.entity';
 import { UserRepresentation } from './entities/user-representation.entity';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsersService } from './users.service';
+import { UserSyncTask } from './tasks/user-sync.task';
 import { UsersController } from './users.controller';
-import { AuthModule } from 'src/auth/auth.module';
+import { UsersService } from './users.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Note, UserRepresentation]), AuthModule],
-  providers: [UsersService],
+  providers: [UsersService, UserSyncTask],
   exports: [UsersService],
   controllers: [UsersController],
 })

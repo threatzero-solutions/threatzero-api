@@ -251,12 +251,13 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     forOwnerId?: string,
   ) {
     let qb = this.itemCompletionsRepository.createQueryBuilder();
+    const qbAlias = qb.alias;
     qb = qb
-      .leftJoinAndSelect(`${qb.alias}.item`, 'item')
-      .leftJoinAndSelect(`${qb.alias}.user`, 'user')
+      .leftJoinAndSelect(`${qbAlias}.item`, 'item')
+      .leftJoinAndSelect(`${qbAlias}.user`, 'user')
       .leftJoinAndSelect(`user.organization`, 'organization')
       .leftJoinAndSelect(`user.unit`, 'unit')
-      .leftJoinAndSelect(`${qb.alias}.enrollment`, 'enrollment')
+      .leftJoinAndSelect(`${qbAlias}.enrollment`, 'enrollment')
       .leftJoinAndSelect(`enrollment.course`, 'course');
 
     const user = this.cls.get('user');

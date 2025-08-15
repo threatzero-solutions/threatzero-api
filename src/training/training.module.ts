@@ -9,6 +9,7 @@ import {
 import { MediaModule } from 'src/media/media.module';
 import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
 import { OrganizationsModule } from 'src/organizations/organizations/organizations.module';
+import { UsersModule } from 'src/users/users.module';
 import { AudiencesModule } from './audiences/audiences.module';
 import { CoursesModule } from './courses/courses.module';
 import { ItemCompletion } from './items/entities/item-completion.entity';
@@ -31,6 +32,7 @@ import { SectionsModule } from './sections/sections.module';
     AuthModule,
     OrganizationsModule,
     MediaModule,
+    UsersModule,
   ],
   providers: [AudienceChangeListener, TrainingReminderTasks],
 })

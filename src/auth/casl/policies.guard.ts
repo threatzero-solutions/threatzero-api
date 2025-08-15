@@ -1,3 +1,4 @@
+import { MongoAbility } from '@casl/ability';
 import {
   CanActivate,
   ExecutionContext,
@@ -5,28 +6,29 @@ import {
   Injectable,
   SetMetadata,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { Observable } from 'rxjs';
+import { IS_PUBLIC_KEY } from '../auth.guard';
 import {
   CASL_ABILITY_FACTORY,
   CaslAbilityFactory,
 } from './casl-ability.factory';
-import { MongoAbility } from '@casl/ability';
-import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from '../auth.guard';
 
 export interface PolicyHandlerContext {
   request: Request;
 }
 
 interface IPolicyHandler {
-  handle(ability: MongoAbility, context: PolicyHandlerContext): boolean;
+  handle(
+    ability: MongoAbility,
+    context: PolicyHandlerContext,
+  ): boolean | Promise<boolean>;
 }
 
 type PolicyHandlerCallback = (
   ability: MongoAbility,
   context: PolicyHandlerContext,
-) => boolean;
+) => boolean | Promise<boolean>;
 
 export type PolicyHandler = IPolicyHandler | PolicyHandlerCallback;
 
@@ -42,11 +44,9 @@ export class PoliciesGuard implements CanActivate {
     private caslAbilityFactory: CaslAbilityFactory,
   ) {}
 
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const policyHandlers =
-      this.reflector.getAllAndMerge<PolicyHandler[]>(CHECK_POLICIES_KEY, [
+      this.reflector.getAllAndOverride<PolicyHandler[]>(CHECK_POLICIES_KEY, [
         context.getHandler(),
         context.getClass(),
       ]) || [];
@@ -63,7 +63,7 @@ export class PoliciesGuard implements CanActivate {
       return true;
     }
 
-    if (!user) {
+    if (!user || policyHandlers.length === 0) {
       return false;
     }
 
@@ -72,19 +72,33 @@ export class PoliciesGuard implements CanActivate {
       request,
     };
 
-    return policyHandlers.every((handler) =>
-      this.execPolicyHandler(handler, ability, policyHandlerContext),
+    return await this.execAllPolicyHandlers(
+      policyHandlers,
+      ability,
+      policyHandlerContext,
     );
   }
 
-  private execPolicyHandler(
+  private async execPolicyHandler(
     handler: PolicyHandler,
     ability: MongoAbility,
     context: PolicyHandlerContext,
   ) {
     if (typeof handler === 'function') {
-      return handler(ability, context);
+      return await handler(ability, context);
     }
     return handler.handle(ability, context);
+  }
+
+  private async execAllPolicyHandlers(
+    handlers: PolicyHandler[],
+    ability: MongoAbility,
+    context: PolicyHandlerContext,
+  ) {
+    return await Promise.all(
+      handlers.map((handler) =>
+        this.execPolicyHandler(handler, ability, context),
+      ),
+    ).then((results) => results.every(Boolean));
   }
 }

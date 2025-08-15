@@ -6,7 +6,6 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { plainToInstance } from 'class-transformer';
 import dayjs from 'dayjs';
@@ -37,7 +36,6 @@ import { UsersService } from 'src/users/users.service';
 import { In } from 'typeorm';
 import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 import { SendTrainingLinksDto } from './dto/send-training-links.dto';
-import { WatchStat } from './entities/watch-stat.entity';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -46,7 +44,6 @@ export class TrainingAdminService {
 
   constructor(
     @InjectQueue(NOTIFICATIONS_QUEUE_NAME) private notificationsQueue: Queue,
-    @InjectRepository(WatchStat)
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
     private readonly coursesService: CoursesService,
@@ -326,6 +323,10 @@ export class TrainingAdminService {
     const stripTags = (s?: string | null) =>
       s && sanitizeHtml(s, { allowedTags: [] });
 
+    const trainingLinkTemplate = this.config.get<string>(
+      'notifications.email.templates.trainingLink',
+    );
+
     // Send out training invite emails.
     this.notificationsQueue.addBulk(
       tokens.reduce((acc, { key: token, value }) => {
@@ -339,9 +340,7 @@ export class TrainingAdminService {
           name: NotificationsJobNames.SendEmailNotification,
           data: {
             to: [value.email],
-            templateName: this.config.get<string>(
-              'notifications.email.templates.trainingLink',
-            ),
+            templateName: trainingLinkTemplate,
             context: {
               firstName: value.firstName,
               trainingLink: this.buildTrainingLink(
