@@ -1,6 +1,8 @@
 export const ROLE_GROUP_PREFIX = '/Role Groups/';
 export const TRAINING_PARTICIPANT_GROUP_NAME = 'Training Participant';
 
+export const AUDIENCE_GROUP_PREFIX = '/Audiences/';
+
 export const TRAINING_PARTICIPANT_ROLE_GROUP_PATH =
   ROLE_GROUP_PREFIX + TRAINING_PARTICIPANT_GROUP_NAME;
 

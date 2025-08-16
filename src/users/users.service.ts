@@ -11,6 +11,7 @@ import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { Paginated } from 'src/common/dto/paginated.dto';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { getUserAttr } from 'src/common/utils';
+import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from 'src/organizations/organizations/constants';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
 import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
@@ -539,10 +540,14 @@ export class UsersService {
       lastName: user.lastName,
       name:
         [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+      picture: getUserAttr(user.attributes?.picture),
       organizationSlug: getUserAttr(user.attributes?.organizationSlug),
       unitSlug: getUserAttr(user.attributes?.unitSlug),
-      audiences: user.attributes?.audiences as string[] | undefined,
+      audiences: user.attributes?.audience ?? [],
       source: 'keycloak',
+      canAccessTraining: !!user.groups?.includes(
+        TRAINING_PARTICIPANT_ROLE_GROUP_PATH,
+      ),
     };
   }
 
@@ -564,6 +569,7 @@ export class UsersService {
       source: 'opaque_token',
       enrollmentId: value.enrollmentId,
       trainingItemId: value.trainingItemId,
+      canAccessTraining: true,
     };
   }
 }

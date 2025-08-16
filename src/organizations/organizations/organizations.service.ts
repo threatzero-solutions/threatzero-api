@@ -1,8 +1,10 @@
 import type KeycloakUserRepresentation from '@keycloak/keycloak-admin-client/lib/defs/userRepresentation';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Logger,
   NotFoundException,
   UnauthorizedException,
@@ -11,6 +13,8 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import archiver from 'archiver';
+import { Cache } from 'cache-manager';
+import { RedisStore } from 'cache-manager-ioredis-yet';
 import { plainToInstance } from 'class-transformer';
 import fs from 'fs';
 import { ClsService } from 'nestjs-cls';
@@ -68,6 +72,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     private readonly config: ConfigService,
     private opaqueTokenService: OpaqueTokenService,
     private s3: S3Service,
+    @Inject(CACHE_MANAGER) private cache: Cache<RedisStore>,
   ) {
     super();
   }
@@ -655,6 +660,81 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     );
   }
 
+  public async getValidOrganizationId(
+    organizationId?: string,
+  ): Promise<string | null>;
+  public async getValidOrganizationId(
+    options?: ValidateOrganizationIdOptions,
+  ): Promise<string | null>;
+  public async getValidOrganizationId(
+    organizationId?: string,
+    options?: ValidateOrganizationIdOptions,
+  ): Promise<string | null>;
+  public async getValidOrganizationId(
+    orgIdOrOptions?: string | ValidateOrganizationIdOptions,
+    options?: ValidateOrganizationIdOptions,
+  ) {
+    const orgId =
+      typeof orgIdOrOptions === 'string' ? orgIdOrOptions : undefined;
+    const opts =
+      (typeof orgIdOrOptions === 'object' ? orgIdOrOptions : options) ??
+      ({} as ValidateOrganizationIdOptions);
+
+    if (!opts.type) {
+      opts.type = 'idToId';
+    }
+
+    const noConvert = opts.type === 'idToId' || opts.type === 'slugToSlug';
+    const returnSlug = opts.type === 'idToSlug' || opts.type === 'slugToSlug';
+
+    const user = this.cls.get('user');
+
+    if (!user) {
+      return null;
+    }
+
+    const convertId = async (id: string, to: 'slug' | 'id') => {
+      const cacheKey = `organization-${to === 'slug' ? 'slug-by-id' : 'id-by-slug'}:${user.organizationSlug}`;
+      const cachedOrganizationId = await this.cache.get<string>(cacheKey);
+
+      if (cachedOrganizationId) {
+        return cachedOrganizationId;
+      }
+      const organization = await this.organizationsRepository.findOne({
+        where: {
+          [to === 'slug' ? 'id' : 'slug']: id,
+        },
+      });
+
+      if (organization) {
+        await this.cache.set(
+          cacheKey,
+          organization.id,
+          1000 * 60 * 60 * 24, // 24 hours
+        );
+        return organization.id;
+      }
+    };
+
+    if (orgId && user.hasPermission(LEVEL.ADMIN)) {
+      if (noConvert) {
+        return orgId;
+      }
+
+      return await convertId(orgId, returnSlug ? 'slug' : 'id');
+    }
+
+    if (user.organizationSlug) {
+      if (returnSlug) {
+        return user.organizationSlug;
+      }
+
+      return await convertId(user.organizationSlug, 'id');
+    }
+
+    return null;
+  }
+
   private getCloudFrontUrlSigner() {
     return this.media.getCloudFrontUrlSigner('organization-policies');
   }
@@ -851,4 +931,8 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       group: group as typeof group & { id: string },
     };
   }
+}
+
+interface ValidateOrganizationIdOptions {
+  type: 'slugToId' | 'idToSlug' | 'idToId' | 'slugToSlug';
 }

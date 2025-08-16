@@ -8,8 +8,8 @@ export const asArray = <T, AllowNullish extends boolean | undefined = false>(
       ? [value]
       : []) as AllowNullish extends true ? (T | null | undefined)[] : T[];
 
-export const collapseArray = <T>(array: T[]): T | T[] | undefined =>
-  array.length > 1 ? array : array[0];
+export const single = <T>(value: T | T[] | null | undefined) =>
+  Array.isArray(value) ? value[0] : value;
 
 export const isUndefined = (obj: any): obj is undefined =>
   typeof obj === 'undefined';

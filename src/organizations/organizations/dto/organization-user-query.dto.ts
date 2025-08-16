@@ -106,7 +106,7 @@ export class OrganizationUserQueryDto {
       qs.push({
         groupQ: {
           key: 'id',
-          groups: asArray(this['groups.ids']!),
+          groups: asArray(this['groups.ids']),
           op: this['groups.op'] || 'all',
         },
       });

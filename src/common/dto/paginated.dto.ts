@@ -5,6 +5,7 @@ export class Paginated<T> {
   limit: number;
   offset: number;
   count: number;
+  pageCount: number;
   results: T[];
 
   static async fromQb<T extends ObjectLiteral>(
@@ -20,7 +21,8 @@ export class Paginated<T> {
 
     p.results = mappedResults;
     p.count = count;
-    p.limit = mappedResults.length;
+    p.pageCount = mappedResults.length;
+    p.limit = query.limit;
     p.offset = query.offset;
 
     return p;

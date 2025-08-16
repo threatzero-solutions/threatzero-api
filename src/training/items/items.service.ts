@@ -1,6 +1,13 @@
 import { format as csvFormat } from '@fast-csv/format';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import {
+  BadRequestException,
+  Inject,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cache } from 'cache-manager';
+import { RedisStore } from 'cache-manager-ioredis-yet';
 import { ClsService } from 'nestjs-cls';
 import { OpaqueTokenService } from 'src/auth/opaque-token.service';
 import { LEVEL } from 'src/auth/permissions';
@@ -9,15 +16,17 @@ import { BaseEntityService } from 'src/common/base-entity.service';
 import { BaseQueryDto } from 'src/common/dto/base-query.dto';
 import { Paginated } from 'src/common/dto/paginated.dto';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
+import { asArray, single } from 'src/common/utils';
 import { MediaService } from 'src/media/media.service';
 import {
   getOrganizationLevel,
   getUserUnitPredicate,
 } from 'src/organizations/common/organizations.utils';
 import { LmsViewershipTokenValueDto } from 'src/organizations/organizations/dto/lms-viewership-token-value.dto';
+import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
 import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
 import { UsersService } from 'src/users/users.service';
-import { DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
+import { DataSource, DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { filterTraining } from '../common/training.utils';
 import { CreateItemCompletionDto } from './dto/create-item-completion.dto';
@@ -37,10 +46,12 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     private itemsRepository: Repository<TrainingItem>,
     @InjectRepository(ItemCompletion)
     private itemCompletionsRepository: Repository<ItemCompletion>,
+    private dataSource: DataSource,
     private mediaService: MediaService,
     private opaqueTokenService: OpaqueTokenService,
     private organizationsService: OrganizationsService,
     private usersService: UsersService,
+    @Inject(CACHE_MANAGER) private cache: Cache<RedisStore>,
   ) {
     super();
   }
@@ -204,6 +215,30 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
   }
 
   async findItemCompletions(query: ItemCompletionQueryDto) {
+    // For certain types of queries, try to populate completion stats for users
+    // that haven't used the system yet.
+    const [organizationId, enrollmentId, itemIds] = [
+      single(query['user.organization.id']),
+      single(query['enrollment.id']),
+      asArray(query['item.id']),
+    ];
+    if (enrollmentId && itemIds.length > 0) {
+      // Use cache to avoid duplicate work.
+      const cacheKey = `item-completions-populate-${organizationId}-${enrollmentId}-${itemIds.join(',')}`;
+      const cached = await this.cache.get(cacheKey);
+      if (!cached) {
+        await this.populateEmptyItemCompletionsForUsers({
+          organizationId: organizationId ?? undefined,
+          enrollmentId,
+          itemIds,
+        }).catch((e) => {
+          console.error('error populating item completions', e);
+        });
+
+        await this.cache.set(cacheKey, true, 1000 * 60 * 60 * 24); // 24 hours
+      }
+    }
+
     return Paginated.fromQb(this.findItemCompletionsQb(query), query);
   }
 
@@ -328,5 +363,121 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     }
 
     throw new UnauthorizedException('No user information found.');
+  }
+
+  private async populateEmptyItemCompletionsForUsers({
+    organizationId,
+    itemIds,
+    enrollmentId,
+  }: {
+    organizationId?: string;
+    itemIds: string[];
+    enrollmentId: string;
+  }) {
+    const validOrganizationSlug =
+      await this.organizationsService.getValidOrganizationId(organizationId, {
+        type: 'idToSlug',
+      });
+
+    if (!validOrganizationSlug) return;
+
+    const enrollment = await this.dataSource
+      .getRepository(CourseEnrollment)
+      .findOne({
+        where: {
+          id: enrollmentId,
+        },
+        relations: {
+          course: {
+            audiences: true,
+            presentableBy: true,
+          },
+        },
+      });
+
+    if (!enrollment) return;
+
+    const trainingCourse = enrollment.course;
+    const relevantAudienceSlugs = [
+      ...trainingCourse.audiences,
+      ...trainingCourse.presentableBy,
+    ].map((a) => a.slug);
+
+    const batchSize = 50;
+    const batch: Parameters<
+      ReturnType<
+        ReturnType<
+          typeof this.itemCompletionsRepository.createQueryBuilder
+        >['insert']
+      >['values']
+    >[0] = [];
+
+    const processBatch = async () => {
+      await this.itemCompletionsRepository
+        .createQueryBuilder()
+        .insert()
+        .values(batch)
+        .orIgnore()
+        .execute();
+
+      batch.length = 0;
+    };
+
+    for await (const user of this.usersService.getAllUsersGenerator({
+      organizationSlug: validOrganizationSlug,
+    })) {
+      if (user.trainingItemId) {
+        if (!itemIds.includes(user.trainingItemId)) {
+          continue;
+        }
+      } else if (
+        !user.canAccessTraining ||
+        !user.audiences?.some((audience) =>
+          relevantAudienceSlugs.includes(audience),
+        )
+      ) {
+        continue;
+      }
+
+      const localUser = await this.usersService.updateRepresentation(
+        new StatelessUser(
+          user.id,
+          user.email,
+          [user.firstName, user.lastName].filter(Boolean).join(' '),
+          user.firstName,
+          user.lastName,
+          user.picture,
+          [],
+          [],
+          user.organizationSlug,
+          null,
+          user.unitSlug,
+          [],
+        ),
+      );
+
+      for (const itemId of itemIds) {
+        batch.push({
+          item: {
+            id: itemId,
+          },
+          enrollment: {
+            id: enrollmentId,
+          },
+          userId: localUser.id,
+          email: user.email,
+          url: 'https://threatzero.org',
+          audienceSlugs: user.audiences,
+        });
+
+        if (batch.length >= batchSize) {
+          await processBatch();
+        }
+      }
+    }
+
+    if (batch.length > 0) {
+      await processBatch();
+    }
   }
 }

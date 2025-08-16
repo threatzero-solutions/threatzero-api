@@ -1,13 +1,5 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Cache } from 'cache-manager';
-import { RedisStore } from 'cache-manager-ioredis-yet';
 import { ClsService } from 'nestjs-cls';
 import { LEVEL } from 'src/auth/permissions';
 import { BaseEntityService } from 'src/common/base-entity.service';
@@ -18,7 +10,7 @@ import { DataSource, Repository } from 'typeorm';
 import { getOrganizationLevel } from '../common/organizations.utils';
 import { LatestCourseEnrollmentsQueryDto } from './dto/latest-course-enrollments-query.dto';
 import { CourseEnrollment } from './entities/course-enrollment.entity';
-import { Organization } from './entities/organization.entity';
+import { OrganizationsService } from './organizations.service';
 
 @Injectable()
 export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
@@ -27,7 +19,7 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
     private courseEnrollmentsRepository: Repository<CourseEnrollment>,
     private dataSource: DataSource,
     private readonly cls: ClsService<CommonClsStore>,
-    @Inject(CACHE_MANAGER) private cache: Cache<RedisStore>,
+    private organizationsService: OrganizationsService,
   ) {
     super();
   }
@@ -227,41 +219,13 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
   }
 
   private async getValidOrganizationId(organizationId: string) {
-    const user = this.cls.get('user');
+    const validOrganizationId =
+      await this.organizationsService.getValidOrganizationId(organizationId);
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    if (!validOrganizationId) {
+      throw new NotFoundException('Organization not found');
     }
 
-    if (user.hasPermission(LEVEL.ADMIN)) {
-      return organizationId;
-    }
-
-    if (user.organizationSlug) {
-      const cacheKey = `organization-id-by-slug:${user.organizationSlug}`;
-      const cachedOrganizationId = await this.cache.get<string>(cacheKey);
-
-      if (cachedOrganizationId) {
-        return cachedOrganizationId;
-      }
-      const organization = await this.dataSource
-        .getRepository(Organization)
-        .findOne({
-          where: {
-            slug: user.organizationSlug,
-          },
-        });
-
-      if (organization) {
-        await this.cache.set(
-          cacheKey,
-          organization.id,
-          1000 * 60 * 60 * 24, // 24 hours
-        );
-        return organization.id;
-      }
-    }
-
-    throw new NotFoundException('Organization not found');
+    return validOrganizationId;
   }
 }
