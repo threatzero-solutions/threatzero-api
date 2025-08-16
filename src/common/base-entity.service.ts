@@ -7,7 +7,6 @@ import {
 } from 'typeorm';
 import { BaseQueryDto } from './dto/base-query.dto';
 import { Paginated } from './dto/paginated.dto';
-import { Page } from './types/page';
 
 export class BaseEntityService<E extends ObjectLiteral> {
   alias?: string;
@@ -59,7 +58,7 @@ export class BaseEntityService<E extends ObjectLiteral> {
   }
 
   async findAll(...args: unknown[]): Promise<E[]>;
-  async findAll(query: BaseQueryDto, ...args: unknown[]): Promise<Page<E>>;
+  async findAll(query: BaseQueryDto, ...args: unknown[]): Promise<Paginated<E>>;
   async findAll(query?: BaseQueryDto, ...args: unknown[]) {
     if (query) {
       return this.paginate(this.getQb(query, ...args), query);
