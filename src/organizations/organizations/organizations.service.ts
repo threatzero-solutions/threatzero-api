@@ -759,6 +759,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       count: 0,
       offset: 0,
       limit: 0,
+      pageCount: 0,
     };
 
     const user = this.cls.get('user');
@@ -798,9 +799,11 @@ export class OrganizationsService extends BaseEntityService<Organization> {
         limit,
         offset,
       })
-      .then((users) => ({
-        ...users,
-        results: users.results.map((user) =>
+      .then(({ results, limit: pageCount, ...rest }) => ({
+        ...rest,
+        limit,
+        pageCount,
+        results: results.map((user) =>
           plainToInstance(OrganizationUserDto, user, {
             excludeExtraneousValues: true,
           }),
