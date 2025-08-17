@@ -222,13 +222,13 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       single(query['enrollment.id']),
       asArray(query['item.id']),
     ];
-    if (enrollmentId && itemIds.length > 0) {
+    if (organizationId && enrollmentId && itemIds.length > 0) {
       // Use cache to avoid duplicate work.
       const cacheKey = `item-completions-populate-${organizationId}-${enrollmentId}-${itemIds.join(',')}`;
       const cached = await this.cache.get(cacheKey);
       if (!cached) {
         await this.populateEmptyItemCompletionsForUsers({
-          organizationId: organizationId ?? undefined,
+          organizationId,
           enrollmentId,
           itemIds,
         }).catch((e) => {
