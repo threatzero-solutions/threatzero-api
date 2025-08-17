@@ -110,11 +110,11 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
       .addSelect('enrollment."visibility"', 'visibility')
       .addSelect('enrollment."organizationId"', 'organizationId')
       .addSelect(
-        'enrollment."startDate" = MIN(enrollment."startDate") OVER (PARTITION BY enrollment."courseId")',
+        'enrollment."startDate" IS NULL OR enrollment."startDate" = MIN(enrollment."startDate") OVER (PARTITION BY enrollment."courseId")',
         'isEarliest',
       )
       .addSelect(
-        'enrollment."startDate" = MAX(enrollment."startDate") OVER (PARTITION BY enrollment."courseId")',
+        'enrollment."startDate" IS NULL OR enrollment."startDate" = MAX(enrollment."startDate") OVER (PARTITION BY enrollment."courseId")',
         'isLatest',
       )
       .from(CourseEnrollment, 'enrollment')
