@@ -9,6 +9,7 @@ import { TrainingVisibility } from 'src/training/common/training.types';
 import { DataSource, Repository } from 'typeorm';
 import { getOrganizationLevel } from '../common/organizations.utils';
 import { LatestCourseEnrollmentsQueryDto } from './dto/latest-course-enrollments-query.dto';
+import { RelativeCourseEnrollmentsQueryDto } from './dto/relative-course-enrollments-query.dto';
 import { CourseEnrollment } from './entities/course-enrollment.entity';
 import { OrganizationsService } from './organizations.service';
 
@@ -97,11 +98,15 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
       .getRawMany();
   }
 
-  async getRelativeEnrollment(organizationId: string, enrollmentId: string) {
+  async getRelativeEnrollment(
+    organizationId: string,
+    enrollmentId: string,
+    query: RelativeCourseEnrollmentsQueryDto,
+  ) {
     const validOrganizationId =
       await this.getValidOrganizationId(organizationId);
 
-    const rankedEnrollmentsQb = this.dataSource
+    let rankedEnrollmentsQb = this.dataSource
       .createQueryBuilder()
       .select('enrollment."courseId"', 'courseId')
       .addSelect('enrollment."id"', 'id')
@@ -122,6 +127,15 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
         organizationId: validOrganizationId,
       });
 
+    if (!query.includeHidden) {
+      rankedEnrollmentsQb = rankedEnrollmentsQb.andWhere(
+        'enrollment."visibility" = :visibility',
+        {
+          visibility: TrainingVisibility.VISIBLE,
+        },
+      );
+    }
+
     return await this.dataSource
       .createQueryBuilder()
       .addCommonTableExpression(rankedEnrollmentsQb, 'ranked_enrollments')
@@ -131,19 +145,29 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
       .getRawOne();
   }
 
-  async getPreviousEnrollment(organizationId: string, enrollmentId: string) {
+  async getPreviousEnrollment(
+    organizationId: string,
+    enrollmentId: string,
+    query: RelativeCourseEnrollmentsQueryDto,
+  ) {
     return await this.getAdjacentEnrollment(
       organizationId,
       enrollmentId,
       'previous',
+      query,
     );
   }
 
-  async getNextEnrollment(organizationId: string, enrollmentId: string) {
+  async getNextEnrollment(
+    organizationId: string,
+    enrollmentId: string,
+    query: RelativeCourseEnrollmentsQueryDto,
+  ) {
     return await this.getAdjacentEnrollment(
       organizationId,
       enrollmentId,
       'next',
+      query,
     );
   }
 
@@ -151,42 +175,59 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
     organizationId: string,
     enrollmentId: string,
     direction: 'previous' | 'next',
+    query: RelativeCourseEnrollmentsQueryDto,
   ) {
     const validOrganizationId =
       await this.getValidOrganizationId(organizationId);
 
+    let currentEnrollmentQb = this.dataSource
+      .createQueryBuilder()
+      .select('enrollment."courseId"', 'courseId')
+      .addSelect('enrollment."startDate"', 'startDate')
+      .from(CourseEnrollment, 'enrollment')
+      .where('enrollment."organizationId"::text = :organizationId', {
+        organizationId: validOrganizationId,
+      })
+      .andWhere('enrollment.id::text = :enrollmentId', {
+        enrollmentId,
+      });
+
+    if (!query.includeHidden) {
+      currentEnrollmentQb = currentEnrollmentQb.andWhere(
+        'enrollment."visibility" = :visibility',
+        {
+          visibility: TrainingVisibility.VISIBLE,
+        },
+      );
+    }
+
+    let enrollmentWindowQb = this.dataSource
+      .createQueryBuilder()
+      .select('enrollment."courseId"', 'courseId')
+      .addSelect('MIN(enrollment."startDate")', 'minStartDate')
+      .addSelect('MAX(enrollment."startDate")', 'maxStartDate')
+      .from(CourseEnrollment, 'enrollment')
+      .where('enrollment."organizationId"::text = :organizationId', {
+        organizationId: validOrganizationId,
+      })
+      .andWhere(
+        'enrollment."courseId" IN (SELECT "courseId" FROM current_enrollment)',
+      )
+      .groupBy('enrollment."courseId"');
+
+    if (!query.includeHidden) {
+      enrollmentWindowQb = enrollmentWindowQb.andWhere(
+        'enrollment."visibility" = :visibility',
+        {
+          visibility: TrainingVisibility.VISIBLE,
+        },
+      );
+    }
+
     return await this.dataSource
       .createQueryBuilder()
-      .addCommonTableExpression(
-        this.dataSource
-          .createQueryBuilder()
-          .select('enrollment."courseId"', 'courseId')
-          .addSelect('enrollment."startDate"', 'startDate')
-          .from(CourseEnrollment, 'enrollment')
-          .where('enrollment."organizationId"::text = :organizationId', {
-            organizationId: validOrganizationId,
-          })
-          .andWhere('enrollment.id::text = :enrollmentId', {
-            enrollmentId,
-          }),
-        'current_enrollment',
-      )
-      .addCommonTableExpression(
-        this.dataSource
-          .createQueryBuilder()
-          .select('enrollment."courseId"', 'courseId')
-          .addSelect('MIN(enrollment."startDate")', 'minStartDate')
-          .addSelect('MAX(enrollment."startDate")', 'maxStartDate')
-          .from(CourseEnrollment, 'enrollment')
-          .where('enrollment."organizationId"::text = :organizationId', {
-            organizationId: validOrganizationId,
-          })
-          .andWhere(
-            'enrollment."courseId" IN (SELECT "courseId" FROM current_enrollment)',
-          )
-          .groupBy('enrollment."courseId"'),
-        'enrollment_window',
-      )
+      .addCommonTableExpression(currentEnrollmentQb, 'current_enrollment')
+      .addCommonTableExpression(enrollmentWindowQb, 'enrollment_window')
       .select('ce.id', 'id')
       .addSelect('ce."courseId"', 'courseId')
       .addSelect('ce."startDate"', 'startDate')

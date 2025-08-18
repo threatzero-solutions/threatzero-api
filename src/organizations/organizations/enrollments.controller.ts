@@ -13,6 +13,7 @@ import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { CourseEnrollmentQueryDto } from './dto/course-enrollment-query.dto';
 import { CreateCourseEnrollmentDto } from './dto/create-course-enrollment.dto';
 import { LatestCourseEnrollmentsQueryDto } from './dto/latest-course-enrollments-query.dto';
+import { RelativeCourseEnrollmentsQueryDto } from './dto/relative-course-enrollments-query.dto';
 import { UpdateCourseEnrollmentDto } from './dto/update-course-enrollment.dto';
 import { EnrollmentsService } from './enrollments.service';
 import { CourseEnrollment } from './entities/course-enrollment.entity';
@@ -43,24 +44,35 @@ export class EnrollmentsController {
   getRelativeEnrollment(
     @Param('id') id: string,
     @Param('enrollmentId') enrollmentId: string,
+    @Query() query: RelativeCourseEnrollmentsQueryDto,
   ) {
-    return this.enrollmentsService.getRelativeEnrollment(id, enrollmentId);
+    return this.enrollmentsService.getRelativeEnrollment(
+      id,
+      enrollmentId,
+      query,
+    );
   }
 
   @Get(':enrollmentId/previous')
   getPreviousEnrollment(
     @Param('id') id: string,
     @Param('enrollmentId') enrollmentId: string,
+    @Query() query: RelativeCourseEnrollmentsQueryDto,
   ) {
-    return this.enrollmentsService.getPreviousEnrollment(id, enrollmentId);
+    return this.enrollmentsService.getPreviousEnrollment(
+      id,
+      enrollmentId,
+      query,
+    );
   }
 
   @Get(':enrollmentId/next')
   getNextEnrollment(
     @Param('id') id: string,
     @Param('enrollmentId') enrollmentId: string,
+    @Query() query: RelativeCourseEnrollmentsQueryDto,
   ) {
-    return this.enrollmentsService.getNextEnrollment(id, enrollmentId);
+    return this.enrollmentsService.getNextEnrollment(id, enrollmentId, query);
   }
 
   @Post()
