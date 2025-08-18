@@ -1,31 +1,31 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  Query,
-  HttpStatus,
+  Get,
   HttpCode,
-  Res,
-  Req,
+  HttpStatus,
   Logger,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
 } from '@nestjs/common';
-import { ItemsService } from './items.service';
-import { CreateItemDto } from './dto/create-item.dto';
-import { UpdateItemDto } from './dto/update-item.dto';
+import { Request, Response } from 'express';
+import { Public } from 'src/auth/auth.guard';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
-import { TrainingItem } from './entities/item.entity';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { BaseQueryTrainingDto } from '../common/dto/base-query-training.dto';
-import { Public } from 'src/auth/auth.guard';
-import { ItemCompletion } from './entities/item-completion.entity';
-import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
-import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
 import { CreateItemCompletionDto } from './dto/create-item-completion.dto';
-import { Request, Response } from 'express';
+import { CreateItemDto } from './dto/create-item.dto';
+import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
+import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
+import { ItemCompletion } from './entities/item-completion.entity';
+import { TrainingItem } from './entities/item.entity';
+import { ItemsService } from './items.service';
 
 @Controller('training/items')
 @CheckPolicies(new EntityAbilityChecker(TrainingItem))

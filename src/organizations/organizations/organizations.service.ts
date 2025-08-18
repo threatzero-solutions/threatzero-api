@@ -694,7 +694,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     }
 
     const convertId = async (id: string, to: 'slug' | 'id') => {
-      const cacheKey = `organization-${to === 'slug' ? 'slug-by-id' : 'id-by-slug'}:${user.organizationSlug}`;
+      const cacheKey = `organizations:${to === 'slug' ? 'slug-by-id' : 'id-by-slug'}:${user.organizationSlug}`;
       const cachedOrganizationId = await this.cache.get<string>(cacheKey);
 
       if (cachedOrganizationId) {
@@ -706,13 +706,14 @@ export class OrganizationsService extends BaseEntityService<Organization> {
         },
       });
 
+      const returnId = to === 'slug' ? organization?.slug : organization?.id;
       if (organization) {
         await this.cache.set(
           cacheKey,
-          organization.id,
+          returnId,
           1000 * 60 * 60 * 24, // 24 hours
         );
-        return organization.id;
+        return returnId;
       }
     };
 
