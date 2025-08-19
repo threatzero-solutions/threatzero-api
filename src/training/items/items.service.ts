@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   Inject,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -38,6 +39,7 @@ import { TrainingItem } from './entities/item.entity';
 import { Video } from './entities/video-item.entity';
 
 export class ItemsService extends BaseEntityService<TrainingItem> {
+  private readonly logger = new Logger(ItemsService.name);
   alias = 'item';
 
   constructor(
@@ -241,7 +243,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
           enrollmentId,
           itemIds,
         }).catch((e) => {
-          console.error('error populating item completions', e);
+          this.logger.error('error populating item completions', e);
         });
 
         await this.cache.set(cacheKey, true, 1000 * 60 * 60 * 24); // 24 hours
@@ -383,27 +385,31 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     itemIds: string[];
     enrollmentId: string;
   }) {
-    const enrollment = await this.dataSource
+    const enrollmentWithRelevantAudienceSlugs = await this.dataSource
       .getRepository(CourseEnrollment)
-      .findOne({
-        where: {
-          id: enrollmentId,
-        },
-        relations: {
-          course: {
-            audiences: true,
-            presentableBy: true,
-          },
-        },
-      });
+      .createQueryBuilder('enrollment')
+      .leftJoinAndSelect('enrollment.course', 'course')
+      .leftJoin('course.audiences', 'audiences')
+      .leftJoin('course.presentableBy', 'presentableBy')
+      .select([
+        'enrollment.id',
+        'course.id',
+        'audiences.slug',
+        'presentableBy.slug',
+      ])
+      .where('enrollment.id = :enrollmentId', { enrollmentId })
+      .getOne();
 
-    if (!enrollment) return;
+    if (!enrollmentWithRelevantAudienceSlugs) return;
 
-    const trainingCourse = enrollment.course;
     const relevantAudienceSlugs = [
-      ...trainingCourse.audiences,
-      ...trainingCourse.presentableBy,
-    ].map((a) => a.slug);
+      ...enrollmentWithRelevantAudienceSlugs.course.audiences.map(
+        (a) => a.slug,
+      ),
+      ...enrollmentWithRelevantAudienceSlugs.course.presentableBy.map(
+        (a) => a.slug,
+      ),
+    ];
 
     const batchSize = 50;
     const batch: Parameters<
@@ -430,6 +436,10 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     })) {
       if (user.trainingItemId) {
         if (!itemIds.includes(user.trainingItemId)) {
+          continue;
+        }
+
+        if (user.enrollmentId && user.enrollmentId !== enrollmentId) {
           continue;
         }
       } else if (

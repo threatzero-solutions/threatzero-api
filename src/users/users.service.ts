@@ -543,8 +543,8 @@ export class UsersService {
       name:
         [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
       picture: getUserAttr(user.attributes?.picture),
-      organizationSlug: getUserAttr(user.attributes?.organizationSlug),
-      unitSlug: getUserAttr(user.attributes?.unitSlug),
+      organizationSlug: getUserAttr(user.attributes?.organization),
+      unitSlug: getUserAttr(user.attributes?.unit),
       audiences: user.attributes?.audience ?? [],
       source: 'keycloak',
       canAccessTraining: !!user.groups?.includes(
