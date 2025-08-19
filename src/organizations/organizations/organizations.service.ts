@@ -697,7 +697,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     }
 
     const convertId = async (id: string, to: 'slug' | 'id') => {
-      const cacheKey = `organizations:${to === 'slug' ? 'slug-by-id' : 'id-by-slug'}:${user.organizationSlug}`;
+      const cacheKey = `organizations:${to === 'slug' ? 'slug-by-id' : 'id-by-slug'}:${id}`;
       const cachedOrganizationId = await this.cache.get<string>(cacheKey);
 
       if (cachedOrganizationId) {
