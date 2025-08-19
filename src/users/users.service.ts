@@ -493,11 +493,13 @@ export class UsersService {
       while (true) {
         const opaqueTokenQuery = new TrainingTokenQueryDto();
         opaqueTokenQuery.type = 'training';
+        opaqueTokenQuery.limit = batchSize;
+        opaqueTokenQuery.offset = skip;
         if (organizationSlug) {
           opaqueTokenQuery['value.organizationSlug'] = organizationSlug;
         }
         const opaqueTokens = (await this.opaqueTokenService
-          .getQb(opaqueTokenQuery, (qb) => qb.skip(skip).take(batchSize))
+          .getQb(opaqueTokenQuery)
           .getMany()) as OpaqueToken<TrainingParticipantRepresentationDto>[];
 
         if (!opaqueTokens || opaqueTokens.length === 0) {
