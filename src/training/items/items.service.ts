@@ -222,13 +222,22 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       single(query['enrollment.id']),
       asArray(query['item.id']),
     ];
-    if (organizationId && enrollmentId && itemIds.length > 0) {
+
+    const validOrganizationSlug =
+      await this.organizationsService.getValidOrganizationId(
+        organizationId ?? undefined,
+        {
+          type: 'idToSlug',
+        },
+      );
+
+    if (validOrganizationSlug && enrollmentId && itemIds.length > 0) {
       // Use cache to avoid duplicate work.
-      const cacheKey = `item-completions-populate-${organizationId}-${enrollmentId}-${itemIds.join(',')}`;
+      const cacheKey = `item-completions-populate:${validOrganizationSlug}:${enrollmentId}:${itemIds.join(',')}`;
       const cached = await this.cache.get(cacheKey);
       if (!cached) {
         await this.populateEmptyItemCompletionsForUsers({
-          organizationId,
+          organizationSlug: validOrganizationSlug,
           enrollmentId,
           itemIds,
         }).catch((e) => {
@@ -366,21 +375,14 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
   }
 
   private async populateEmptyItemCompletionsForUsers({
-    organizationId,
+    organizationSlug,
     itemIds,
     enrollmentId,
   }: {
-    organizationId?: string;
+    organizationSlug?: string;
     itemIds: string[];
     enrollmentId: string;
   }) {
-    const validOrganizationSlug =
-      await this.organizationsService.getValidOrganizationId(organizationId, {
-        type: 'idToSlug',
-      });
-
-    if (!validOrganizationSlug) return;
-
     const enrollment = await this.dataSource
       .getRepository(CourseEnrollment)
       .findOne({
@@ -424,7 +426,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     };
 
     for await (const user of this.usersService.getAllUsersGenerator({
-      organizationSlug: validOrganizationSlug,
+      organizationSlug,
     })) {
       if (user.trainingItemId) {
         if (!itemIds.includes(user.trainingItemId)) {
