@@ -4,18 +4,32 @@ import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { ResourceItem } from 'src/resources/entities/resource.entity';
 import { OrganizationPolicyFile } from 'src/safety-management/common/entities/organization-policy-file.entity';
 import {
-  Entity,
   Column,
+  Entity,
+  Index,
+  ManyToMany,
   OneToMany,
   Relation,
-  ManyToMany,
-  Index,
 } from 'typeorm';
-import { CourseEnrollment } from './course-enrollment.entity';
+import { OrganizationNotificationSettingsDto } from '../dto/organization-notification-settings.dto';
 import { OrganizationTrainingAccessSettingsDto } from '../dto/organization-training-access-settings.dto';
+import { CourseEnrollment } from './course-enrollment.entity';
+
+export enum OrganizationStatus {
+  PENDING = 'pending',
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
 
 @Entity()
 export class Organization extends OrganizationBase {
+  @Column({
+    type: 'enum',
+    enum: OrganizationStatus,
+    default: OrganizationStatus.ACTIVE,
+  })
+  status: OrganizationStatus;
+
   @Index()
   @Column({ length: 64, unique: true })
   slug: string;
@@ -45,13 +59,14 @@ export class Organization extends OrganizationBase {
   @Column({ nullable: true, type: 'jsonb' })
   idpSlugs: string[] | null;
 
-  // TODO: This is not being used yet. Could be used to control which role groups
-  // organizations can access.
   @Column({ nullable: true, type: 'jsonb' })
   allowedRoleGroups: string[] | null;
 
   @Column({ type: 'jsonb', nullable: true })
   trainingAccessSettings: OrganizationTrainingAccessSettingsDto | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  notificationSettings: OrganizationNotificationSettingsDto | null;
 
   sign(signer: (k: string) => string) {
     if (this.policiesAndProcedures?.length) {

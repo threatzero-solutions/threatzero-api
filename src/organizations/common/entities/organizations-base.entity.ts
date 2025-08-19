@@ -1,6 +1,6 @@
 import { Base } from 'src/common/base.entity';
 import { SafetyContact } from 'src/safety-management/common/entities/safety-contact.entity';
-import { Column, Relation, OneToOne, JoinColumn } from 'typeorm';
+import { Column, JoinColumn, OneToOne, Relation } from 'typeorm';
 
 export class OrganizationBase extends Base {
   @Column({ length: 128 })

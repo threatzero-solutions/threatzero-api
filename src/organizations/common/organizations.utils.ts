@@ -175,3 +175,6 @@ export async function generatePolicyUploadUrls(
     }),
   );
 }
+
+export const buildOrganizationStatusCacheKey = (organizationSlug: string) =>
+  `organizations:status-by-slug:${organizationSlug}`;

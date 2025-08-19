@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import { DEFAULT_THUMBNAIL_URL } from 'src/common/constants/items.constants';
 import { MediaService } from 'src/media/media.service';
+import { OrganizationStatus } from 'src/organizations/organizations/entities/organization.entity';
 import { UsersService } from 'src/users/users.service';
 import { In, Repository } from 'typeorm';
 import { KeycloakAdminClientService } from '../../auth/keycloak-admin-client/keycloak-admin-client.service';
@@ -80,6 +81,9 @@ export class TrainingReminderTasks {
         .andWhere('enrollment.visibility = :visibility', {
           visibility: TrainingVisibility.VISIBLE,
         })
+        .andWhere('organization.status = :status', {
+          status: OrganizationStatus.ACTIVE,
+        })
         .getMany();
 
       this.logger.log(
@@ -119,7 +123,11 @@ export class TrainingReminderTasks {
               ),
             );
 
-            if (today.isSame(initialReminderDate, 'day')) {
+            if (
+              today.isSame(initialReminderDate, 'day') &&
+              enrollment.organization.notificationSettings
+                ?.initialReminderEmailsEnabled
+            ) {
               this.logger.log(
                 `Sending initial reminders for enrollment ${enrollment.id}, section ${section.id}`,
               );
@@ -131,7 +139,11 @@ export class TrainingReminderTasks {
               processedCount++;
             }
 
-            if (today.isSame(followupReminderDate, 'day')) {
+            if (
+              today.isSame(followupReminderDate, 'day') &&
+              enrollment.organization.notificationSettings
+                ?.followUpReminderEmailsEnabled
+            ) {
               this.logger.log(
                 `Sending follow-up reminders for enrollment ${enrollment.id}, section ${section.id}`,
               );

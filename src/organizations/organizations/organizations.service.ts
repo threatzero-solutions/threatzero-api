@@ -37,6 +37,7 @@ import { TrainingVisibility } from 'src/training/common/training.types';
 import { PassThrough } from 'stream';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import {
+  buildOrganizationStatusCacheKey,
   buildUnitPaths,
   generatePolicyUploadUrls,
   getOrganizationLevel,
@@ -175,6 +176,8 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       ORGANIZATION_CHANGED_EVENT,
       BaseOrganizationChangeEvent.forOrganization(organization),
     );
+
+    await this.cache.del(buildOrganizationStatusCacheKey(organization.slug));
   }
 
   async beforeRemove(id: Organization['id']) {
