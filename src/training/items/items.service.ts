@@ -391,6 +391,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       .leftJoinAndSelect('enrollment.course', 'course')
       .leftJoin('course.audiences', 'audiences')
       .leftJoin('course.presentableBy', 'presentableBy')
+      .leftJoin('enrollment.organization', 'organization')
       .select([
         'enrollment.id',
         'course.id',
@@ -398,6 +399,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
         'presentableBy.slug',
       ])
       .where('enrollment.id = :enrollmentId', { enrollmentId })
+      .andWhere('organization.slug = :organizationSlug', { organizationSlug })
       .getOne();
 
     if (!enrollmentWithRelevantAudienceSlugs) return;
