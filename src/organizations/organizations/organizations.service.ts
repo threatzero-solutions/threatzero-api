@@ -37,16 +37,20 @@ import { TrainingVisibility } from 'src/training/common/training.types';
 import { PassThrough } from 'stream';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import {
+  ORGANIZATION_CHANGED_EVENT,
+  ORGANIZATION_REMOVED_EVENT,
+  ORGANIZATION_USER_CREATED_EVENT,
+  ORGANIZATION_USER_DELETED_EVENT,
+  ORGANIZATION_USER_UPDATED_EVENT,
+} from '../common/events';
+import {
   buildOrganizationStatusCacheKey,
   buildUnitPaths,
   generatePolicyUploadUrls,
   getOrganizationLevel,
 } from '../common/organizations.utils';
 import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
-import {
-  ORGANIZATION_CHANGED_EVENT,
-  ORGANIZATION_REMOVED_EVENT,
-} from '../listeners/organization-change.listener';
+import { BaseOrganizationUserChangeEvent } from '../events/base-organization-user-change-event';
 import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from './constants';
 import { CreateOrganizationIdpDto } from './dto/create-organization-idp.dto';
 import { CreateOrganizationUserDto } from './dto/create-organization-user.dto';
@@ -518,13 +522,20 @@ export class OrganizationsService extends BaseEntityService<Organization> {
       );
     }
 
-    return this.keycloakClient.client.users
+    const createdUserDto = await this.keycloakClient.client.users
       .findOne({ id: userId })
       .then((user) =>
         plainToInstance(OrganizationUserDto, user, {
           excludeExtraneousValues: true,
         }),
       );
+
+    this.eventEmitter.emit(
+      ORGANIZATION_USER_CREATED_EVENT,
+      BaseOrganizationUserChangeEvent.forUser(createdUserDto, organization),
+    );
+
+    return createdUserDto;
   }
 
   async updateOrganizationUser(
@@ -583,18 +594,37 @@ export class OrganizationsService extends BaseEntityService<Organization> {
         throw e;
       });
 
-    return this.keycloakClient.client.users
+    const updatedUserDto = await this.keycloakClient.client.users
       .findOne({ id: userId })
       .then((user) =>
         plainToInstance(OrganizationUserDto, user, {
           excludeExtraneousValues: true,
         }),
       );
+
+    this.eventEmitter.emit(
+      ORGANIZATION_USER_UPDATED_EVENT,
+      BaseOrganizationUserChangeEvent.forUser(updatedUserDto, organization),
+    );
+
+    return updatedUserDto;
   }
 
   async deleteOrganizationUser(id: Organization['id'], userId: string) {
-    return this.getOrganizationUserContext(id, userId).then(({ user }) =>
-      this.keycloakClient.client.users.del({ id: user.id }),
+    const context = await this.getOrganizationUserContext(id, userId).then(
+      (context) => {
+        const { user } = context;
+        this.keycloakClient.client.users.del({ id: user.id });
+        return context;
+      },
+    );
+
+    this.eventEmitter.emit(
+      ORGANIZATION_USER_DELETED_EVENT,
+      BaseOrganizationUserChangeEvent.forUser(
+        context.user,
+        context.organization,
+      ),
     );
   }
 

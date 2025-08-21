@@ -1,18 +1,11 @@
-import { Expose, Type } from 'class-transformer';
-import {
-  IsBoolean,
-  IsIn,
-  IsOptional,
-  IsString,
-  IsUUID,
-  ValidateNested,
-} from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsIn, IsOptional, ValidateNested } from 'class-validator';
 import {
   BaseQueryOrderDto,
   QueryOrder,
   QueryOrderOptions,
 } from 'src/common/dto/base-query-order.dto';
-import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { ItemCompletionsSummaryQueryDto } from './item-completions-summary-query.dto';
 
 export class ItemCompletionQueryOrderDto extends BaseQueryOrderDto {
   @IsOptional()
@@ -71,45 +64,7 @@ export class ItemCompletionQueryOrderDto extends BaseQueryOrderDto {
 const defaultOrder = new ItemCompletionQueryOrderDto();
 defaultOrder.createdOn = 'DESC';
 
-export class ItemCompletionQueryDto extends BaseQueryDto {
-  @IsOptional()
-  @IsBoolean()
-  completed?: boolean;
-
-  @IsOptional()
-  @IsUUID('4', { each: true })
-  ['enrollment.id']?: string | string[];
-
-  @IsOptional()
-  @IsUUID('4', { each: true })
-  ['enrollment.course.id']?: string | string[];
-
-  @IsOptional()
-  @IsUUID('4', { each: true })
-  ['section.id']?: string | string[];
-
-  @IsOptional()
-  @IsUUID('4', { each: true })
-  ['item.id']?: string | string[];
-
-  @IsOptional()
-  @IsUUID('4', { each: true })
-  @Expose({ groups: ['admin'] })
-  ['user.organization.id']?: string | string[];
-
-  @IsOptional()
-  @IsString({ each: true })
-  @Expose({ groups: ['admin'] })
-  ['user.organization.slug']?: string | string[];
-
-  @IsOptional()
-  @IsUUID('4', { each: true })
-  ['user.unit.id']?: string | string[];
-
-  @IsOptional()
-  @IsString({ each: true })
-  ['user.unit.slug']?: string | string[];
-
+export class ItemCompletionQueryDto extends ItemCompletionsSummaryQueryDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => ItemCompletionQueryOrderDto)

@@ -12,6 +12,7 @@ import { GetPresignedUploadUrlsDto } from 'src/media/dto/get-presigned-upload-ur
 import { MediaService } from 'src/media/media.service';
 import { Repository } from 'typeorm';
 import { DEFAULT_UNIT_SLUG } from '../common/constants';
+import { UNIT_CHANGED_EVENT, UNIT_REMOVED_EVENT } from '../common/events';
 import {
   buildUnitPaths,
   generatePolicyUploadUrls,
@@ -19,10 +20,6 @@ import {
   getUserUnitPredicate,
 } from '../common/organizations.utils';
 import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
-import {
-  UNIT_CHANGED_EVENT,
-  UNIT_REMOVED_EVENT,
-} from '../listeners/organization-change.listener';
 import { Unit } from './entities/unit.entity';
 
 export class UnitsService extends BaseEntityService<Unit> {

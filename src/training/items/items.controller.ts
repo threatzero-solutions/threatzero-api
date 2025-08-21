@@ -21,6 +21,7 @@ import { BaseQueryTrainingDto } from '../common/dto/base-query-training.dto';
 import { CreateItemCompletionDto } from './dto/create-item-completion.dto';
 import { CreateItemDto } from './dto/create-item.dto';
 import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
+import { ItemCompletionsSummaryQueryDto } from './dto/item-completions-summary-query.dto';
 import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemCompletion } from './entities/item-completion.entity';
@@ -74,6 +75,12 @@ export class ItemsController {
   @Get('completions')
   findItemCompletions(@Query() query: ItemCompletionQueryDto) {
     return this.itemsService.findItemCompletions(query);
+  }
+
+  @CheckPolicies(new EntityAbilityChecker(ItemCompletion))
+  @Get('completions/summary')
+  getItemCompletionsSummary(@Query() query: ItemCompletionsSummaryQueryDto) {
+    return this.itemsService.getItemCompletionsSummary(query);
   }
 
   @CheckPolicies(new EntityAbilityChecker(ItemCompletion))

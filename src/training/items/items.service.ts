@@ -6,6 +6,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cache } from 'cache-manager';
 import { RedisStore } from 'cache-manager-ioredis-yet';
@@ -19,10 +20,13 @@ import { Paginated } from 'src/common/dto/paginated.dto';
 import { CommonClsStore } from 'src/common/types/common-cls-store';
 import { asArray, single } from 'src/common/utils';
 import { MediaService } from 'src/media/media.service';
+import { ORGANIZATION_USER_CREATED_EVENT } from 'src/organizations/common/events';
 import {
   getOrganizationLevel,
   getUserUnitPredicate,
+  scopeToOrganizationLevel,
 } from 'src/organizations/common/organizations.utils';
+import { BaseOrganizationUserChangeEvent } from 'src/organizations/events/base-organization-user-change-event';
 import { LmsViewershipTokenValueDto } from 'src/organizations/organizations/dto/lms-viewership-token-value.dto';
 import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
 import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
@@ -32,6 +36,7 @@ import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity
 import { filterTraining } from '../common/training.utils';
 import { CreateItemCompletionDto } from './dto/create-item-completion.dto';
 import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
+import { ItemCompletionsSummaryQueryDto } from './dto/item-completions-summary-query.dto';
 import { TrainingParticipantRepresentationDto } from './dto/training-participant-representation.dto';
 import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
 import { ItemCompletion } from './entities/item-completion.entity';
@@ -41,6 +46,9 @@ import { Video } from './entities/video-item.entity';
 export class ItemsService extends BaseEntityService<TrainingItem> {
   private readonly logger = new Logger(ItemsService.name);
   alias = 'item';
+
+  private readonly CHECK_POPULATE_TRAINING_COMPLETIONS_FROM_USERS_SET_KEY =
+    'check-populate-training-completions-from-users';
 
   constructor(
     private readonly cls: ClsService<CommonClsStore>,
@@ -216,7 +224,27 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     return Paginated.fromQb(qb, query);
   }
 
-  async findItemCompletions(query: ItemCompletionQueryDto) {
+  @OnEvent(ORGANIZATION_USER_CREATED_EVENT)
+  async handleOrganizationUserCreatedEvent(
+    event: BaseOrganizationUserChangeEvent,
+  ) {
+    const pattern = `${event.organizationSlug}:*`;
+    const members: string[] = [];
+
+    for await (const values of this.cache.store.client.sscanStream(
+      this.CHECK_POPULATE_TRAINING_COMPLETIONS_FROM_USERS_SET_KEY,
+      { match: pattern },
+    )) {
+      members.push(...values);
+    }
+
+    await this.cache.store.client.srem(
+      this.CHECK_POPULATE_TRAINING_COMPLETIONS_FROM_USERS_SET_KEY,
+      ...members,
+    );
+  }
+
+  async getItemCompletionsSummary(query: ItemCompletionsSummaryQueryDto) {
     // For certain types of queries, try to populate completion stats for users
     // that haven't used the system yet.
     const [organizationId, enrollmentId, itemIds] = [
@@ -234,10 +262,19 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       );
 
     if (validOrganizationSlug && enrollmentId && itemIds.length > 0) {
-      // Use cache to avoid duplicate work.
-      const cacheKey = `item-completions-populate:${validOrganizationSlug}:${enrollmentId}:${itemIds.join(',')}`;
-      const cached = await this.cache.get(cacheKey);
-      if (!cached) {
+      // Use Redis set to avoid duplicate work by checking if this population
+      // process has already been run.
+      const memberValue = [
+        validOrganizationSlug,
+        enrollmentId,
+        itemIds.join(','),
+      ].join(':');
+      const alreadyPopulated = await this.cache.store.client.sismember(
+        this.CHECK_POPULATE_TRAINING_COMPLETIONS_FROM_USERS_SET_KEY,
+        memberValue,
+      );
+
+      if (!alreadyPopulated) {
         await this.populateEmptyItemCompletionsForUsers({
           organizationSlug: validOrganizationSlug,
           enrollmentId,
@@ -246,10 +283,45 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
           this.logger.error('error populating item completions', e);
         });
 
-        await this.cache.set(cacheKey, true, 1000 * 60 * 60 * 24); // 24 hours
+        await this.cache.store.client.sadd(
+          this.CHECK_POPULATE_TRAINING_COMPLETIONS_FROM_USERS_SET_KEY,
+          memberValue,
+        );
       }
     }
 
+    let subQb = this.itemCompletionsRepository
+      .createQueryBuilder('sub_completions')
+      .select('sub_completions.completed', 'completed')
+      .leftJoin(`sub_completions.user`, 'user')
+      .leftJoin(`user.organization`, 'organization')
+      .leftJoin(`user.unit`, 'unit')
+      .leftJoin(`sub_completions.enrollment`, 'enrollment')
+      .leftJoin(`sub_completions.item`, 'item');
+
+    const user = this.cls.get('user');
+    subQb = scopeToOrganizationLevel(user, subQb, 'user.unit');
+    subQb = query.applyToQb(subQb);
+
+    // Move parameters from inner query to outer query.
+    const parameters = subQb.getParameters();
+
+    const qb = this.dataSource
+      .createQueryBuilder()
+      .select(
+        `COUNT(CASE WHEN completions.completed = TRUE THEN 1 END)::int`,
+        'totalComplete',
+      )
+      .addSelect(
+        `COUNT(CASE WHEN completions.completed = FALSE THEN 1 END)::int`,
+        'totalIncomplete',
+      )
+      .from(`(${subQb.getQuery()})`, 'completions');
+
+    return qb.setParameters(parameters).getRawOne();
+  }
+
+  async findItemCompletions(query: ItemCompletionQueryDto) {
     return Paginated.fromQb(this.findItemCompletionsQb(query), query);
   }
 
@@ -288,12 +360,12 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       });
   }
 
-  private findItemCompletionsQb(query: ItemCompletionQueryDto) {
+  private findItemCompletionsQb(query: ItemCompletionsSummaryQueryDto) {
     return this.getItemCompletionsQb(query);
   }
 
   private getItemCompletionsQb(
-    query: ItemCompletionQueryDto,
+    query: ItemCompletionsSummaryQueryDto,
     forOwnerId?: string,
   ) {
     let qb = this.itemCompletionsRepository.createQueryBuilder();

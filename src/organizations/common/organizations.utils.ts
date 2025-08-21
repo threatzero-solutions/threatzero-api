@@ -25,9 +25,7 @@ export const getOrganizationLevel = (user: StatelessUser | undefined) => {
   }
 };
 
-export const scopeToOrganizationLevel = <
-  T extends ObjectLiteral & { unit: Unit },
->(
+export const scopeToOrganizationLevel = <T extends ObjectLiteral>(
   user: StatelessUser | undefined,
   qb: SelectQueryBuilder<T>,
   // eslint-disable-next-line @typescript-eslint/ban-types

@@ -10,14 +10,15 @@ import {
   DEFAULT_UNIT_SLUG,
   UNIT_TATS_GROUP_NAME,
 } from '../common/constants';
+import {
+  ORGANIZATION_CHANGED_EVENT,
+  ORGANIZATION_REMOVED_EVENT,
+  UNIT_CHANGED_EVENT,
+  UNIT_REMOVED_EVENT,
+} from '../common/events';
 import { BaseOrganizationChangeEvent } from '../events/base-organization-change.event';
 import { Organization } from '../organizations/entities/organization.entity';
 import { Unit } from '../units/entities/unit.entity';
-
-export const ORGANIZATION_CHANGED_EVENT = 'organization.changed';
-export const ORGANIZATION_REMOVED_EVENT = 'organization.removed';
-export const UNIT_CHANGED_EVENT = 'unit.changed';
-export const UNIT_REMOVED_EVENT = 'unit.removed';
 
 @Injectable()
 export class OrganizationChangeListener {
