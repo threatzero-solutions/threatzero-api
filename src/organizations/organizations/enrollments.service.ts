@@ -41,13 +41,9 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
         return qb;
       default:
         return user?.organizationSlug
-          ? qb
-              .andWhere(`organization.slug = :organizationSlug`, {
-                organizationSlug: user.organizationSlug,
-              })
-              .andWhere(`${qb.alias}.visibility = :visibility`, {
-                visibility: TrainingVisibility.VISIBLE,
-              })
+          ? qb.andWhere(`organization.slug = :organizationSlug`, {
+              organizationSlug: user.organizationSlug,
+            })
           : qb.where('1 = 0');
     }
   }
