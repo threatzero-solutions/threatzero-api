@@ -41,9 +41,13 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
         return qb;
       default:
         return user?.organizationSlug
-          ? qb.andWhere(`organization.slug = :organizationSlug`, {
-              organizationSlug: user.organizationSlug,
-            })
+          ? qb
+              .andWhere(`organization.slug = :organizationSlug`, {
+                organizationSlug: user.organizationSlug,
+              })
+              .andWhere(`${qb.alias}.visibility = :visibility`, {
+                visibility: TrainingVisibility.VISIBLE,
+              })
           : qb.where('1 = 0');
     }
   }
@@ -136,13 +140,19 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
       );
     }
 
-    return await this.dataSource
+    const result = await this.dataSource
       .createQueryBuilder()
       .addCommonTableExpression(rankedEnrollmentsQb, 'ranked_enrollments')
       .select('*')
       .from('ranked_enrollments', 'ranked_enrollments')
       .where('id::text = :id', { id: enrollmentId })
       .getRawOne();
+
+    if (!result) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    return result;
   }
 
   async getPreviousEnrollment(
@@ -224,7 +234,7 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
       );
     }
 
-    return await this.dataSource
+    const result = await this.dataSource
       .createQueryBuilder()
       .addCommonTableExpression(currentEnrollmentQb, 'current_enrollment')
       .addCommonTableExpression(enrollmentWindowQb, 'enrollment_window')
@@ -257,6 +267,12 @@ export class EnrollmentsService extends BaseEntityService<CourseEnrollment> {
       .orderBy('ce."startDate"', direction === 'next' ? 'ASC' : 'DESC')
       .limit(1)
       .getRawOne();
+
+    if (!result) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    return result;
   }
 
   private async getValidOrganizationId(organizationId: string) {
