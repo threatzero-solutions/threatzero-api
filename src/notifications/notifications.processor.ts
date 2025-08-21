@@ -81,6 +81,11 @@ export class NotificationsProcessor extends WorkerHost {
     this.logger.error(`Job ${job.name} failed`, error.stack);
   }
 
+  @OnWorkerEvent('error')
+  async onWorkerError(job: Job<unknown>, error: Error) {
+    this.logger.error(`Job ${job.name} errored`, error.stack);
+  }
+
   private async sendEmailNotification(data: any) {
     const params: SendEmailCommandInput = {
       FromEmailAddress: this.config.getOrThrow<string>(

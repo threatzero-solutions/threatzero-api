@@ -35,6 +35,7 @@ import corsConfig from './config/cors.config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ScopedValidationPipe } from './common/pipes/scoped-validation/scoped-validation.pipe';
 import { ScopedClassSerializerInterceptor } from './common/scoped-class-serializer.interceptor';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { ScopedClassSerializerInterceptor } from './common/scoped-class-serializ
     HealthModule,
     SafetyManagementModule,
     LanguagesModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

@@ -10,6 +10,8 @@ import { PinpointSmsService } from 'src/aws/pinpoint-sms/pinpoint-sms.service';
 import { AuthModule } from 'src/auth/auth.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { CacheConfigService } from 'src/common/cache-config/cache-config.service';
+import { NotificationsController } from './notifications.controller';
+import { NotificationsService } from './notifications.service';
 
 @Module({
   imports: [
@@ -22,7 +24,13 @@ import { CacheConfigService } from 'src/common/cache-config/cache-config.service
     }),
     AuthModule,
   ],
-  providers: [NotificationsProcessor, SesService, PinpointSmsService],
+  providers: [
+    NotificationsProcessor,
+    SesService,
+    PinpointSmsService,
+    NotificationsService,
+  ],
   exports: [BullModule],
+  controllers: [NotificationsController],
 })
 export class NotificationsModule {}

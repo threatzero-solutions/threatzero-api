@@ -35,5 +35,6 @@ import { SectionsModule } from './sections/sections.module';
     UsersModule,
   ],
   providers: [AudienceChangeListener, TrainingReminderTasks],
+  exports: [TrainingReminderTasks],
 })
 export class TrainingModule {}

@@ -1,17 +1,16 @@
 import { Base } from 'src/common/base.entity';
 import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
-import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { Audience } from 'src/training/audiences/entities/audience.entity';
 import { TrainingMetadata } from 'src/training/common/entities/training-metadata.entity';
 import { TrainingVisibility } from 'src/training/common/training.types';
 import { TrainingSection } from 'src/training/sections/entities/section.entity';
 import {
-  Entity,
   Column,
-  Relation,
-  OneToMany,
-  ManyToMany,
+  Entity,
   JoinTable,
+  ManyToMany,
+  OneToMany,
+  Relation,
 } from 'typeorm';
 
 @Entity()
@@ -54,7 +53,7 @@ export class TrainingCourse extends Base {
   presentableBy: Relation<Audience>[];
 
   @OneToMany(() => CourseEnrollment, (enrollment) => enrollment.course)
-  enrollments: Relation<Organization>[];
+  enrollments: Relation<CourseEnrollment>[];
 
   async loadVideoThumbnails(
     getVimeoThumbnail: (url: string) => Promise<string | null>,

@@ -1,8 +1,8 @@
+import { Base } from 'src/common/base.entity';
+import { TrainingVisibility } from 'src/training/common/training.types';
 import { TrainingCourse } from 'src/training/courses/entities/course.entity';
 import { Column, Entity, ManyToOne, Relation } from 'typeorm';
 import { Organization } from './organization.entity';
-import { Base } from 'src/common/base.entity';
-import { TrainingVisibility } from 'src/training/common/training.types';
 
 @Entity()
 export class CourseEnrollment extends Base {
@@ -10,6 +10,9 @@ export class CourseEnrollment extends Base {
     onDelete: 'CASCADE',
   })
   organization: Relation<Organization>;
+
+  @Column({ type: 'uuid' })
+  courseId: string;
 
   @ManyToOne(() => TrainingCourse, (course) => course.enrollments, {
     onDelete: 'CASCADE',

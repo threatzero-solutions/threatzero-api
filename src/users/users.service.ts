@@ -422,7 +422,7 @@ export class UsersService {
     }
   }
 
-  async *getAllUsersGenerator({
+  async *getKeycloakUsersAndOpaqueTokensGenerator({
     batchSize = 1000,
     includeOpaqueTokens = true,
     organizationSlug,
@@ -432,7 +432,14 @@ export class UsersService {
     includeOpaqueTokens?: boolean;
     organizationSlug?: string;
     keycloakGroupIds?: string[];
-  } = {}): AsyncGenerator<UnifiedUser, void, unknown> {
+  } = {}): AsyncGenerator<
+    {
+      keycloakUser: KeycloakUserRepresentation | null;
+      opaqueToken: OpaqueToken<TrainingParticipantRepresentationDto> | null;
+    },
+    void,
+    unknown
+  > {
     const processedEmails = new Set<string>();
     let first = 0;
 
@@ -468,15 +475,13 @@ export class UsersService {
         break;
       }
 
-      const unifiedUsers: UnifiedUser[] = keycloakUsers
-        .filter((user) => user.email && !processedEmails.has(user.email))
-        .map((user) => {
-          processedEmails.add(user.email!);
-          return this.mapKeycloakUserToUnified(user);
-        });
+      for (const user of keycloakUsers) {
+        if (!user.email || processedEmails.has(user.email!)) {
+          continue;
+        }
+        processedEmails.add(user.email);
 
-      for (const user of unifiedUsers) {
-        yield user;
+        yield { keycloakUser: user, opaqueToken: null };
       }
 
       if (keycloakUsers.length < batchSize) {
@@ -506,21 +511,16 @@ export class UsersService {
           break;
         }
 
-        const unifiedUsers: UnifiedUser[] = [];
+        for (const opaqueToken of opaqueTokens) {
+          const tokenValue = opaqueToken.value;
 
-        for (const token of opaqueTokens) {
-          const tokenValue =
-            token.value as TrainingParticipantRepresentationDto;
-
-          // Skip if we already processed this email from Keycloak
-          if (tokenValue.email && !processedEmails.has(tokenValue.email)) {
-            processedEmails.add(tokenValue.email);
-            unifiedUsers.push(this.mapOpaqueTokenToUnified(token));
+          if (!tokenValue.email || processedEmails.has(tokenValue.email)) {
+            continue;
           }
-        }
 
-        for (const user of unifiedUsers) {
-          yield user;
+          processedEmails.add(tokenValue.email);
+
+          yield { keycloakUser: null, opaqueToken };
         }
 
         if (opaqueTokens.length < batchSize) {
@@ -528,6 +528,29 @@ export class UsersService {
         }
 
         skip += batchSize;
+      }
+    }
+  }
+
+  async *getAllUsersGenerator({
+    batchSize = 1000,
+    organizationSlug,
+    keycloakGroupIds,
+  }: {
+    batchSize?: number;
+    organizationSlug?: string;
+    keycloakGroupIds?: string[];
+  } = {}): AsyncGenerator<UnifiedUser, void, unknown> {
+    const generator = this.getKeycloakUsersAndOpaqueTokensGenerator({
+      batchSize,
+      organizationSlug,
+      keycloakGroupIds,
+    });
+    for await (const { keycloakUser, opaqueToken } of generator) {
+      if (keycloakUser) {
+        yield this.mapKeycloakUserToUnified(keycloakUser);
+      } else if (opaqueToken) {
+        yield this.mapOpaqueTokenToUnified(opaqueToken);
       }
     }
   }

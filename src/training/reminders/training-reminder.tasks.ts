@@ -7,9 +7,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
+import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { DEFAULT_THUMBNAIL_URL } from 'src/common/constants/items.constants';
 import { MediaService } from 'src/media/media.service';
-import { OrganizationStatus } from 'src/organizations/organizations/entities/organization.entity';
+import {
+  Organization,
+  OrganizationStatus,
+} from 'src/organizations/organizations/entities/organization.entity';
 import { UsersService } from 'src/users/users.service';
 import { In, Repository } from 'typeorm';
 import { KeycloakAdminClientService } from '../../auth/keycloak-admin-client/keycloak-admin-client.service';
@@ -133,7 +137,7 @@ export class TrainingReminderTasks {
               );
               await this.sendInitialReminderEmails(
                 enrollment.id,
-                enrollment.organization.slug,
+                enrollment.organization,
                 section.items.map((item) => item.item),
               );
               processedCount++;
@@ -149,7 +153,7 @@ export class TrainingReminderTasks {
               );
               await this.sendFollowupReminderEmails(
                 enrollment.id,
-                enrollment.organization.slug,
+                enrollment.organization,
                 section.items.map((item) => item.item),
               );
               processedCount++;
@@ -188,11 +192,13 @@ export class TrainingReminderTasks {
       return;
     }
 
-    for await (const user of this.users.getAllUsersGenerator({
-      organizationSlug,
-      keycloakGroupIds: [this.trainingParticipantGroupId],
-    })) {
-      yield user;
+    for await (const result of this.users.getKeycloakUsersAndOpaqueTokensGenerator(
+      {
+        organizationSlug,
+        keycloakGroupIds: [this.trainingParticipantGroupId],
+      },
+    )) {
+      yield result;
     }
   }
 
@@ -205,28 +211,28 @@ export class TrainingReminderTasks {
 
   private async sendInitialReminderEmails(
     enrollmentId: string,
-    organizationSlug: string,
+    organization: Organization,
     items: TrainingItem[],
   ) {
-    const participants = this.getTrainingParticipants(organizationSlug);
+    const participants = this.getTrainingParticipants(organization.slug);
 
     let sentCount = 0;
     let participantCount = 0;
 
-    for await (const user of participants) {
+    for await (const participant of participants) {
       participantCount++;
       try {
         await this.sendReminderEmail({
-          user,
+          participant,
           enrollmentId,
-          organizationSlug,
+          organization,
           items,
           isInitialReminder: true,
         });
         sentCount++;
       } catch (error) {
         this.logger.error(
-          `Failed to send initial reminder to user ${user.id}: ${error.message}`,
+          `Failed to send initial reminder to user ${participant.keycloakUser?.id ?? participant.opaqueToken?.value.userId}: ${error.message}`,
         );
       }
     }
@@ -238,7 +244,7 @@ export class TrainingReminderTasks {
 
   private async sendFollowupReminderEmails(
     enrollmentId: string,
-    organizationSlug: string,
+    organization: Organization,
     items: TrainingItem[],
   ) {
     const completions = await this.completionsRepo.find({
@@ -258,10 +264,17 @@ export class TrainingReminderTasks {
     let skippedCount = 0;
     let participantCount = 0;
 
-    for await (const user of this.getTrainingParticipants(organizationSlug)) {
+    for await (const participant of this.getTrainingParticipants(
+      organization.slug,
+    )) {
       participantCount++;
+
+      const userId =
+        participant.keycloakUser?.id ??
+        participant.opaqueToken?.value.userId ??
+        'unknown';
       const incompleteItems = items.filter(
-        (item) => !completedIds.has(user.id + '+' + item.id),
+        (item) => !completedIds.has(userId + '+' + item.id),
       );
 
       if (incompleteItems.length === 0) {
@@ -271,16 +284,16 @@ export class TrainingReminderTasks {
 
       try {
         await this.sendReminderEmail({
-          user,
+          participant,
           enrollmentId,
-          organizationSlug,
+          organization,
           items: incompleteItems,
           isInitialReminder: false,
         });
         sentCount++;
       } catch (error) {
         this.logger.error(
-          `Failed to send follow-up reminder to user ${user.id}: ${error.message}`,
+          `Failed to send follow-up reminder to user ${participant.keycloakUser?.id ?? participant.opaqueToken?.value.userId}: ${error.message}`,
         );
       }
     }
@@ -290,40 +303,56 @@ export class TrainingReminderTasks {
     );
   }
 
-  private async sendReminderEmail({
-    user,
+  public async sendReminderEmail({
+    participant,
     enrollmentId,
-    organizationSlug,
+    organization,
     items,
     isInitialReminder,
   }: {
-    user: KeycloakUserRepresentation;
+    participant: {
+      keycloakUser: KeycloakUserRepresentation | null;
+      opaqueToken: OpaqueToken<TrainingParticipantRepresentationDto> | null;
+    };
     enrollmentId: string;
-    organizationSlug: string;
+    organization: Organization;
     items: TrainingItem[];
     isInitialReminder: boolean;
   }) {
-    if (!user.id || !user.email) return;
-    const userId = user.id;
-    const email = user.email;
+    const { keycloakUser, opaqueToken } = participant;
+    if (!keycloakUser && !opaqueToken) {
+      return;
+    }
+
+    const userId = keycloakUser?.id ?? opaqueToken?.value.userId;
+    const email = keycloakUser?.email ?? opaqueToken?.value.email;
+    const firstName = keycloakUser?.firstName ?? opaqueToken?.value.firstName;
+
+    if (!userId || !email) return;
 
     const trainingContexts = await Promise.all(
       items.map(async (item) => {
-        const tokenValue: TrainingParticipantRepresentationDto = {
-          userId,
-          email,
-          firstName: user.firstName ?? '',
-          lastName: user.lastName ?? '',
-          unitSlug: (user.attributes?.unit ?? [])[0] ?? '',
-          organizationSlug,
-          audiences: user.attributes?.audience ?? [],
-          enrollmentId,
-          trainingItemId: item.id,
-        };
-        const token = await this.opaqueTokenService.create(tokenValue, {
-          valueClass: TrainingParticipantRepresentationDto,
-          type: 'training',
-        });
+        let token: OpaqueToken<TrainingParticipantRepresentationDto>;
+
+        if (participant.opaqueToken) {
+          token = participant.opaqueToken;
+        } else {
+          const tokenValue: TrainingParticipantRepresentationDto = {
+            userId,
+            email,
+            firstName: keycloakUser?.firstName ?? '',
+            lastName: keycloakUser?.lastName ?? '',
+            unitSlug: (keycloakUser?.attributes?.unit ?? [])[0] ?? '',
+            organizationSlug: organization.slug,
+            audiences: keycloakUser?.attributes?.audience ?? [],
+            enrollmentId,
+            trainingItemId: item.id,
+          };
+          token = await this.opaqueTokenService.create(tokenValue, {
+            valueClass: TrainingParticipantRepresentationDto,
+            type: 'training',
+          });
+        }
 
         if (item instanceof Video) {
           item.loadThumbnailUrl((url) =>
@@ -347,6 +376,8 @@ export class TrainingReminderTasks {
       return;
     }
 
+    const frontendUrl = this.config.get<string>('general.appHost');
+
     await this.notificationsQueue.add(
       NotificationsJobNames.SendEmailNotification,
       {
@@ -355,10 +386,13 @@ export class TrainingReminderTasks {
           'notifications.email.templates.trainingReminder',
         ),
         context: {
-          firstName: user.firstName ?? '',
+          firstName: firstName ?? '',
           trainingContexts,
           plural: trainingContexts.length !== 1,
           isInitialReminder,
+          organizationName: organization.name,
+          frontendUrl,
+          sosUrl: `${frontendUrl?.replace(/\/$/, '')}/sos-request`,
         },
       },
     );
