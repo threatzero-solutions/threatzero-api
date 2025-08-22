@@ -392,7 +392,7 @@ export class TrainingReminderTasks {
           isInitialReminder,
           organizationName: organization.name,
           frontendUrl,
-          sosUrl: `${frontendUrl?.replace(/\/$/, '')}/sos-request`,
+          sosUrl: `${frontendUrl?.replace(/\/$/, '')}/safety-concerns`,
         },
       },
     );
