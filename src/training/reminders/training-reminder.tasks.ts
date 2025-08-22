@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
+import sanitize from 'sanitize-html';
 import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { DEFAULT_THUMBNAIL_URL } from 'src/common/constants/items.constants';
 import { MediaService } from 'src/media/media.service';
@@ -355,15 +356,19 @@ export class TrainingReminderTasks {
         }
 
         if (item instanceof Video) {
-          item.loadThumbnailUrl((url) =>
+          await item.loadThumbnailUrl((url) =>
             this.mediaService.getThumbnailUrlForVimeoUrl(url),
           );
         }
 
         return {
           trainingLink: this.buildTrainingLink(item.id, token.key),
-          trainingTitle: item.metadata.title,
-          trainingDescription: item.metadata.description,
+          trainingTitle: this.cleanTrainingTitle(
+            item.metadata.title ?? 'Untitled',
+          ),
+          trainingDescription: this.cleanTrainingDescription(
+            item.metadata.description ?? '–',
+          ),
           trainingThumbnailUrl: item.thumbnailUrl ?? DEFAULT_THUMBNAIL_URL,
         };
       }),
@@ -396,5 +401,14 @@ export class TrainingReminderTasks {
         },
       },
     );
+  }
+
+  private cleanTrainingTitle(title: string) {
+    return sanitize(title, { allowedTags: [] });
+  }
+
+  private cleanTrainingDescription(description: string) {
+    const cleaned = sanitize(description, { allowedTags: [] });
+    return cleaned.length > 100 ? cleaned.substring(0, 100) + '...' : cleaned;
   }
 }
