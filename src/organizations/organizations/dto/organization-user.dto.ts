@@ -5,6 +5,9 @@ export class OrganizationUserDto {
   id: string;
 
   @Expose()
+  enabled: boolean;
+
+  @Expose()
   username: string;
 
   @Expose()

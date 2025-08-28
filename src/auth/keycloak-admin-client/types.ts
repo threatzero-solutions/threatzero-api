@@ -10,7 +10,7 @@ export interface CustomQueryFilterCondition {
     | 'lt'
     | 'gte'
     | 'lte';
-  value: string | string[];
+  value: string | string[] | boolean;
   not?: boolean;
   ignoreCase?: boolean;
 }

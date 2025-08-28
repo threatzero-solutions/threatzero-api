@@ -628,6 +628,28 @@ export class OrganizationsService extends BaseEntityService<Organization> {
     );
   }
 
+  async updateUserActivation(
+    id: Organization['id'],
+    userId: string,
+    enabled: boolean,
+  ) {
+    const context = await this.getOrganizationUserContext(id, userId).then(
+      (context) => {
+        const { user } = context;
+        this.keycloakClient.client.users.update({ id: user.id }, { enabled });
+        return context;
+      },
+    );
+
+    this.eventEmitter.emit(
+      ORGANIZATION_USER_UPDATED_EVENT,
+      BaseOrganizationUserChangeEvent.forUser(
+        context.user,
+        context.organization,
+      ),
+    );
+  }
+
   async assignUserToRoleGroup(
     id: Organization['id'],
     userId: string,

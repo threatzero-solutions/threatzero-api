@@ -199,6 +199,9 @@ export class TrainingReminderTasks {
         keycloakGroupIds: [this.trainingParticipantGroupId],
       },
     )) {
+      if (result.keycloakUser && result.keycloakUser.enabled === false) {
+        continue;
+      }
       yield result;
     }
   }

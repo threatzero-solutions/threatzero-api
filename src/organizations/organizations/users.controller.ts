@@ -58,6 +58,18 @@ export class UsersController {
     return this.organizationsService.deleteOrganizationUser(id, userId);
   }
 
+  @Post(':userId/deactivate')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deactivateUser(@Param('id') id: string, @Param('userId') userId: string) {
+    return this.organizationsService.updateUserActivation(id, userId, false);
+  }
+
+  @Post(':userId/activate')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  activateUser(@Param('id') id: string, @Param('userId') userId: string) {
+    return this.organizationsService.updateUserActivation(id, userId, true);
+  }
+
   @Post(':userId/assign-role-group')
   @HttpCode(HttpStatus.NO_CONTENT)
   assignUserToGroup(

@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsNumber,
   IsOptional,
@@ -67,6 +68,10 @@ export class OrganizationUserQueryDto {
   id?: string | string[];
 
   @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @IsOptional()
   @IsString({ each: true })
   unit?: string | string[];
 
@@ -89,10 +94,10 @@ export class OrganizationUserQueryDto {
   public asFilterConditions() {
     const qs: CustomQueryFilter[] = [];
 
-    const filterKeys = ['id', 'unit', 'audience'] as const;
+    const filterKeys = ['id', 'unit', 'audience', 'enabled'] as const;
     for (const filterKey of filterKeys) {
       if (this[filterKey]) {
-        if (typeof this[filterKey] === 'string') {
+        if (!Array.isArray(this[filterKey])) {
           qs.push({ q: { key: filterKey, value: this[filterKey]! } });
         } else {
           qs.push({
