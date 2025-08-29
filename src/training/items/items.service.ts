@@ -300,7 +300,12 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       .leftJoin(`sub_completions.item`, 'item');
 
     const user = this.cls.get('user');
-    subQb = scopeToOrganizationLevel(user, subQb, 'user.unit');
+    subQb = scopeToOrganizationLevel(
+      user,
+      subQb,
+      'user.unit',
+      'user.organization',
+    );
     subQb = query.applyToQb(subQb);
 
     // Move parameters from inner query to outer query.

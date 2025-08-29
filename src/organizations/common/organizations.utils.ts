@@ -5,6 +5,7 @@ import { StatelessUser } from 'src/auth/user.factory';
 import { withLeftJoin } from 'src/common/entity.utils';
 import { GetPresignedUploadUrlsDto } from 'src/media/dto/get-presigned-upload-urls.dto';
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
+import { Organization } from '../organizations/entities/organization.entity';
 import { Unit } from '../units/entities/unit.entity';
 import { DEFAULT_UNIT_SLUG } from './constants';
 
@@ -30,6 +31,8 @@ export const scopeToOrganizationLevel = <T extends ObjectLiteral>(
   qb: SelectQueryBuilder<T>,
   // eslint-disable-next-line @typescript-eslint/ban-types
   unitEntityOrProperty: Function | string = Unit,
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  organizationEntityOrProperty: Function | string = Organization,
 ): SelectQueryBuilder<T> => {
   switch (getOrganizationLevel(user)) {
     case LEVEL.ADMIN:
@@ -51,8 +54,8 @@ export const scopeToOrganizationLevel = <T extends ObjectLiteral>(
       );
       const [qbWithOrganizationJoin, organizationAlias] = withLeftJoin(
         qbWithUnitJoin2,
-        `${predicateUnitAlias2}.organization`,
-        'organization',
+        organizationEntityOrProperty ?? `${predicateUnitAlias2}.organization`,
+        'predicate_organization',
       );
       return qbWithOrganizationJoin.andWhere(
         `${organizationAlias}.slug = :organizationSlug`,
