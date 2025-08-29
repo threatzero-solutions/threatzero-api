@@ -29,12 +29,6 @@ export const withJoin = <T extends ObjectLiteral>(
   const joinAttribute = qb.expressionMap.joinAttributes.find(
     (j) => j.entityOrProperty === entityOrProperty && (!select || j.isSelected),
   );
-  console.debug({
-    joinAttribute,
-    entityOrProperty,
-    alias,
-    select,
-  });
   if (joinAttribute) {
     return [qb, joinAttribute.alias.name] as const;
   }
