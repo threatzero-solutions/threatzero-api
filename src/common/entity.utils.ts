@@ -26,13 +26,11 @@ export const withJoin = <T extends ObjectLiteral>(
   joinType?: 'inner' | 'left',
   select = false,
 ) => {
-  if (
-    qb.expressionMap.joinAttributes.findIndex(
-      (j) =>
-        j.entityOrProperty === entityOrProperty && (!select || j.isSelected),
-    ) > -1
-  ) {
-    return qb;
+  const joinAttribute = qb.expressionMap.joinAttributes.find(
+    (j) => j.entityOrProperty === entityOrProperty && (!select || j.isSelected),
+  );
+  if (joinAttribute) {
+    return [qb, joinAttribute.alias.name] as const;
   }
 
   // eslint-disable-next-line @typescript-eslint/ban-types
@@ -48,7 +46,7 @@ export const withJoin = <T extends ObjectLiteral>(
       break;
   }
 
-  return fn.bind(qb)(entityOrProperty, alias);
+  return [fn.bind(qb)(entityOrProperty, alias), alias] as const;
 };
 
 export const withLeftJoin = <T extends ObjectLiteral>(

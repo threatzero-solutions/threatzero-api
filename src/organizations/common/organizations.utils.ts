@@ -35,17 +35,29 @@ export const scopeToOrganizationLevel = <T extends ObjectLiteral>(
     case LEVEL.ADMIN:
       return qb;
     case LEVEL.UNIT:
-      return withLeftJoin(qb, unitEntityOrProperty, 'predicate_unit').andWhere(
-        getUserUnitPredicate(user, 'predicate_unit'),
+      const [qbWithUnitJoin, predicateUnitAlias] = withLeftJoin(
+        qb,
+        unitEntityOrProperty,
+        'predicate_unit',
+      );
+      return qbWithUnitJoin.andWhere(
+        getUserUnitPredicate(user, predicateUnitAlias),
       );
     case LEVEL.ORGANIZATION:
-      return withLeftJoin(
-        withLeftJoin(qb, unitEntityOrProperty, 'predicate_unit'),
-        'predicate_unit.organization',
+      const [qbWithUnitJoin2, predicateUnitAlias2] = withLeftJoin(
+        qb,
+        unitEntityOrProperty,
+        'predicate_unit',
+      );
+      const [qbWithOrganizationJoin, organizationAlias] = withLeftJoin(
+        qbWithUnitJoin2,
+        `${predicateUnitAlias2}.organization`,
         'organization',
-      ).andWhere('organization.slug = :organizationSlug', {
-        organizationSlug: user?.organizationSlug,
-      });
+      );
+      return qbWithOrganizationJoin.andWhere(
+        `${organizationAlias}.slug = :organizationSlug`,
+        { organizationSlug: user?.organizationSlug },
+      );
     default:
       return qb.where('1 = 0');
   }
