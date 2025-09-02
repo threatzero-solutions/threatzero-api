@@ -61,7 +61,7 @@ export class TrainingReminderTasks {
     this.trainingParticipantGroupId = group?.id;
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  @Cron(CronExpression.EVERY_DAY_AT_NOON)
   async handleReminders() {
     const today = dayjs().startOf('day');
     this.logger.log(
@@ -197,6 +197,7 @@ export class TrainingReminderTasks {
       {
         organizationSlug,
         keycloakGroupIds: [this.trainingParticipantGroupId],
+        includeOpaqueTokens: false,
       },
     )) {
       if (result.keycloakUser && result.keycloakUser.enabled === false) {
@@ -271,12 +272,13 @@ export class TrainingReminderTasks {
     for await (const participant of this.getTrainingParticipants(
       organization.slug,
     )) {
+      if (!participant.keycloakUser) {
+        continue;
+      }
+
       participantCount++;
 
-      const userId =
-        participant.keycloakUser?.id ??
-        participant.opaqueToken?.value.userId ??
-        'unknown';
+      const userId = participant.keycloakUser.id ?? 'unknown';
       const incompleteItems = items.filter(
         (item) => !completedIds.has(userId + '+' + item.id),
       );
@@ -297,7 +299,7 @@ export class TrainingReminderTasks {
         sentCount++;
       } catch (error) {
         this.logger.error(
-          `Failed to send follow-up reminder to user ${participant.keycloakUser?.id ?? participant.opaqueToken?.value.userId}: ${error.message}`,
+          `Failed to send follow-up reminder to user ${userId}: ${error.message}`,
         );
       }
     }
