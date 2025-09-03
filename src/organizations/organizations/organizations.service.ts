@@ -457,7 +457,7 @@ export class OrganizationsService extends BaseEntityService<Organization> {
 
     return await this.getWithUnits(id).then((organization) =>
       this.keycloakClient.client.groups
-        .listSubGroups({ parentId: parentRoleGroupsGroupId })
+        .listSubGroups({ parentId: parentRoleGroupsGroupId, max: 1000 })
         .then((subgroups) =>
           getOrganizationLevel(user) === LEVEL.ADMIN
             ? subgroups
