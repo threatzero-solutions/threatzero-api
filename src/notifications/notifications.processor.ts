@@ -3,6 +3,7 @@ import {
   SendTextMessageCommandInput,
 } from '@aws-sdk/client-pinpoint-sms-voice-v2';
 import { SendEmailCommand, SendEmailCommandInput } from '@aws-sdk/client-sesv2';
+import KeycloakUserRepresentation from '@keycloak/keycloak-admin-client/lib/defs/userRepresentation';
 import {
   InjectQueue,
   OnWorkerEvent,
@@ -23,6 +24,7 @@ import {
   NOTIFICATIONS_QUEUE_PREFIX,
 } from 'src/common/constants/queue.constants';
 import { getUserAttr, truthyAttr } from 'src/common/utils';
+import { KeycloakConfig } from 'src/config/keycloak.config';
 import { Tip } from 'src/safety-management/tips/entities/tip.entity';
 import { DataSource } from 'typeorm';
 
@@ -147,23 +149,96 @@ export class NotificationsProcessor extends WorkerHost {
     if (!contacts) {
       const tatGroupId = tip.unit.tatGroupId;
       const orgTatGroupId = tip.unit.organization.tatGroupId;
-      if (!tatGroupId) {
-        this.logger.warn(`No TAT group found for ${tip.unit.slug}`);
-        return;
+
+      const tatMembersMap = new Map<string, KeycloakUserRepresentation>();
+
+      if (tatGroupId) {
+        // The legacy approach to setting TAT members was to assign them to a TAT group particular
+        // to their organization or unit.
+        const legacyTatMembers = await Promise.all(
+          [tatGroupId, orgTatGroupId]
+            .filter((id) => !!id)
+            .map((id) =>
+              this.keycloak.client.groups.listMembers({
+                id: id!,
+              }),
+            ),
+        ).then((results) => results.flat(2));
+        for (const member of legacyTatMembers) {
+          if (!member.id) continue;
+          tatMembersMap.set(member.id, member);
+        }
       }
-      const tatMembers = await Promise.all(
-        [tatGroupId, orgTatGroupId]
-          .filter((id) => !!id)
-          .map((id) =>
-            this.keycloak.client.groups.listMembers({
-              id: id!,
-            }),
-          ),
-      ).then((results) => results.flat(2));
+
+      const parentRoleGroupsGroupId =
+        this.config.getOrThrow<KeycloakConfig>(
+          'keycloak',
+        ).parentRoleGroupsGroupId;
+
+      if (parentRoleGroupsGroupId) {
+        // The new approach is to have a single role group for Organization TAT members and another
+        // for Unit TAT members. Then TAT members can be looked up by role group and org identifier.
+        const tatRoleGroups = await this.keycloak.client.groups
+          .listSubGroups({
+            parentId: parentRoleGroupsGroupId,
+            max: 1000,
+          })
+          .then((groups) =>
+            groups.filter(
+              (g): g is typeof g & { id: string; name: string } =>
+                !!g.name?.toLowerCase().includes('tat member') && !!g.id,
+            ),
+          );
+
+        for (const tatRoleGroup of tatRoleGroups) {
+          let level: 'organization' | 'unit';
+          if (tatRoleGroup.name.toLowerCase().includes('organization')) {
+            level = 'organization';
+          } else if (tatRoleGroup.name.toLowerCase().includes('unit')) {
+            level = 'unit';
+          } else {
+            continue;
+          }
+
+          const newTatMembers = await this.keycloak
+            .findUsersByAttribute({
+              filter: {
+                AND: [
+                  {
+                    groupQ: {
+                      key: 'id',
+                      groups: [tatRoleGroup.id],
+                      op: 'any',
+                    },
+                  },
+                  {
+                    q:
+                      level === 'organization'
+                        ? {
+                            key: 'organization',
+                            value: tip.unit.organization.slug,
+                          }
+                        : {
+                            key: 'unit',
+                            value: tip.unit.slug,
+                          },
+                  },
+                ],
+              },
+              limit: 1000,
+            })
+            .then(({ results }) => results);
+
+          for (const member of newTatMembers) {
+            if (!member.id) continue;
+            tatMembersMap.set(member.id, member);
+          }
+        }
+      }
 
       contacts = [];
       const foundUserIds = new Set();
-      for (const user of tatMembers) {
+      for (const user of tatMembersMap.values()) {
         // Ensure only one contact per user.
         if (foundUserIds.has(user.id)) {
           continue;
