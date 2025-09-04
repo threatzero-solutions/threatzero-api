@@ -7,13 +7,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { expressJwtSecret } from 'jwks-rsa';
-import { UserFactory } from './user.factory';
-import { Reflector } from '@nestjs/core';
 import { Jwt } from 'jsonwebtoken';
+import { expressJwtSecret } from 'jwks-rsa';
 import { ClsService } from 'nestjs-cls';
+import { UserFactory } from './user.factory';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
@@ -21,6 +21,7 @@ export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 @Injectable()
 export class AuthGuard implements CanActivate {
   logger = new Logger(AuthGuard.name);
+  private readonly getSecret: ReturnType<typeof expressJwtSecret>;
 
   constructor(
     private jwtService: JwtService,
@@ -28,7 +29,14 @@ export class AuthGuard implements CanActivate {
     private userFactory: UserFactory,
     private reflector: Reflector,
     private cls: ClsService,
-  ) {}
+  ) {
+    this.getSecret = expressJwtSecret({
+      cache: true,
+      rateLimit: true,
+      jwksRequestsPerMinute: 5,
+      jwksUri: this.config.get<string>('auth.jwksUri') ?? '',
+    });
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -50,12 +58,7 @@ export class AuthGuard implements CanActivate {
         complete: true,
       });
       const secret = await new Promise<string>((resolve, reject) =>
-        expressJwtSecret({
-          cache: true,
-          rateLimit: true,
-          jwksRequestsPerMinute: 5,
-          jwksUri: this.config.get<string>('auth.jwksUri') ?? '',
-        })(request, jwt.header, jwt.payload, (e, key) => {
+        this.getSecret(request, jwt.header, jwt.payload, (e, key) => {
           if (e) {
             reject(e);
           } else if (!key) {
