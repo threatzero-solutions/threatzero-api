@@ -11,6 +11,7 @@ import sanitize from 'sanitize-html';
 import { OpaqueToken } from 'src/auth/entities/opaque-token.entity';
 import { DEFAULT_THUMBNAIL_URL } from 'src/common/constants/items.constants';
 import { MediaService } from 'src/media/media.service';
+import { NotificationsJobNames } from 'src/notifications/notifications.processor';
 import {
   Organization,
   OrganizationStatus,
@@ -20,7 +21,6 @@ import { In, Repository } from 'typeorm';
 import { KeycloakAdminClientService } from '../../auth/keycloak-admin-client/keycloak-admin-client.service';
 import { OpaqueTokenService } from '../../auth/opaque-token.service';
 import { NOTIFICATIONS_QUEUE_NAME } from '../../common/constants/queue.constants';
-import { NotificationsJobNames } from '../../notifications/notifications.processor';
 import { TRAINING_PARTICIPANT_ROLE_GROUP_PATH } from '../../organizations/organizations/constants';
 import { CourseEnrollment } from '../../organizations/organizations/entities/course-enrollment.entity';
 import { TrainingVisibility } from '../common/training.types';
@@ -258,11 +258,18 @@ export class TrainingReminderTasks {
         item: { id: In(items.map((item) => item.id)) },
         completed: true,
       },
-      select: ['userId', 'item'],
-      relations: ['item'],
+      select: {
+        user: {
+          email: true,
+        },
+        item: {
+          id: true,
+        },
+      },
+      relations: ['item', 'user'],
     });
     const completedIds = new Set(
-      completions.map((c) => c.userId + '+' + c.item.id),
+      completions.map((c) => c.user.email + '+' + c.item.id),
     );
 
     let sentCount = 0;
@@ -278,9 +285,9 @@ export class TrainingReminderTasks {
 
       participantCount++;
 
-      const userId = participant.keycloakUser.id ?? 'unknown';
+      const userEmail = participant.keycloakUser.email ?? 'unknown';
       const incompleteItems = items.filter(
-        (item) => !completedIds.has(userId + '+' + item.id),
+        (item) => !completedIds.has(userEmail + '+' + item.id),
       );
 
       if (incompleteItems.length === 0) {
@@ -299,7 +306,7 @@ export class TrainingReminderTasks {
         sentCount++;
       } catch (error) {
         this.logger.error(
-          `Failed to send follow-up reminder to user ${userId}: ${error.message}`,
+          `Failed to send follow-up reminder to user ${userEmail}: ${error.message}`,
         );
       }
     }
