@@ -54,9 +54,14 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     try {
-      const jwt: Jwt = this.jwtService.decode(token, {
+      const jwt = this.jwtService.decode<Jwt | null>(token, {
         complete: true,
       });
+
+      if (!jwt) {
+        throw new UnauthorizedException();
+      }
+
       const secret = await new Promise<string>((resolve, reject) =>
         this.getSecret(request, jwt.header, jwt.payload, (e, key) => {
           if (e) {
