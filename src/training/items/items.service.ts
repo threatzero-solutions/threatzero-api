@@ -436,7 +436,9 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
           [],
           viewingUser.audiences ?? [],
           viewingUser.organizationSlug,
+          null,
           viewingUser.unitSlug,
+          [],
         );
         decodedToken = viewingUser;
       }
