@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -24,6 +25,7 @@ import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
 import { ItemCompletionsSummaryQueryDto } from './dto/item-completions-summary-query.dto';
 import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { UpdateOrCreateItemCompletionDto } from './dto/update-or-update-item-completion.dto';
 import { ItemCompletion } from './entities/item-completion.entity';
 import { TrainingItem } from './entities/item.entity';
 import { ItemsService } from './items.service';
@@ -37,7 +39,7 @@ export class ItemsController {
 
   @Public()
   @Post('my-completions')
-  createMyItemCompletion(
+  async createMyItemCompletion(
     @Body() createItemCompletionDto: CreateItemCompletionDto,
     @Query('watch_id') watchId?: string,
   ) {
@@ -59,14 +61,27 @@ export class ItemsController {
   @Public()
   @Patch('my-completions/:id')
   @HttpCode(HttpStatus.ACCEPTED)
-  updateMyItemCompletion(
+  async updateMyItemCompletion(
     @Param('id') id: string,
     @Body() updateItemCompletionDto: UpdateItemCompletionDto,
     @Query('watch_id') watchId?: string,
   ) {
-    this.itemsService.updateMyItemCompletion(
+    return this.itemsService.updateMyItemCompletion(
       id,
       updateItemCompletionDto,
+      watchId,
+    );
+  }
+
+  @Public()
+  @Put('my-completions')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async updateOrCreateMyItemCompletion(
+    @Body() updateOrCreateItemCompletionDto: UpdateOrCreateItemCompletionDto,
+    @Query('watch_id') watchId?: string,
+  ) {
+    await this.itemsService.updateOrCreateMyItemCompletion(
+      updateOrCreateItemCompletionDto,
       watchId,
     );
   }

@@ -8,26 +8,26 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Cache } from 'cache-manager';
+import { RedisStore } from 'cache-manager-ioredis-yet';
 import dayjs from 'dayjs';
+import { Request } from 'express';
+import { isIPv4, isIPv6 } from 'net';
 import path from 'path';
 import { catchError, firstValueFrom, of } from 'rxjs';
+import { OpaqueTokenService } from 'src/auth/opaque-token.service';
+import { StatelessUser } from 'src/auth/user.factory';
 import { CloudFrontDistributionConfig } from 'src/config/aws.config';
 import { VimeoConfig } from 'src/config/vimeo.config';
+import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
+import { UsersService } from 'src/users/users.service';
+import { DeepPartial, Repository } from 'typeorm';
+import { VideoEvent } from './entities/video-event.entity';
 import {
   GetVimeoThumbnailUrlOptions,
   VimeoThumbnailResponse,
 } from './interfaces/vimeo';
-import { InjectRepository } from '@nestjs/typeorm';
-import { VideoEvent } from './entities/video-event.entity';
-import { DeepPartial, Repository } from 'typeorm';
-import { Request } from 'express';
-import { isIPv4, isIPv6 } from 'net';
-import { OpaqueTokenService } from 'src/auth/opaque-token.service';
-import { UsersService } from 'src/users/users.service';
-import { StatelessUser } from 'src/auth/user.factory';
-import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/training-participant-representation.dto';
-import { RedisStore } from 'cache-manager-ioredis-yet';
 
 const DEFAULT_WIDTH = 640;
 
@@ -210,6 +210,7 @@ export class MediaService {
       if (viewingUser) {
         user = new StatelessUser(
           viewingUser.userId,
+          null,
           viewingUser.email,
           `${viewingUser.firstName ?? ''} ${viewingUser.lastName ?? ''}`.trim(),
           viewingUser.firstName,

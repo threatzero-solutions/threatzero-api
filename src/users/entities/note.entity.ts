@@ -1,26 +1,22 @@
 import { Base } from 'src/common/base.entity';
 import { ThreatAssessment } from 'src/safety-management/threat-assessments/entities/threat-assessment.entity';
 import { Tip } from 'src/safety-management/tips/entities/tip.entity';
-import { Column, Entity, JoinColumn, ManyToOne, type Relation } from 'typeorm';
-import { UserRepresentation } from './user-representation.entity';
 import { ViolentIncidentReport } from 'src/safety-management/violent-incident-reports/entities/violent-incident-report.entity';
+import { Column, Entity, ManyToOne, type Relation } from 'typeorm';
+import { UserRepresentation } from './user-representation.entity';
 
 @Entity()
 export class Note extends Base {
   @Column({ type: 'text' })
   value: string;
 
-  @Column({ type: 'varchar', length: 100 })
-  userExternalId: string | null;
+  @Column({ nullable: true })
+  userId: string | null;
 
   @ManyToOne(() => UserRepresentation, {
     nullable: true,
     onDelete: 'RESTRICT',
     onUpdate: 'CASCADE',
-  })
-  @JoinColumn({
-    name: 'userExternalId',
-    referencedColumnName: 'externalId',
   })
   user: Relation<UserRepresentation> | null;
 

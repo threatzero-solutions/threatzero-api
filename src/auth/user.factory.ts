@@ -25,6 +25,7 @@ class TokenPayload {
 
 export class StatelessUser {
   public readonly id: string;
+  public readonly idpId: string | null;
   public readonly email: string;
   public readonly name?: string | null;
   public readonly firstName?: string | null;
@@ -39,6 +40,7 @@ export class StatelessUser {
 
   constructor(
     id: string,
+    idpId: string | null,
     email: string,
     name: string | null | undefined,
     firstName: string | null | undefined,
@@ -52,6 +54,7 @@ export class StatelessUser {
     peerUnits?: string[],
   ) {
     this.id = id;
+    this.idpId = idpId;
     this.email = email;
     this.name = name;
     this.firstName = firstName;
@@ -82,6 +85,7 @@ export class UserFactory {
     });
 
     return new StatelessUser(
+      tokenPayload.sub,
       tokenPayload.sub,
       tokenPayload.email,
       tokenPayload.name,

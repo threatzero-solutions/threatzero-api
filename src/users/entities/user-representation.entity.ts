@@ -7,10 +7,15 @@ import { Column, Entity, Index, ManyToOne, Relation } from 'typeorm';
 @Index(['organization', 'unit'])
 export class UserRepresentation extends Base {
   @Index()
-  @Column({ type: 'varchar', length: 100, unique: true })
-  externalId: string;
+  @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
+  externalId: string | null;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Index()
+  @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
+  idpId: string | null;
+
+  @Index()
+  @Column({ type: 'varchar', unique: true, length: 255 })
   email: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })

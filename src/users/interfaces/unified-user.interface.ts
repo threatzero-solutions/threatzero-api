@@ -1,5 +1,6 @@
 export interface UnifiedUser {
   id: string;
+  idpId?: string;
   email: string;
   firstName?: string;
   lastName?: string;

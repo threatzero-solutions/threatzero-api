@@ -39,6 +39,7 @@ import { ItemCompletionQueryDto } from './dto/item-completion-query.dto';
 import { ItemCompletionsSummaryQueryDto } from './dto/item-completions-summary-query.dto';
 import { TrainingParticipantRepresentationDto } from './dto/training-participant-representation.dto';
 import { UpdateItemCompletionDto } from './dto/update-item-completion.dto';
+import { UpdateOrCreateItemCompletionDto } from './dto/update-or-update-item-completion.dto';
 import { ItemCompletion } from './entities/item-completion.entity';
 import { TrainingItem } from './entities/item.entity';
 import { Video } from './entities/video-item.entity';
@@ -96,7 +97,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     const user = await this.opaqueTokenService.validate(
       watchId,
       TrainingParticipantRepresentationDto,
-      'training',
+      ['training', 'training-reminder'],
     );
 
     if (!user) {
@@ -202,12 +203,79 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
         `CASE WHEN "completed" = FALSE THEN NOW() ELSE "completedOn" END`;
     }
 
-    return this.itemCompletionsRepository
+    await this.itemCompletionsRepository
       .createQueryBuilder()
       .update()
       .set(values)
       .where(criteria)
       .execute();
+  }
+
+  async updateOrCreateMyItemCompletion(
+    updateOrCreateItemCompletionDto: UpdateOrCreateItemCompletionDto,
+    watchId?: string,
+  ) {
+    const { user, userRep, decodedToken } = await this.getUserContext(watchId);
+
+    if (decodedToken) {
+      updateOrCreateItemCompletionDto.enrollment = {
+        id: decodedToken.enrollmentId,
+      };
+      updateOrCreateItemCompletionDto.item.id = decodedToken.trainingItemId;
+    } else {
+      // Make sure user has access to item.
+      await this.getQb()
+        .where({ id: updateOrCreateItemCompletionDto.item.id })
+        .getExists()
+        .then((exists) => {
+          if (!exists) {
+            throw new BadRequestException('User does not have access to item.');
+          }
+        });
+    }
+
+    if (!updateOrCreateItemCompletionDto.enrollment?.id) {
+      throw new BadRequestException(
+        'Enrollment ID is required for reporting training progress.',
+      );
+    }
+
+    const insertValues: QueryDeepPartialEntity<ItemCompletion> = {
+      ...updateOrCreateItemCompletionDto,
+      userId: userRep.id,
+      email: user.email,
+      audienceSlugs: user.audiences,
+    };
+
+    const updateValues = insertValues;
+
+    if (updateOrCreateItemCompletionDto.completed) {
+      updateValues.completedOn = () =>
+        `CASE WHEN "completed" = FALSE THEN NOW() ELSE "completedOn" END`;
+    }
+
+    const updateResult = await this.itemCompletionsRepository
+      .createQueryBuilder()
+      .update()
+      .set(updateValues)
+      .where({
+        userId: userRep.id,
+        enrollment: {
+          id: updateOrCreateItemCompletionDto.enrollment.id,
+        },
+        item: {
+          id: updateOrCreateItemCompletionDto.item.id,
+        },
+      })
+      .execute();
+
+    if (updateResult.affected === 0) {
+      await this.itemCompletionsRepository
+        .createQueryBuilder()
+        .insert()
+        .values(insertValues)
+        .execute();
+    }
   }
 
   async getMyItemCompletions(query: ItemCompletionQueryDto, watchId?: string) {
@@ -428,6 +496,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       if (viewingUser) {
         user = new StatelessUser(
           viewingUser.userId,
+          null,
           viewingUser.email,
           `${viewingUser.firstName ?? ''} ${viewingUser.lastName ?? ''}`.trim(),
           viewingUser.firstName,
@@ -535,6 +604,7 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       const localUser = await this.usersService.updateRepresentation(
         new StatelessUser(
           user.id,
+          user.idpId ?? null,
           user.email,
           [user.firstName, user.lastName].filter(Boolean).join(' '),
           user.firstName,

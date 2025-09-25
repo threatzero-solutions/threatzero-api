@@ -363,7 +363,7 @@ export class TrainingReminderTasks {
           };
           token = await this.opaqueTokenService.create(tokenValue, {
             valueClass: TrainingParticipantRepresentationDto,
-            type: 'training',
+            type: 'training-reminder',
           });
         }
 

@@ -1,13 +1,14 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { OpaqueToken } from './entities/opaque-token.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository, SelectQueryBuilder } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import dayjs from 'dayjs';
+import { Paginated } from 'src/common/dto/paginated.dto';
+import { asArray } from 'src/common/utils';
+import { FindOptionsWhere, In, Repository, SelectQueryBuilder } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { OpaqueTokenQueryDto } from './dto/opaque-token-query.dto';
-import { Paginated } from 'src/common/dto/paginated.dto';
-import dayjs from 'dayjs';
+import { OpaqueToken } from './entities/opaque-token.entity';
 
 export interface CreateOpaqueTokenOptions<T extends object> {
   valueClass?: new () => T;
@@ -88,10 +89,14 @@ export class OpaqueTokenService {
     );
   }
 
-  async get(key: string, type?: string): Promise<OpaqueToken | null> {
+  async get(
+    key: string,
+    type?: string | string[],
+  ): Promise<OpaqueToken | null> {
     const condition: FindOptionsWhere<OpaqueToken> = { key };
-    if (type) {
-      condition.type = type;
+    const types = asArray(type);
+    if (types.length > 0) {
+      condition.type = In(types);
     }
     return await this.opaqueTokenRepository.findOneBy(condition);
   }
@@ -128,7 +133,7 @@ export class OpaqueTokenService {
   async validate<T extends object>(
     key: string,
     valueClass: new () => T,
-    type?: string,
+    type?: string | string[],
   ): Promise<T | null> {
     const opaqueToken = await this.get(key, type);
     if (

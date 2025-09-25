@@ -69,21 +69,67 @@ export class UsersService {
           .getOne();
       }
     }
-    const userRepresentation = this.usersRepository.create({
-      externalId: user.id,
-      email: user.email,
-      name: user.name,
-      givenName: user.firstName,
-      familyName: user.lastName,
+
+    const normalizedEmail = user.email.trim().toLowerCase();
+
+    const userRepresentationDto: DeepPartial<UserRepresentation> = {
+      email: normalizedEmail,
+    };
+
+    const sensitiveOverwriteFields: DeepPartial<UserRepresentation> = {
+      idpId: user.idpId,
       picture: user.picture,
       unitId: unit?.id,
       organizationId: unit?.organizationId,
-    });
-    return this.usersRepository
-      .upsert(userRepresentation, ['externalId'])
-      .then(() =>
-        this.usersRepository.findOneByOrFail({ externalId: user.id }),
-      );
+      name: user.name,
+      givenName: user.firstName,
+      familyName: user.lastName,
+    };
+
+    // Be careful not to overwrite values with nulls when the incoming user
+    // object isn't an IDP user (ie an opaque token user).
+    if (user.idpId) {
+      Object.assign(userRepresentationDto, sensitiveOverwriteFields);
+    }
+
+    const updateResult = await this.usersRepository
+      .createQueryBuilder('user')
+      .update()
+      .set(userRepresentationDto)
+      .where(
+        user.idpId
+          ? {
+              idpId: user.idpId,
+            }
+          : {
+              email: normalizedEmail,
+            },
+      )
+      .execute();
+
+    if (updateResult.affected === 0) {
+      await this.usersRepository
+        .createQueryBuilder('user')
+        .insert()
+        .values({
+          ...userRepresentationDto,
+          // If user doens't already exist, add sensitive fields to the user representation
+          // since they won't be overwriting any existing values.
+          ...sensitiveOverwriteFields,
+        })
+        .orIgnore()
+        .execute();
+    }
+
+    return this.usersRepository.findOneByOrFail(
+      user.idpId
+        ? {
+            idpId: user.idpId,
+          }
+        : {
+            email: normalizedEmail,
+          },
+    );
   }
 
   notesQb() {
@@ -142,7 +188,7 @@ export class UsersService {
     );
     await this.notesQb()
       .update(note)
-      .where({ id: noteId, userExternalId: user.id })
+      .where({ id: noteId, userId: note.userId })
       .execute();
     return await this.notesQb().andWhere({ id: noteId }).getOne();
   }
@@ -157,10 +203,12 @@ export class UsersService {
       throw new BadRequestException('User not found.');
     }
 
+    const userRep = await this.updateRepresentation(user);
+
     return await this.notesQb()
       .andWhere({
         id: noteId,
-        userExternalId: user!.id,
+        userId: userRep.id,
         [foreignKeyColumn]: entityId,
       })
       .delete()
@@ -177,11 +225,11 @@ export class UsersService {
       throw new BadRequestException('User not found.');
     }
 
-    await this.updateRepresentation(user);
+    const userRep = await this.updateRepresentation(user);
 
     return {
       ...partialNote,
-      userExternalId: user.id,
+      userId: userRep.id,
       [foreignKeyColumn]: entityId,
     };
   }
@@ -247,6 +295,7 @@ export class UsersService {
         const user = await this.updateRepresentation(
           new StatelessUser(
             dto.userId,
+            null,
             dto.email,
             [dto.firstName, dto.lastName].filter(Boolean).join(' '),
             dto.firstName,
@@ -337,6 +386,7 @@ export class UsersService {
 
       const user = new StatelessUser(
         userId,
+        keycloakUser.id ?? null,
         keycloakUser.email,
         [keycloakUser.firstName, keycloakUser.lastName]
           .filter(Boolean)
@@ -382,6 +432,7 @@ export class UsersService {
         const user = await this.updateRepresentation(
           new StatelessUser(
             tokenValue.userId,
+            null,
             tokenValue.email,
             [tokenValue.firstName, tokenValue.lastName]
               .filter(Boolean)
@@ -560,6 +611,7 @@ export class UsersService {
   ): UnifiedUser {
     return {
       id: user.id || '',
+      idpId: user.id,
       email: user.email || '',
       firstName: user.firstName,
       lastName: user.lastName,
