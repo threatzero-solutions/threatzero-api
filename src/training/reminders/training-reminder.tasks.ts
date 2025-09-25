@@ -364,6 +364,7 @@ export class TrainingReminderTasks {
           token = await this.opaqueTokenService.create(tokenValue, {
             valueClass: TrainingParticipantRepresentationDto,
             type: 'training-reminder',
+            expiresOn: dayjs().add(30, 'day').toDate(),
           });
         }
 
