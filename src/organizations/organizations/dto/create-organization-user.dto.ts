@@ -1,4 +1,4 @@
-import { Exclude, Type } from 'class-transformer';
+import { Exclude, Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -39,6 +39,7 @@ export class CreateOrganizationUserDto {
 
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }) => value.toLowerCase().replace(/\s+/g, ''))
   email: string;
 
   @Type(() => Attributes)

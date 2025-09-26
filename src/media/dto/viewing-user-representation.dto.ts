@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class ViewingUserRepresentationDto {
@@ -7,6 +8,7 @@ export class ViewingUserRepresentationDto {
 
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }) => value.toLowerCase().replace(/\s+/g, ''))
   email: string;
 
   @IsString()
