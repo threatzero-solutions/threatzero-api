@@ -44,7 +44,6 @@ export class UnitsService extends BaseEntityService<Unit> {
     const user = this.cls.get('user');
     let qb = super
       .getQb(query)
-      .andWhere({ isDefault: false })
       .leftJoinAndSelect('unit.organization', 'organization');
 
     qb = qb
