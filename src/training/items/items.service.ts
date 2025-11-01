@@ -247,7 +247,11 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
       audienceSlugs: user.audiences,
     };
 
-    const updateValues = insertValues;
+    const updateValues: QueryDeepPartialEntity<ItemCompletion> = {
+      ...insertValues,
+      progress: () =>
+        `CASE WHEN "progress" < :progress THEN :progress ELSE "progress" END`,
+    };
 
     if (updateOrCreateItemCompletionDto.completed) {
       updateValues.completedOn = () =>
@@ -266,6 +270,9 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
         item: {
           id: updateOrCreateItemCompletionDto.item.id,
         },
+      })
+      .setParameters({
+        progress: insertValues.progress,
       })
       .execute();
 
@@ -584,12 +591,11 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
     for await (const user of this.usersService.getAllUsersGenerator({
       organizationSlug,
     })) {
-      if (user.trainingItemId) {
-        if (!itemIds.includes(user.trainingItemId)) {
-          continue;
-        }
-
-        if (user.enrollmentId && user.enrollmentId !== enrollmentId) {
+      if (user.source === 'opaque_token') {
+        if (
+          !itemIds.includes(user.trainingItemId) ||
+          user.enrollmentId !== enrollmentId
+        ) {
           continue;
         }
       } else if (
@@ -601,17 +607,21 @@ export class ItemsService extends BaseEntityService<TrainingItem> {
         continue;
       }
 
+      if (user.source === 'keycloak' && !user.enabled) {
+        continue;
+      }
+
       const localUser = await this.usersService.updateRepresentation(
         new StatelessUser(
           user.id,
-          user.idpId ?? null,
+          user.source === 'keycloak' ? user.idpId ?? null : null,
           user.email,
           [user.firstName, user.lastName].filter(Boolean).join(' '),
           user.firstName,
           user.lastName,
-          user.picture,
+          user.source === 'keycloak' ? user.picture : null,
           [],
-          [],
+          user.source === 'keycloak' ? user.audiences ?? [] : [],
           user.organizationSlug,
           null,
           user.unitSlug,

@@ -620,11 +620,12 @@ export class UsersService {
       picture: getUserAttr(user.attributes?.picture),
       organizationSlug: getUserAttr(user.attributes?.organization),
       unitSlug: getUserAttr(user.attributes?.unit),
-      audiences: user.attributes?.audience ?? [],
+      audiences: user.attributes?.audience,
       source: 'keycloak',
       canAccessTraining: !!user.groups?.includes(
         TRAINING_PARTICIPANT_ROLE_GROUP_PATH,
       ),
+      enabled: user.enabled ?? true,
     };
   }
 
