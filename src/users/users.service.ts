@@ -120,12 +120,20 @@ export class UsersService {
         // since they won't be overwriting any existing values.
         ...sensitiveOverwriteFields,
       };
-      await this.usersRepository
+
+      const insertStatement = this.usersRepository
         .createQueryBuilder('user')
         .insert()
-        .values(createOrUpdateValues)
-        .orUpdate(Object.keys(createOrUpdateValues), ['email'])
-        .execute();
+        .values(createOrUpdateValues);
+
+      if (user.idpId) {
+        // Only default to updating if the user as an IDP id, aka is from Keycloak.
+        await insertStatement
+          .orUpdate(Object.keys(createOrUpdateValues), ['email'])
+          .execute();
+      } else {
+        await insertStatement.orIgnore().execute();
+      }
     }
 
     return this.usersRepository.findOneByOrFail(
