@@ -108,16 +108,23 @@ export class UsersService {
       .execute();
 
     if (updateResult.affected === 0) {
+      // User may fail to update if:
+      //   1. An UserRepresentation record does not exist for the user.
+      //   2. OR the record does exist, but without the current "idpId" value.
+      // In the case of the user already existing, the insert will fail and the `orUpdate` clause
+      // will be executed instead.
+
+      const createOrUpdateValues = {
+        ...userRepresentationDto,
+        // If user doens't already exist, add sensitive fields to the user representation
+        // since they won't be overwriting any existing values.
+        ...sensitiveOverwriteFields,
+      };
       await this.usersRepository
         .createQueryBuilder('user')
         .insert()
-        .values({
-          ...userRepresentationDto,
-          // If user doens't already exist, add sensitive fields to the user representation
-          // since they won't be overwriting any existing values.
-          ...sensitiveOverwriteFields,
-        })
-        .orIgnore()
+        .values(createOrUpdateValues)
+        .orUpdate(Object.keys(createOrUpdateValues), ['email'])
         .execute();
     }
 
