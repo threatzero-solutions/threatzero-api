@@ -362,7 +362,7 @@ export class TrainingAdminService {
       enrollmentId: enrollment.id,
       organization: enrollment.organization,
       items: [item],
-      isInitialReminder: false,
+      isInitialReminder: true,
     });
 
     if (!sent) {
