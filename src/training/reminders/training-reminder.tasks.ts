@@ -331,17 +331,17 @@ export class TrainingReminderTasks {
     organization: Organization;
     items: TrainingItem[];
     isInitialReminder: boolean;
-  }) {
+  }): Promise<boolean> {
     const { keycloakUser, opaqueToken } = participant;
     if (!keycloakUser && !opaqueToken) {
-      return;
+      return false;
     }
 
     const userId = keycloakUser?.id ?? opaqueToken?.value.userId;
     const email = keycloakUser?.email ?? opaqueToken?.value.email;
     const firstName = keycloakUser?.firstName ?? opaqueToken?.value.firstName;
 
-    if (!userId || !email) return;
+    if (!userId || !email) return false;
 
     const trainingContexts = await Promise.all(
       items.map(async (item) => {
@@ -391,7 +391,7 @@ export class TrainingReminderTasks {
       this.logger.debug(
         `No training contexts to send for user ${userId}, skipping email`,
       );
-      return;
+      return false;
     }
 
     const frontendUrl = this.config.get<string>('general.appHost');
@@ -414,6 +414,8 @@ export class TrainingReminderTasks {
         },
       },
     );
+
+    return true;
   }
 
   private cleanTrainingTitle(title: string) {
