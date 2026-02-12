@@ -12,6 +12,7 @@ import {
 import { TrainingAdminService } from './training-admin.service';
 import { SendTrainingLinksDto } from './dto/send-training-links.dto';
 import { SendTrainingReminderDto } from './dto/send-training-reminder.dto';
+import { MarkCompletionDto } from './dto/mark-completion.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { Response } from 'express';
@@ -36,6 +37,13 @@ export class TrainingAdminController {
   @HttpCode(HttpStatus.ACCEPTED)
   async sendReminder(@Body() dto: SendTrainingReminderDto) {
     await this.trainingAdminService.sendTrainingReminder(dto);
+  }
+
+  @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))
+  @Post('completions/mark-complete')
+  @HttpCode(HttpStatus.OK)
+  async markComplete(@Body() dto: MarkCompletionDto) {
+    return this.trainingAdminService.markComplete(dto);
   }
 
   @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))

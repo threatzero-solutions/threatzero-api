@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { plainToInstance } from 'class-transformer';
 import dayjs from 'dayjs';
@@ -36,8 +37,10 @@ import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { ItemsService } from 'src/training/items/items.service';
 import { TrainingReminderTasks } from 'src/training/reminders/training-reminder.tasks';
 import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
+import { UserRepresentation } from 'src/users/entities/user-representation.entity';
 import { UsersService } from 'src/users/users.service';
-import { DataSource, In } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
+import { MarkCompletionDto } from './dto/mark-completion.dto';
 import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 import { SendTrainingLinksDto } from './dto/send-training-links.dto';
 import { SendTrainingReminderDto } from './dto/send-training-reminder.dto';
@@ -49,6 +52,8 @@ export class TrainingAdminService {
 
   constructor(
     @InjectQueue(NOTIFICATIONS_QUEUE_NAME) private notificationsQueue: Queue,
+    @InjectRepository(ItemCompletion)
+    private readonly itemCompletionsRepository: Repository<ItemCompletion>,
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
     private readonly coursesService: CoursesService,
@@ -364,6 +369,75 @@ export class TrainingAdminService {
     }
 
     return sent;
+  }
+
+  async markComplete(dto: MarkCompletionDto) {
+    const enrollment = await this.enrollmentsService
+      .findOne(dto.courseEnrollmentId)
+      .catch(() => {
+        throw new NotFoundException('Course enrollment not found');
+      });
+
+    const item = await this.itemsService
+      .findOne(dto.trainingItemId)
+      .catch(() => {
+        throw new NotFoundException('Training item not found');
+      });
+
+    const orgUsers = await this.organizationsService.getOrganizationUsers(
+      enrollment.organization.id,
+      plainToInstance(OrganizationUserQueryDto, {
+        id: dto.userId,
+        limit: 1,
+      }),
+    );
+
+    const orgUser = orgUsers.results.at(0);
+    if (!orgUser) {
+      throw new NotFoundException('User not found in organization');
+    }
+
+    // Look up the local UserRepresentation by Keycloak ID.
+    const userRep = await this.dataSource
+      .getRepository(UserRepresentation)
+      .findOneBy({ idpId: orgUser.id });
+
+    if (!userRep) {
+      throw new NotFoundException('User representation not found');
+    }
+
+    // Find existing completion record.
+    const existing = await this.itemCompletionsRepository.findOne({
+      where: {
+        user: { id: userRep.id },
+        enrollment: { id: enrollment.id },
+        item: { id: item.id },
+      },
+    });
+
+    if (existing) {
+      if (!existing.completed) {
+        await this.itemCompletionsRepository.update(existing.id, {
+          completed: true,
+          progress: 1,
+          completedOn: new Date(),
+        });
+      }
+      return existing;
+    }
+
+    return this.itemCompletionsRepository.save(
+      this.itemCompletionsRepository.create({
+        item: { id: item.id } as any,
+        enrollment: { id: enrollment.id } as any,
+        user: { id: userRep.id } as any,
+        email: orgUser.email,
+        completed: true,
+        completedOn: new Date(),
+        progress: 1,
+        url: 'manual',
+      }),
+    );
   }
 
   private sendTrainingLinkEmails(

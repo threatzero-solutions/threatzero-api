@@ -9,11 +9,12 @@ import { CoursesModule } from 'src/training/courses/courses.module';
 import { TrainingModule } from 'src/training/training.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WatchStat } from './entities/watch-stat.entity';
+import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
 import { OrganizationsModule } from 'src/organizations/organizations/organizations.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([WatchStat]),
+    TypeOrmModule.forFeature([WatchStat, ItemCompletion]),
     UsersModule,
     ItemsModule,
     CoursesModule,
