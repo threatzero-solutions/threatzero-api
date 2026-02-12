@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { TrainingAdminService } from './training-admin.service';
 import { SendTrainingLinksDto } from './dto/send-training-links.dto';
+import { SendTrainingReminderDto } from './dto/send-training-reminder.dto';
 import { CheckPolicies } from 'src/auth/casl/policies.guard';
 import { EntityAbilityChecker } from 'src/common/entity-ability-checker';
 import { Response } from 'express';
@@ -28,6 +29,13 @@ export class TrainingAdminController {
   @HttpCode(HttpStatus.ACCEPTED)
   async sendLinks(@Body() sendTrainingLinksDto: SendTrainingLinksDto) {
     await this.trainingAdminService.sendTrainingLinks(sendTrainingLinksDto);
+  }
+
+  @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))
+  @Post('reminders')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async sendReminder(@Body() dto: SendTrainingReminderDto) {
+    await this.trainingAdminService.sendTrainingReminder(dto);
   }
 
   @CheckPolicies(new EntityAbilityChecker(SendTrainingLinksDto))

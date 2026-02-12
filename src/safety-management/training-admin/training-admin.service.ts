@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
@@ -22,8 +23,10 @@ import {
   getOrganizationLevel,
   getUserUnitPredicate,
 } from 'src/organizations/common/organizations.utils';
+import { OrganizationUserQueryDto } from 'src/organizations/organizations/dto/organization-user-query.dto';
 import { EnrollmentsService } from 'src/organizations/organizations/enrollments.service';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
+import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
 import { UnitsService } from 'src/organizations/units/units.service';
 import { CoursesService } from 'src/training/courses/courses.service';
@@ -31,11 +34,13 @@ import { TrainingParticipantRepresentationDto } from 'src/training/items/dto/tra
 import { ItemCompletion } from 'src/training/items/entities/item-completion.entity';
 import { TrainingItem } from 'src/training/items/entities/item.entity';
 import { ItemsService } from 'src/training/items/items.service';
+import { TrainingReminderTasks } from 'src/training/reminders/training-reminder.tasks';
 import { TrainingTokenQueryDto } from 'src/users/dto/training-token-query.dto';
 import { UsersService } from 'src/users/users.service';
-import { In } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { ResendTrainingLinksDto } from './dto/resend-training-link.dto';
 import { SendTrainingLinksDto } from './dto/send-training-links.dto';
+import { SendTrainingReminderDto } from './dto/send-training-reminder.dto';
 
 const DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 
@@ -51,6 +56,9 @@ export class TrainingAdminService {
     private readonly unitsService: UnitsService,
     private readonly enrollmentsService: EnrollmentsService,
     private readonly cls: ClsService<CommonClsStore>,
+    private readonly dataSource: DataSource,
+    private readonly organizationsService: OrganizationsService,
+    private readonly trainingReminderTasks: TrainingReminderTasks,
   ) {}
 
   async onApplicationShutdown(signal?: string): Promise<void> {
@@ -313,6 +321,49 @@ export class TrainingAdminService {
     }
 
     this.sendTrainingLinkEmails(tokens, trainingMap, data.trainingUrlTemplate);
+  }
+
+  async sendTrainingReminder(dto: SendTrainingReminderDto) {
+    const enrollment = await this.enrollmentsService
+      .findOne(dto.courseEnrollmentId)
+      .catch(() => {
+        throw new NotFoundException('Course enrollment not found');
+      });
+
+    const item = await this.itemsService
+      .findOne(dto.trainingItemId)
+      .catch(() => {
+        throw new NotFoundException('Training item not found');
+      });
+
+    // Look up the user via the organization service, which validates that
+    // the requesting admin has access to this user within the enrollment's org.
+    const orgUsers = await this.organizationsService.getOrganizationUsers(
+      enrollment.organization.id,
+      plainToInstance(OrganizationUserQueryDto, {
+        id: dto.userId,
+        limit: 1,
+      }),
+    );
+
+    const orgUser = orgUsers.results.at(0);
+    if (!orgUser) {
+      throw new NotFoundException('User not found in organization');
+    }
+
+    const sent = await this.trainingReminderTasks.sendReminderEmail({
+      participant: { keycloakUser: orgUser, opaqueToken: null },
+      enrollmentId: enrollment.id,
+      organization: enrollment.organization,
+      items: [item],
+      isInitialReminder: true,
+    });
+
+    if (!sent) {
+      throw new BadRequestException('Failed to send training reminder email.');
+    }
+
+    return sent;
   }
 
   private sendTrainingLinkEmails(

@@ -6,6 +6,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
 import { ItemsModule } from 'src/training/items/items.module';
 import { UnitsModule } from 'src/organizations/units/units.module';
 import { CoursesModule } from 'src/training/courses/courses.module';
+import { TrainingModule } from 'src/training/training.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WatchStat } from './entities/watch-stat.entity';
 import { OrganizationsModule } from 'src/organizations/organizations/organizations.module';
@@ -19,6 +20,7 @@ import { OrganizationsModule } from 'src/organizations/organizations/organizatio
     NotificationsModule,
     UnitsModule,
     OrganizationsModule,
+    TrainingModule,
   ],
   providers: [TrainingAdminService],
   controllers: [TrainingAdminController],
