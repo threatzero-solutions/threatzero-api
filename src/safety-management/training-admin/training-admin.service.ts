@@ -25,7 +25,6 @@ import {
 } from 'src/organizations/common/organizations.utils';
 import { OrganizationUserQueryDto } from 'src/organizations/organizations/dto/organization-user-query.dto';
 import { EnrollmentsService } from 'src/organizations/organizations/enrollments.service';
-import { CourseEnrollment } from 'src/organizations/organizations/entities/course-enrollment.entity';
 import { Organization } from 'src/organizations/organizations/entities/organization.entity';
 import { OrganizationsService } from 'src/organizations/organizations/organizations.service';
 import { Unit } from 'src/organizations/units/entities/unit.entity';
@@ -325,13 +324,8 @@ export class TrainingAdminService {
   }
 
   async sendTrainingReminder(dto: SendTrainingReminderDto) {
-    const enrollment = await this.dataSource
-      .createQueryBuilder(CourseEnrollment, 'enrollment')
-      .leftJoinAndSelect('enrollment.organization', 'organization')
-      .where('enrollment.id = :enrollmentId', {
-        enrollmentId: dto.courseEnrollmentId,
-      })
-      .getOneOrFail()
+    const enrollment = await this.enrollmentsService
+      .findOne(dto.courseEnrollmentId)
       .catch(() => {
         throw new NotFoundException('Course enrollment not found');
       });
